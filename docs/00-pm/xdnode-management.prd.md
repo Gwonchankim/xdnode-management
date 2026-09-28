@@ -195,11 +195,11 @@
 | 실데이터 | `app/finance-current-data.ts` 12,438줄 + `finance-historical/decision-model/time-series` | 태그 생성 후 `app/` 밖 보관 위치로 이동(§6.1 D3). Worker 번들에서 제외 |
 | 테스트 | `finance-*.test.mjs` 5개 | `package.json` test 스크립트에서 제거. `incentive-calculation.test.mjs`는 유지(D1) |
 | 역할 | `FINANCE_ADMIN`, `SALES_ADMIN` in `app/erp-platform.ts` | 제거. `erp_user_access`에 남은 해당 역할 행 마이그레이션 |
-| AI 어시스턴트 브리지 | `ALLOWED_MODULES`의 `sales` | 제거 |
+| AI 어시스턴트 브리지 | `ALLOWED_MODULES`의 `sales` | 제거하지 않고 `incentive`로 이름을 바꾼다(D1 유지, 인센티브 계산기의 어시스턴트 모드) |
 | 문서 | `docs/finance-*-plan.md`, `docs/sales-*-plan.md` | `docs/archive/`로 이동 |
 | D1 테이블·데이터 | 재무·영업 테이블 다수 | **보관**. DROP 없음, `ensureSchema` 생성만 중단(§6.1 D4) |
 | 재무 지향 공유 화면 | 데이터 인테이크·거버넌스·연동, 마스터 영향(`master-impact`, `master-impact-cases`), 운영 워크벤치, 승인 센터·감사 로그 UI의 재무/영업 부분 | **제거**(§6.1 D2). 단 승인 엔진·감사 기록 **인프라는 유지** |
-| 임금계산·인센티브 | `compensation` 모듈, `app/incentive/`, `incentive-governance.tsx` | **유지**. 영업 탭·영업 데이터와의 연결만 끊어 독립 동작(§6.1 D1) |
+| 임금계산·인센티브 | `compensation` 모듈, `app/incentive/` | **유지**. 영업 탭·영업 데이터와의 연결만 끊어 독립 동작(§6.1 D1). `incentive-governance.tsx`는 영업 코드와 함께 삭제(Plan D22) |
 
 제거 순서 권고: (0) 로컬 D1 스냅샷 내보내기 + git 태그/아카이브 브랜치 → (1) `app/sales-pricing.ts` 견적 로직 노트 추출 → (2) 의존 그래프 확인(재무 데이터를 import하는 비재무 파일: `page.tsx` 외 7개 — 모두 재무 워크스페이스) → (3) 라우트·컴포넌트 삭제 → (4) 실데이터 파일 `app/` 밖으로 이동 → (5) 역할·테스트 갱신 → (6) `npm run lint && npm test` 통과 → (7) HR 핵심 시나리오(급여·휴가·채용 승인, 감사 로그) 수동 회귀.
 
@@ -207,7 +207,7 @@
 
 | ID | 결정 | 근거·조건 |
 |----|------|-----------|
-| D1 | **임금 계산(`compensation`)과 인센티브 계산기(`app/incentive/`, `incentive-governance.tsx`)는 유지**한다. 영업 탭·영업 데이터(예: 매출 인보이스 날짜 참조)와의 연결만 끊어 단독으로 동작하게 한다. | 사용자 결정. `incentive-calculation.test.mjs` 유지 |
+| D1 | **임금 계산(`compensation`)과 인센티브 계산기(`app/incentive/`)는 유지**한다. `incentive-governance.tsx`의 유지는 Plan D22(영업 코드와 함께 삭제)로 대체됐다. 영업 탭·영업 데이터(예: 매출 인보이스 날짜 참조)와의 연결만 끊어 단독으로 동작하게 한다. | 사용자 결정. `incentive-calculation.test.mjs` 유지 |
 | D2 | **공유 플랫폼 중 재무 지향 화면·기능은 제거**한다: 데이터 인테이크, 데이터 거버넌스, 데이터 연동, 마스터 영향 분석(`master-impact`, `master-impact-cases`), 운영 워크벤치, 승인 센터·감사 로그 UI의 재무/영업 전용 부분. **단, 승인 엔진(`app/approval-engine.ts`)과 감사 기록·권한 검사(`writeErpAudit`, `authorizeErpRequest` in `app/erp-platform.ts`)는 인프라로 유지**한다. | 사용자는 "빼자"고 했으나 코드 확인 결과 HR이 직접 의존한다: `writeErpAudit`는 `app/api/hr/*` 라우트 약 20개 전부에서 호출되고, `createApprovalRequest`는 hr operations·workforce-plans·payroll·performance·recruitment-requisitions에서 호출된다. 제거하면 급여·휴가·채용 승인과 감사 추적이 깨진다. |
 | D2-개정 | **결재(전자결재) 기능 전체를 제거한다** — 승인 엔진(`app/approval-engine.ts`), 결재 API(`app/api/approvals`, `app/api/approval-settings`), 결재함 UI(`app/approval-center.tsx`), `erp_approval_*` 테이블 생성까지. D2의 "승인 엔진 유지"를 **대체**한다. **감사 기록(`writeErpAudit`)과 권한 검사(`authorizeErpRequest`)는 계속 유지**한다. | 사용자 결정(2026-09-23, Q8 답변: "결재요청 기능 자체가 필요 없으므로 거둬들여"). 영향은 아래 D2-a |
 | D2-a | **HR의 결재 의존을 "권한자 직접 반영"으로 바꾼다.** 지금 HR 라우트 5개(payroll, operations, performance, workforce-plans, recruitment-requisitions)는 상태를 바꿀 때 `createApprovalRequest`를 부른다. 실제 상태 전환(예: 급여월 `REVIEW→APPROVED`, 퇴직 요청 `IN_PROGRESS` 전환·정산 초안)은 승인 뒤 엔진의 `buildApprovalOutcomeStatements`가 대신 반영한다. 엔진을 지우면 이 반영 경로를 각 라우트 안으로 옮겨야 한다. 요청자에게 `hr:approve` 권한이 있으면 그 자리에서 전환하고 감사 기록을 남긴다. 권한이 없으면 403이다. 결재 대기 상태(`SUBMITTED`/`IN_REVIEW`)는 없어진다. | 코드로 확인함: `app/api/hr/payroll/route.ts:418`, `app/api/hr/operations/route.ts:277,358,400`. 엔진 결과 반영부는 `app/approval-engine.ts:215~` |
@@ -314,14 +314,14 @@
 ### 테스트 시나리오
 | ID | 시나리오 | 기대 결과 | 관련 |
 |----|----------|-----------|------|
-| T-01 | 계정 0개 상태로 기동 → `LOCAL_ERP_USER_EMAIL`로 최초 관리자 부트스트랩 → 계정 1개 생성 후 fallback 재시도 | 두 번째부터 fallback 거부, 로그인 필요 | FR-01 |
+| T-01 | 계정 0개 상태로 기동 → 서버 PC(루프백) 브라우저에서 최초 관리자 부트스트랩 → 다른 PC(비루프백)·위조 헤더로 부트스트랩 시도 → 계정 1개 생성 후 재시도 | 부트스트랩은 루프백·계정 0개일 때만 1회 성공, 비루프백은 403, 계정이 생긴 뒤에는 409이고 로그인 필요 | FR-01 |
 | T-02 | 잘못된 비밀번호 5회 | 잠금 또는 지연, 감사 기록 | NFR-05 |
 | T-03 | VIEWER(HR 읽기만) 로그인 → 셸 DOM 검사 | 임금계산·계정관리 탭 요소 없음 | FR-03 |
 | T-04 | 동일 사용자가 URL 상태 조작으로 임금계산 모듈 강제 진입 | "권한 없음" 화면, 데이터 요청 없음 | FR-03 |
 | T-05 | 동일 사용자가 `POST /api/hr/payroll` 직접 호출 | 403, 감사 로그에 시도 기록 | FR-04 |
 | T-06 | 관리자 A, 담당자 B 동시 로그인 후 각자 수정 | 감사 로그 `actor`가 A/B로 구분 | FR-05 |
 | T-07 | 계정 비활성화 직후 기존 쿠키로 요청 | 401 | US-04 |
-| T-08 | 다른 PC에서 `http://<서버IP>:3000` 접속 | 로그인 화면 표시; AI 어시스턴트도 동작(origin 허용 후) | NFR-01, 06 |
+| T-08 | 다른 PC에서 `http://<서버IP>:3000` 접속 | 로그인 화면 표시; AI 어시스턴트도 동작 | NFR-01, 06 |
 | T-09 | 제거 후 `npm run lint && npm test` | 통과; `tests/erp-platform.test.mjs` 라우트 목록에 finance/sales 없음 | FR-07 |
 | T-10 | 제거 후 `/api/finance/budget`, `/api/sales/*` 호출 | 404 | FR-07 |
 | T-11 | 2브라우저(A,B) 채널 메시지 왕복 10회 | 각 메시지 3초 이내 반대편 표시 | NFR-02 |

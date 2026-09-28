@@ -12,7 +12,7 @@
     "assistant:bridge": "node scripts/codex-assistant-bridge.mjs",
     "resume:bridge": "node scripts/claude-resume-bridge.mjs",
     "assistant:claude": "node scripts/claude-assistant-bridge.mjs",
-    "test": "npm run build && node --test tests/hr-interview-question-templates.test.mjs tests/hr-local-permissions.test.mjs tests/hr-ai-integration.test.mjs tests/incentive-calculation.test.mjs tests/hr-api-integration.test.mjs tests/hr-ordinary-wage.test.mjs tests/hr-employee-schema.test.mjs tests/rendered-html.test.mjs tests/hr-leave-accrual.test.mjs tests/hr-dashboard-model.test.mjs tests/compensation-calculation.test.mjs tests/finance-data.test.mjs tests/finance-time-series.test.mjs tests/finance-decision-model.test.mjs tests/finance-assistant-evidence.test.mjs tests/finance-alert-reporting.test.mjs tests/erp-platform.test.mjs tests/workflow-ledgers.test.mjs tests/hr-severance-calculation.test.mjs tests/local-codex-assistant.test.mjs tests/lan-exposure-guards.test.mjs",
+    "test": "npm run build && node --test tests/hr-interview-question-templates.test.mjs tests/hr-local-permissions.test.mjs tests/hr-ai-integration.test.mjs tests/incentive-calculation.test.mjs tests/hr-api-integration.test.mjs tests/hr-ordinary-wage.test.mjs tests/hr-employee-schema.test.mjs tests/rendered-html.test.mjs tests/hr-leave-accrual.test.mjs tests/hr-dashboard-model.test.mjs tests/compensation-calculation.test.mjs tests/erp-platform.test.mjs tests/workflow-ledgers.test.mjs tests/hr-severance-calculation.test.mjs tests/local-codex-assistant.test.mjs tests/lan-exposure-guards.test.mjs tests/removal-guards.test.mjs tests/bundle-exposure.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },

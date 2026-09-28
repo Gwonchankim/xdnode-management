@@ -2,7 +2,7 @@ import { companyEmployees } from "./hr-company-data";
 import { getChatGPTUser } from "./chatgpt-auth";
 
 export type ErpRole = "SUPER_ADMIN" | "HR_ADMIN" | "RECRUITER" | "VIEWER";
-export type ErpModule = "operations" | "finance" | "hr" | "recruitment" | "sales" | "settings";
+export type ErpModule = "hr" | "recruitment" | "settings";
 export type ErpAction = "read" | "write" | "approve" | "delete" | "admin";
 
 export type ErpPrincipal = {
@@ -23,9 +23,9 @@ type AccessRow = {
 
 const rolePermissions: Record<ErpRole, Set<string>> = {
   SUPER_ADMIN: new Set(["*"]),
-  HR_ADMIN: new Set(["operations:read", "operations:write", "hr:read", "hr:write", "hr:approve", "hr:delete", "recruitment:read", "recruitment:write", "recruitment:approve", "recruitment:delete"]),
-  RECRUITER: new Set(["operations:read", "recruitment:read", "recruitment:write"]),
-  VIEWER: new Set(["operations:read", "hr:read", "recruitment:read"]),
+  HR_ADMIN: new Set(["hr:read", "hr:write", "hr:approve", "hr:delete", "recruitment:read", "recruitment:write", "recruitment:approve", "recruitment:delete"]),
+  RECRUITER: new Set(["recruitment:read", "recruitment:write"]),
+  VIEWER: new Set(["hr:read", "recruitment:read"]),
 };
 
 const administratorEmployeeId = "gc.kim";
@@ -199,27 +199,4 @@ export function safeJson<T>(value: string | null | undefined, fallback: T): T {
   } catch {
     return fallback;
   }
-}
-
-// Shared period-lock check for finance modules — see docs/finance-remediation-plan.md Stage 2
-// ("blockedPeriods() 공용화"). Before this, posting-control had the only rigorous version (blocks
-// CLOSED, SUBMITTED, and never-opened past periods); debt/expense-control/fixed-assets/
-// project-costing/tax each carried their own copy that only checked CLOSED — meaning those
-// subsidiary ledgers could post into a month the GL had already refused, or into a month currently
-// awaiting close approval against a frozen snapshot. All finance period-lock checks should route
-// through this one function so the rule can't drift apart again.
-export async function blockedFinancePeriods(db: D1Database, periods: string[]) {
-  if (!periods.length) return [] as string[];
-  const unique = [...new Set(periods)];
-  const placeholders = unique.map(() => "?").join(",");
-  const rows = await db.prepare(`SELECT period,status FROM finance_close_runs WHERE period IN (${placeholders})`)
-    .bind(...unique).all<{ period: string; status: string }>().catch(() => ({ results: [] }));
-  const states = new Map(rows.results.map((row) => [row.period, row.status]));
-  const currentPeriod = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 7);
-  return unique.filter((period) => ["CLOSED", "SUBMITTED"].includes(states.get(period) ?? "")
-    || (!states.has(period) && period !== currentPeriod));
-}
-
-export async function isFinancePeriodLocked(db: D1Database, period: string) {
-  return (await blockedFinancePeriods(db, [period])).length > 0;
 }

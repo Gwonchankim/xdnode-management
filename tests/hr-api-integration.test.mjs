@@ -325,7 +325,8 @@ test('workforce plans and performance cycles reject duplicate or premature trans
   assert.ok(sql.prepare('SELECT COUNT(*) AS n FROM hr_performance_participants WHERE cycle_id=?').get(cycleId).n > 0);
 });
 
-for (const [path, query] of [['documents', '?module=hr&entityType=employee&entityId=audit'], ['approval-settings', ''], ['sales/incentives', '?period=2026-09']]) {
+// R1(Design §8.7): approval-settings·sales/incentives 라우트는 삭제되어 documents만 남는다.
+for (const [path, query] of [['documents', '?module=hr&entityType=employee&entityId=audit']]) {
   test(`HR connected API ${path} GET and unauthenticated rejection`, async () => {
     await resetDatabase({ migrate: true });
     expectStatus(await callApi(path, 'GET', undefined, query), 200);
@@ -333,16 +334,6 @@ for (const [path, query] of [['documents', '?module=hr&entityType=employee&entit
     expectStatus(await callApi(path, 'GET', undefined, query), 401);
   });
 }
-
-test('incentive rule creation and payroll-application permission are enforced', async () => {
-  await resetDatabase({ migrate: true });
-  expectStatus(await callApi('sales/incentives', 'POST', { action: 'CREATE_RULE', name: 'Audit Rule', effectiveFrom: '2026-01-01',
-    eligibleLeadTypes: ['OUTBOUND'], thresholdMarginPercent: 10, payoutRatePercent: 5 }), 201);
-  setIdentity(['VIEWER']);
-  for (const action of ['CALCULATE_PERIOD', 'SALES_CONFIRM', 'FINANCE_REVIEW', 'SUBMIT_PAYOUT', 'APPLY_PAYROLL']) {
-    expectStatus(await callApi('sales/incentives', 'POST', { action, period: '2026-09', resultId: 'audit' }), 403);
-  }
-});
 
 test('retirement approval, checklist, settlement and effective completion remain consistent', async () => {
   const sql = await resetDatabase({ migrate: true }); await seedAuditEmployee();

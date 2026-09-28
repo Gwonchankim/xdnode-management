@@ -36,12 +36,12 @@ export default defineConfig(async ({ command, mode }) => {
   // LOCAL_ERP_USER_* 는 혼자 로컬에서 돌릴 때 쓰는 신원이다. Sign-in with ChatGPT 헤더가 없는
   // 환경에서만 app/chatgpt-auth.ts 가 이 값을 사용하고, 값이 없으면 예전처럼 로그인을 요구한다.
   const localRuntimeVars = Object.fromEntries(
-    ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_AI_MODEL",
+    ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN",
       "LOCAL_ERP_USER_EMAIL", "LOCAL_ERP_USER_NAME",
       // 이력서 분석은 Claude CLI 다리 하나만 쓴다(scripts/claude-resume-bridge.mjs).
       // 값이 없으면 http://127.0.0.1:3120 을 쓴다.
       "CLAUDE_BRIDGE_URL",
-      // HR·임금계산·영업 AI 어시스턴트 다리(scripts/claude-assistant-bridge.mjs). 값이 없으면 http://127.0.0.1:3130 을 쓴다.
+      // HR·임금계산·인센티브 AI 어시스턴트 다리(scripts/claude-assistant-bridge.mjs). 값이 없으면 http://127.0.0.1:3130 을 쓴다.
       "CLAUDE_ASSISTANT_BRIDGE_URL"]
       .map((key) => [key, fileEnv[key]] as const)
       .filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
