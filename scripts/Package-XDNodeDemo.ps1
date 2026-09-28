@@ -2,7 +2,7 @@
 #
 # 이 데스크탑의 작업본을 다른 Windows PC(Node.js 미설치)에서 더블클릭만으로 띄울 수 있게 한 폴더로 묶는다.
 #   <Destination>\
-#     XD NODE ERP 시연 시작.cmd   ← 더블클릭. 동봉한 Node 를 PATH 에 넣고 app\scripts\Start-XDNodeERP.ps1 을 부른다.
+#     XD NODE ERP 시연 시작.cmd   ← 더블클릭. 동봉한 Node 를 PATH 에 넣고 app\scripts\Start-XDNodeManagement.ps1 을 부른다.
 #     README.txt                 ← 시연 PC 에서의 절차와 주의사항
 #     runtime\node\              ← 이 PC 의 Node.js 설치 폴더 복사본(Windows 용 Node 는 폴더 복사만으로 동작)
 #     app\                       ← 프로젝트(소스 + node_modules + 로컬 DB). 작업 잡파일·비밀 값은 뺀다.
@@ -90,7 +90,7 @@ Write-Host "[6/6] 실행 파일·안내문 작성..." -ForegroundColor Cyan
 $launcher = @(
   "@echo off",
   "set ""PATH=%~dp0runtime\node;%PATH%""",
-  "powershell -NoProfile -ExecutionPolicy Bypass -File ""%~dp0app\scripts\Start-XDNodeERP.ps1""",
+  "powershell -NoProfile -ExecutionPolicy Bypass -File ""%~dp0app\scripts\Start-XDNodeManagement.ps1""",
   "if errorlevel 1 pause"
 )
 [System.IO.File]::WriteAllLines((Join-Path $Destination "XD NODE ERP 시연 시작.cmd"), [string[]]$launcher, [System.Text.Encoding]::ASCII)

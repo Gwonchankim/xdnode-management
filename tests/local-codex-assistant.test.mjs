@@ -39,7 +39,7 @@ test("local Codex assistant is mounted for HR, payroll and incentive while its b
   const [page, component, bridge, claudeBridge, launcher, schema] = await Promise.all([
     read("app/page.tsx"), read("app/local-codex-assistant.tsx"), read("scripts/codex-assistant-bridge.mjs"),
     read("scripts/claude-assistant-bridge.mjs"),
-    read("scripts/Start-XDNodeERP.ps1"), read("scripts/codex-assistant-response-schema.json"),
+    read("scripts/Start-XDNodeManagement.ps1"), read("scripts/codex-assistant-response-schema.json"),
   ]);
   assert.match(page, /<LocalCodexAssistant module="hr"\s*\/>/);
   assert.match(page, /<LocalCodexAssistant module=\{compensationAssistantModule\}\s*\/>/);

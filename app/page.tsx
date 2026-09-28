@@ -27,7 +27,7 @@ function ERPTopNavigation({ active, onChange }: { active: ModuleKey; onChange: (
       <div className="erp-top-brand">
         <span className="brand-mark">XD</span>
         <div>
-          <strong>XD NODE</strong>
+          <strong>XDnode management</strong>
 
         </div>
       </div>

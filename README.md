@@ -1,12 +1,16 @@
-# vinext-starter
+# XDnode management
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+경영지원실(인사·임금 계산·감사 기록) 사내 도구. [vinext](https://github.com/cloudflare/vinext)
+위에서 로컬 D1/R2로 사무실 PC 한 대에서 돈다. 개편 계획과 결정 사항은
+`docs/00-pm/xdnode-management.prd.md`, `docs/01-plan/features/xdnode-management.plan.md`,
+`docs/02-design/features/xdnode-management.design.md`에 있다. 사무실 PC에서는
+`scripts/Start-XDNodeManagement.ps1`로 앱과 AI 브리지를 함께 띄운다.
+
+아래는 이 저장소가 시작한 vinext 템플릿의 일반 안내다.
 
 ## Prerequisites
 
-- Node.js `>=22.13.0`
+- Node.js `>=22.15.0`
 
 ## Quick Start
 

@@ -7,7 +7,7 @@ import test from "node:test";
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("dev server stays on this PC, with the Miniflare explorer off and state files unserved", async () => {
-  const [launcher, viteConfig] = await Promise.all([read("scripts/Start-XDNodeERP.ps1"), read("vite.config.ts")]);
+  const [launcher, viteConfig] = await Promise.all([read("scripts/Start-XDNodeManagement.ps1"), read("vite.config.ts")]);
   // D16: R3 운영 전환 전까지 dev 서버는 서버 PC 에서만 접속된다.
   assert.match(launcher, /npm\.cmd run dev -- --port \$Port --hostname 127\.0\.0\.1/);
   assert.doesNotMatch(launcher, /--hostname 0\.0\.0\.0/);

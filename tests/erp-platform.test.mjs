@@ -556,7 +556,7 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.doesNotMatch(workspace, /localAiAvailable|reanalyzeWithLocal|Workers AI/);
   assert.doesNotMatch(bridge, /shell: process\.platform/);
   // ERP 서버를 켜면 다리도 같이 뜬다.
-  const launcher = await read("scripts/Start-XDNodeERP.ps1");
+  const launcher = await read("scripts/Start-XDNodeManagement.ps1");
   assert.match(launcher, /\$ResumeBridgePort = 3120/);
   assert.match(launcher, /npm\.cmd run resume:bridge/);
 
@@ -1068,7 +1068,7 @@ test("demo USB packager ships the app without secrets and with the files the dev
   assert.match(packager, /\$AppPath\.Length \+ 130\) -gt 250/);
   // 동봉 Node 를 PATH 앞에 두고 기존 실행 스크립트를 그대로 부른다.
   assert.match(packager, /runtime\\node;%PATH%/);
-  assert.match(packager, /Start-XDNodeERP\.ps1/);
+  assert.match(packager, /Start-XDNodeManagement\.ps1/);
 });
 
 test("no browser-side code calls the desktop-only Claude bridges directly", async () => {

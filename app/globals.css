@@ -404,7 +404,7 @@ body .panel form button, body .panel > form button { font-size: 12px !important;
 
 /* Below ~1180px the wordmark cannot fit beside four tabs and four controls, and
    because the brand box is allowed to shrink it was collapsing to half-width and
-   clipping "XD NODE" mid-word. Drop the wordmark and keep the XD square, which
+   clipping "XDnode management" mid-word. Drop the wordmark and keep the XD square, which
    already identifies the app, instead of showing a broken label. */
 @media (max-width: 1180px) {
   body .erp-top-brand > div { display: none; }

@@ -45,7 +45,7 @@ $LogPath = Join-Path $LogDir "launcher.log"
 $env:X_LOCAL_EXPLORER = "false"
 
 if (-not (Test-LocalPort $Port)) {
-  Write-Host "Starting XD NODE ERP. The first launch may take up to a few minutes (longer if project files changed since the last run)..." -ForegroundColor Cyan
+  Write-Host "Starting XDnode management. The first launch may take up to a few minutes (longer if project files changed since the last run)..." -ForegroundColor Cyan
   Remove-StaleDevLock
   if (-not (Test-Path -LiteralPath $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
@@ -95,7 +95,7 @@ if (-not (Test-LocalPort $ClaudeAssistantPort)) {
 }
 
 if (-not (Test-LocalPort $Port)) {
-  Write-Host "`nXD NODE ERP could not start the local server." -ForegroundColor Red
+  Write-Host "`nXDnode management could not start the local server." -ForegroundColor Red
   Write-Host "Please verify Node.js and the project dependencies, then try again." -ForegroundColor Yellow
   foreach ($candidate in @($LogPath, "$LogPath.err")) {
     if (Test-Path -LiteralPath $candidate) {

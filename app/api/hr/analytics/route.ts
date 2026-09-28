@@ -154,7 +154,7 @@ async function buildSnapshot(from: string, to: string, canSensitive: boolean) {
 }
 
 function csv(snapshot: Awaited<ReturnType<typeof buildSnapshot>>) {
-  const rows: (string | number | null)[][] = [["XD NODE ERP HR 집계 리포트"], ["기간", snapshot.period.from, snapshot.period.to], [], ["인원 지표", "값"],
+  const rows: (string | number | null)[][] = [["XDnode management HR 집계 리포트"], ["기간", snapshot.period.from, snapshot.period.to], [], ["인원 지표", "값"],
     ["기간 시작 재직자", snapshot.headcount.atStart], ["기간 말 재직자", snapshot.headcount.atEnd], ["입사자", snapshot.headcount.hires], ["퇴직자", snapshot.headcount.exits], ["이직률(%)", snapshot.headcount.turnoverRate],
     [], ["월", "월말 재직자"], ...snapshot.headcount.trend.map((item) => [item.period, item.value]),
     [], ["조직", "기간 말 재직자"], ...snapshot.headcount.organization.map((item) => [item.label, item.value]),

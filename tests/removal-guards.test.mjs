@@ -170,3 +170,14 @@ test("every tests/*.test.mjs file is in the npm test list and every listed test 
   const onDisk = (await readdir(path.join(root, "tests"))).filter((name) => name.endsWith(".test.mjs")).map((name) => `tests/${name}`);
   assert.deepEqual([...listed].sort(), [...onDisk].sort());
 });
+
+test("R2: renaming the product keeps the local D1/R2 identifiers, so the app keeps opening the same data", async () => {
+  // miniflare 는 파일 이름을 database_id·bucket_name 으로 짓는다. 바꾸면 앱이 빈 DB·빈 버킷으로 조용히 뜬다(Design §12.8).
+  const viteConfig = await read("vite.config.ts");
+  assert.match(viteConfig, /"00000000-0000-4000-8000-000000000000"/);
+  assert.match(viteConfig, /database_name: "site-creator-d1"/);
+  assert.match(viteConfig, /bucket_name: "site-creator-r2"/);
+  assert.equal(JSON.parse(await read("package.json")).name, "xdnode-management");
+  assert.ok(existsSync(path.join(root, "scripts/Start-XDNodeManagement.ps1")));
+  assert.ok(!existsSync(path.join(root, "scripts/Start-XDNodeERP.ps1")));
+});

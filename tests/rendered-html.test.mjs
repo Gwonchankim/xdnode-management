@@ -20,10 +20,10 @@ test("renders the HR-first shell with only the hr, compensation and audit tabs",
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>XD NODE ERP · 통합 운영 관리<\/title>/);
+  assert.match(html, /<title>XDnode management · 경영지원실<\/title>/);
   assert.match(html, /aria-label="ERP 모듈"/);
   assert.match(html, /class="hr-module-shell"/);
-  assert.match(html, /<strong>XD NODE<\/strong>/);
+  assert.match(html, /<strong>XDnode management<\/strong>/);
   assert.match(html, /class="erp-module-tab active"[^>]*aria-current="page"[\s\S]*?<strong>인사관리<\/strong>/);
   assert.match(html, /<strong>임금 계산<\/strong>/);
   assert.match(html, /<strong>감사 로그<\/strong>/);

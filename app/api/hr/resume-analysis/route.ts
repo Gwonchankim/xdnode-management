@@ -4,7 +4,7 @@ type AiBindings = {
   DB: D1Database;
   // 이력서 분석은 Claude CLI 하나만 쓴다. Worker 안에서는 프로세스를 띄울 수 없어서
   // scripts/claude-resume-bridge.mjs 가 CLI 를 OpenAI 호환 HTTP 로 감싸 준다.
-  // 다리는 ERP 서버를 켤 때 함께 뜬다(scripts/Start-XDNodeERP.ps1).
+  // 다리는 ERP 서버를 켤 때 함께 뜬다(scripts/Start-XDNodeManagement.ps1).
   CLAUDE_BRIDGE_URL?: string;
 };
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";

@@ -3124,6 +3124,15 @@ export const LEGACY_PENDING = {
   - `package.json` name `xdnode-management`, lockfile 재생성, engines `>=22.15.0`, 시작 스크립트 이름과 참조 테스트, README·CLAUDE.md.
   - 바탕화면 바로가기를 `Start-XDNodeManagement.ps1`로 갱신한다(Plan R2). `XDNODE 견적서 서버` 작업(견적 툴 8765)은 건드리지 않는다.
   - `database_id`·`bucket_name` 불변 가드(`removal-guards`). 바꾸면 앱이 빈 DB·빈 버킷으로 조용히 뜬다.
+  - **실행 결과 (2026-09-28, R2 완료)**
+    - 제품명 표기를 바꿨다: 브라우저 제목·설명(재무·영업 문구 삭제), 헤더, `/incentive` 제목, HR 집계 리포트 제목, 어시스턴트 소개 문구, 시작 스크립트 메시지.
+    - 회사명 용도는 "XD NODE"로 남겼다: 면접 템플릿, `XD NODE 사업 시나리오` 라벨, 회사 프로필, 설정의 회사명, `XDNODE_인사기록` 파일명.
+    - `package.json`·lockfile의 name은 `xdnode-management`, engines는 `>=22.15.0`로 바꿨다. lockfile은 재생성하지 않고 루트 name·engines만 고쳤다(의존성 변화 없음).
+    - `Start-XDNodeERP.ps1`는 `Start-XDNodeManagement.ps1`로 바꿨다(`git mv`). 참조 테스트 4곳과 `Package-XDNodeDemo.ps1`도 고쳤다.
+    - 바탕화면 바로가기는 `XDnode management.lnk`로 바꾸고 대상을 새 스크립트로 갱신했다.
+    - README·CLAUDE.md를 고쳤고, `removal-guards`에 식별자 불변 가드를 추가했다.
+    - `public/og.png` 교체는 열린 질문 3으로 남긴다. 이미지 제작자가 정해지지 않았고, 사내 LAN 전용이라 링크 미리보기 영향이 작다.
+    - `npm test` 299/299.
 - R3
   - 삭제: `app/chatgpt-auth.ts`, `app/api/hr/authorized-users/route.ts`와 `hr-workspace.tsx` 설정의 '사용자·권한' 절(라벨 `:4595`, `:4608`의 permissions 항목, 본문 `:4615-4636`), `tests/hr-local-permissions.test.mjs`, `scripts/Package-XDNodeDemo.ps1`(`.wrangler/state`를 복사하고 `LOCAL_ERP_USER_EMAIL`에 의존).
   - 생성 중단: `hr_authorized_users`(`erp-platform.ts:39-42`), `erp_user_access`(`:43-50`), gc.kim 시드(`:168-173`). `authorizeErpRequest` 본문의 런타임 SQL(`erp_user_access` SELECT `:220-222`, `hr_authorized_users` 레거시 조회 `:225-226`, `INSERT OR IGNORE INTO erp_user_access` 자동 발급 `:229-233`)도 함께 없어진다. 기존 행은 옮기지 않는다. `removal-guards`(R3)가 `app/`에서 두 테이블 이름 0건을 단언한다.
