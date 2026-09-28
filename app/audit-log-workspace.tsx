@@ -15,7 +15,11 @@ type AuditData = {
   controls: { readOnly: boolean; secretValuesRedacted: boolean; automaticMutation: boolean };
 };
 
-const moduleLabel: Record<string, string> = { ALL: "전체", operations: "운영", finance: "재무회계", hr: "HR", recruitment: "채용", sales: "영업", settings: "설정" };
+// 서버 허용 목록(app/api/audit-log/route.ts)과 같은 순서. 운영·재무회계·영업·설정은 과거 행 조회용이다.
+const moduleLabel: Record<string, string> = {
+  ALL: "전체", hr: "HR", recruitment: "채용", compensation: "임금 계산", chat: "메신저", audit: "감사 로그", admin: "계정 관리", auth: "로그인·인증",
+  operations: "운영(과거)", finance: "재무회계(과거)", sales: "영업(과거)", settings: "설정(과거)",
+};
 function seoulDate(value: Date) {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(value);
 }

@@ -12,6 +12,8 @@ type DocumentRow = {
 
 // 문서를 둘 수 있는 모듈. 재무·영업이 없어져(D2) hr·recruitment만 남는다. 그 밖의 module 로 남은
 // 과거 행(finance·sales)은 관리자에게도 404다(fail closed, Design §4.3.2).
+// R3(§4.3.2, 부록 B #27): 두 모듈 모두 hr 탭이므로 인가는 메서드마다 리터럴 hr:<action> 으로 가장 먼저 하고,
+// 그다음에 행 조회·폼·본문을 읽는다. 행이 있다는 사실은 hr 보기 이상인 사용자에게만 드러난다. 감사 module 은 행의 module 이다.
 type DocumentModule = "hr" | "recruitment";
 const DOCUMENT_MODULES: ReadonlySet<DocumentModule> = new Set<DocumentModule>(["hr", "recruitment"]);
 const isDocumentModule = (value: unknown): value is DocumentModule =>
@@ -43,6 +45,8 @@ const toDocument = (row: DocumentRow) => ({
 });
 
 export async function GET(request: Request) {
+  const authorization = await authorizeErpRequest(db, "hr", "read");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
   const url = new URL(request.url);
   const downloadId = url.searchParams.get("downloadId")?.trim();
@@ -50,8 +54,6 @@ export async function GET(request: Request) {
     const row = await db.prepare("SELECT * FROM erp_documents WHERE id = ? AND deleted_at IS NULL")
       .bind(downloadId).first<DocumentRow>();
     if (!row || !isDocumentModule(row.module)) return new Response("문서를 찾을 수 없습니다.", { status: 404 });
-    const authorization = await authorizeErpRequest(db, row.module, "read");
-    if (authorization.response) return authorization.response;
     const object = await bindings.HR_AUDIO.get(row.storage_key);
     if (!object) return new Response("문서 원본을 찾을 수 없습니다.", { status: 404 });
     await writeErpAudit(db, { principal: authorization.principal, module: row.module, action: "DOCUMENT_DOWNLOADED", entityType: row.entity_type, entityId: row.entity_id, after: { documentId: row.id, fileName: row.file_name, version: row.version } });
@@ -63,8 +65,6 @@ export async function GET(request: Request) {
   const entityType = url.searchParams.get("entityType")?.trim() ?? "";
   const entityId = url.searchParams.get("entityId")?.trim() ?? "";
   if (!isDocumentModule(moduleName) || !entityType || !entityId) return Response.json({ error: "문서 모듈과 대상 정보가 필요합니다." }, { status: 400 });
-  const authorization = await authorizeErpRequest(db, moduleName, "read");
-  if (authorization.response) return authorization.response;
   const result = await db.prepare(`SELECT * FROM erp_documents
     WHERE module = ? AND entity_type = ? AND entity_id = ? AND deleted_at IS NULL
     ORDER BY category, version DESC, created_at DESC`).bind(moduleName, entityType, entityId).all<DocumentRow>();
@@ -72,12 +72,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // 폼을 읽기 전에 인가한다. hr·recruitment 는 같은 hr 탭이라 리터럴 hr:write 한 번으로 충분하다(R3, 부록 C #20의 R1 임시 이중 인가 대체).
+  const authorization = await authorizeErpRequest(db, "hr", "write");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
-  // 폼을 읽기 전에 인가한다. module 은 폼에만 있으므로 먼저 hr·recruitment 업로드 모두의 필요조건인
-  // recruitment:write 로 막고(hr:write 를 가진 역할은 recruitment:write 도 가진다), 폼을 읽은 뒤 module 이
-  // hr 이면 hr:write 를 한 번 더 본다(Design §12.3, 부록 C #20).
-  const uploadAuthorization = await authorizeErpRequest(db, "recruitment", "write");
-  if (uploadAuthorization.response) return uploadAuthorization.response;
   let form: FormData;
   try {
     form = await request.formData();
@@ -91,12 +89,6 @@ export async function POST(request: Request) {
   const file = form.get("file");
   if (!isDocumentModule(moduleName) || !entityType || !entityId || !category || !(file instanceof File && file.size)) {
     return Response.json({ error: "문서 대상·분류·파일이 필요합니다." }, { status: 400 });
-  }
-  let authorization = uploadAuthorization;
-  if (moduleName === "hr") {
-    const hrAuthorization = await authorizeErpRequest(db, "hr", "write");
-    if (hrAuthorization.response) return hrAuthorization.response;
-    authorization = hrAuthorization;
   }
   if (file.size > 25 * 1024 * 1024) return Response.json({ error: "파일은 25MB 이하만 저장할 수 있습니다." }, { status: 413 });
   const contentType = file.type || "application/octet-stream";
@@ -127,6 +119,8 @@ export async function POST(request: Request) {
 
 // 이미 등록된 문서의 분류만 바꾼다. 원본 파일과 등록 이력은 건드리지 않는다.
 export async function PATCH(request: Request) {
+  const authorization = await authorizeErpRequest(db, "hr", "write");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
   let body: { id?: unknown; category?: unknown };
   try {
@@ -134,14 +128,12 @@ export async function PATCH(request: Request) {
   } catch {
     return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   }
-  const id = typeof body.id === "string" ? body.id.trim() : "";
-  const category = typeof body.category === "string" ? body.category.trim().slice(0, 60) : "";
+  const id = typeof body?.id === "string" ? body.id.trim() : "";
+  const category = typeof body?.category === "string" ? body.category.trim().slice(0, 60) : "";
   if (!id || !category) return Response.json({ error: "문서와 분류가 필요합니다." }, { status: 400 });
 
   const row = await db.prepare("SELECT * FROM erp_documents WHERE id = ? AND deleted_at IS NULL").bind(id).first<DocumentRow>();
   if (!row || !isDocumentModule(row.module)) return Response.json({ error: "수정할 문서를 찾을 수 없습니다." }, { status: 404 });
-  const authorization = await authorizeErpRequest(db, row.module, "write");
-  if (authorization.response) return authorization.response;
   if (row.category === category) return Response.json({ document: toDocument(row) });
 
   // 버전은 (대상, 분류)별로 매겨진다. 분류를 옮기면 옮겨간 분류 기준으로 번호를 다시 받아야
@@ -165,13 +157,18 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const authorization = await authorizeErpRequest(db, "hr", "delete");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
-  const body = await request.json() as { id?: unknown };
-  const id = typeof body.id === "string" ? body.id.trim() : "";
+  let body: { id?: unknown };
+  try {
+    body = await request.json() as { id?: unknown };
+  } catch {
+    return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
+  }
+  const id = typeof body?.id === "string" ? body.id.trim() : "";
   const row = id ? await db.prepare("SELECT * FROM erp_documents WHERE id = ? AND deleted_at IS NULL").bind(id).first<DocumentRow>() : null;
   if (!row || !isDocumentModule(row.module)) return Response.json({ error: "삭제할 문서를 찾을 수 없습니다." }, { status: 404 });
-  const authorization = await authorizeErpRequest(db, row.module, "delete");
-  if (authorization.response) return authorization.response;
   const deletedAt = Date.now();
   await db.prepare("UPDATE erp_documents SET deleted_at = ? WHERE id = ?").bind(deletedAt, id).run();
   await writeErpAudit(db, { principal: authorization.principal, module: row.module, action: "DOCUMENT_SOFT_DELETED", entityType: row.entity_type, entityId: row.entity_id, before: toDocument(row), after: { deletedAt }, reason: "원본 파일은 복구를 위해 보존" });

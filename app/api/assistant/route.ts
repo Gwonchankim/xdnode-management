@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
-import { authorizeErpRequest, writeErpAudit, type ErpModule } from "../../erp-platform";
+import { authorizeErpRequest, erpError, writeErpAudit } from "../../erp-platform";
+import { ASSISTANT_MODULES, isAssistantModule } from "../../access-tabs";
 
 type AssistantBindings = {
   DB: D1Database;
@@ -11,17 +12,9 @@ type AssistantBindings = {
   CLAUDE_ASSISTANT_BRIDGE_URL?: string;
 };
 
-type AssistantModule = "hr" | "compensation" | "incentive";
-
-/**
- * 화면의 업무 영역을 ERP 권한 모듈로 잇는다. 임금계산은 HR 데이터로 답하므로 hr 권한을 본다.
- * incentive 는 인센티브 계산기의 모드다(예전 이름 sales, D1). 영업 모듈이 없어져 R1에서는 hr 권한으로 본다.
- */
-const MODULE_PERMISSION: Record<AssistantModule, ErpModule> = {
-  hr: "hr",
-  compensation: "hr",
-  incentive: "hr",
-};
+// 화면의 업무 영역(?module=)을 인가 모듈로 잇는다(D23, Design §4.2.7). 표는 app/access-tabs.ts 의 ASSISTANT_MODULES 다.
+// hr → hr 탭 보기, compensation·incentive → 임금 계산 탭 보기. 제안의 적용 버튼은 대상 API 가 편집 권한을 다시 검사한다.
+// 동적 모듈을 허용하는 라우트는 이곳 하나뿐이다(§10.4). Object.hasOwn 을 통과한 값만 조회해 __proto__ 같은 키를 막는다.
 
 // 다리(scripts/claude-assistant-bridge.mjs)와 같은 한도. 다리에 닿기 전에 여기서 먼저 거른다.
 const MAX_REQUEST_BYTES = 256 * 1024;
@@ -29,26 +22,25 @@ const MAX_QUESTION_LENGTH = 2000;
 // 다리의 RUN_TIMEOUT_MS(300초)보다 조금 길게 잡아, 다리가 낸 시간 초과 안내가 그대로 화면에 닿게 한다.
 const BRIDGE_TIMEOUT_MS = 320_000;
 
-function moduleOf(value: unknown): AssistantModule | null {
-  return value === "hr" || value === "compensation" || value === "incentive" ? value : null;
-}
-
 export async function POST(request: Request) {
   const bindings = env as unknown as AssistantBindings;
 
+  // 1) 쿼리의 업무 영역 → 2) 리터럴 표로 인가 → 3) 그다음에 본문을 읽는다(부록 B #27). 본문의 module 은 보지 않는다.
+  const assistantModule = new URL(request.url).searchParams.get("module");
+  if (!isAssistantModule(assistantModule)) return erpError(400, "VALIDATION", "허용되지 않은 업무 영역입니다.");
+  const permissionModule = ASSISTANT_MODULES[assistantModule];
+  const authorization = await authorizeErpRequest(bindings.DB, permissionModule, "read");
+  if (authorization.response) return authorization.response;
+
   const raw = await request.text();
   if (raw.length > MAX_REQUEST_BYTES) return Response.json({ error: "요청이 너무 큽니다." }, { status: 413 });
-  let payload: { module?: unknown; question?: unknown; context?: unknown };
+  let payload: { question?: unknown; context?: unknown };
   try {
-    payload = JSON.parse(raw) as { module?: unknown; question?: unknown; context?: unknown };
+    payload = JSON.parse(raw) as { question?: unknown; context?: unknown };
   } catch {
     return Response.json({ error: "요청 본문을 읽지 못했습니다." }, { status: 400 });
   }
-  const module = moduleOf(payload.module);
-  if (!module) return Response.json({ error: "허용되지 않은 업무 영역입니다." }, { status: 400 });
-
-  const authorization = await authorizeErpRequest(bindings.DB, MODULE_PERMISSION[module], "read");
-  if (authorization.response) return authorization.response;
+  if (!payload || typeof payload !== "object") return Response.json({ error: "요청 본문을 읽지 못했습니다." }, { status: 400 });
 
   const question = typeof payload.question === "string" ? payload.question.trim() : "";
   if (!question) return Response.json({ error: "질문을 입력해 주세요." }, { status: 400 });
@@ -61,7 +53,7 @@ export async function POST(request: Request) {
     bridgeResponse = await fetch(`${bridgeUrl}/assistant`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ module, question, context }),
+      body: JSON.stringify({ module: assistantModule, question, context }),
       signal: AbortSignal.timeout(BRIDGE_TIMEOUT_MS),
     });
   } catch {
@@ -84,13 +76,13 @@ export async function POST(request: Request) {
 
   await writeErpAudit(bindings.DB, {
     principal: authorization.principal,
-    module: MODULE_PERMISSION[module],
+    module: permissionModule,
     action: "ASSISTANT_ASKED",
     entityType: "assistantRequest",
     entityId: crypto.randomUUID(),
     // 질문 본문과 첨부 자료는 남기지 않는다. 무엇을 얼마나 물었는지만 기록한다.
     after: {
-      assistantModule: module,
+      assistantModule,
       questionLength: question.length,
       proposedActions: Array.isArray(body.proposedActions) ? body.proposedActions.length : 0,
       interviewQuestions: Array.isArray(body.interviewQuestions) ? body.interviewQuestions.length : 0,

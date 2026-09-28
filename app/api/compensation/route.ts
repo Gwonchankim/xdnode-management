@@ -1,14 +1,14 @@
 import { env } from "cloudflare:workers";
-import { normalizeCompensationSettings as normalizeSettings } from "../../../compensation-settings";
-import { ensureHrCompensationRunSchema } from "../../../hr-compensation-schema";
-import { readOptionalHrRows } from "../../../hr-optional-tables";
-import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
-import { FIXED_TERM_MONTHS, fixedTermEndDate } from "../../../hr-employment-contract";
-import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
-import { applyDueRetirements } from "../../../hr-retirements";
-import { ensureEmployeeRosterSeeded } from "../../../hr-employee-roster";
-import { retirementPayDraft } from "../../../assistant-retirement-pay";
-import type { CompensationEmployee } from "../../../compensation-calculation";
+import { normalizeCompensationSettings as normalizeSettings } from "../../compensation-settings";
+import { ensureHrCompensationRunSchema } from "../../hr-compensation-schema";
+import { readOptionalHrRows } from "../../hr-optional-tables";
+import { ensureHrEmployeeRecordsSchema } from "../../hr-employee-schema";
+import { FIXED_TERM_MONTHS, fixedTermEndDate } from "../../hr-employment-contract";
+import { authorizeErpRequest, writeErpAudit } from "../../erp-platform";
+import { applyDueRetirements } from "../../hr-retirements";
+import { ensureEmployeeRosterSeeded } from "../../hr-employee-roster";
+import { retirementPayDraft } from "../../assistant-retirement-pay";
+import type { CompensationEmployee } from "../../compensation-calculation";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
@@ -21,7 +21,7 @@ type RunRow = {
 
 type LineRow = { employee_id: string; snapshot_json: string; gross_pay: number };
 type EmployeeRow = {
-  employee_id: string; name: string; birth: string; department: string; position: string; job_title: string;
+  employee_id: string; name: string; department: string; position: string; job_title: string;
   join_date: string; status: string; retirement_json: string | null; base_pay: number; meal_allowance: number;
   childcare_allowance: number; vehicle_allowance: number; annual_salary: number;
   first_term_pay_percent: number | null; regular_contract_date: string | null;
@@ -106,7 +106,7 @@ async function hrPayrollSnapshots(period: string) {
   // 퇴직일은 두 곳에 있다 — 인사기록의 retirement_json.$.date(예전 방식)와 퇴직 요청 표(현재 방식, 퇴직 효력 처리는 $.status 만 쓴다).
   // 그래서 SQL 로 걸러내지 않고 전원을 읽은 뒤 두 출처를 합쳐 판단한다: 퇴직일이 급여월 시작 전이면 제외, 급여월 안이면
   // 퇴사일을 채워 일할 계산되게 한다. 퇴직 상태인데 퇴직일을 어디서도 못 찾으면 제외한다.
-  const allEmployees = await db.prepare(`SELECT employee_id, name, birth, department, position, job_title, join_date, status,
+  const allEmployees = await db.prepare(`SELECT employee_id, name, department, position, job_title, join_date, status,
     retirement_json, annual_salary, base_pay, meal_allowance, childcare_allowance, vehicle_allowance,
     first_term_pay_percent, regular_contract_date FROM hr_employee_records
     WHERE NULLIF(replace(join_date, '.', '-'), '') IS NOT NULL AND replace(join_date, '.', '-') <= ?
@@ -133,7 +133,8 @@ async function hrPayrollSnapshots(period: string) {
   };
   return employees.results.map((employee) => ({
     id: employee.employee_id, name: employee.name, department: employee.department,
-    title: employee.job_title || employee.position, birthDate: employee.birth === "미입력" ? "" : employee.birth.replaceAll(".", "-"),
+    // 생년월일은 임금 계산에 쓰지 않으므로 내려보내지 않는다(Design §4.2.7, 부록 B #6). 화면 형태는 그대로 두고 빈 값만 싣는다.
+    title: employee.job_title || employee.position, birthDate: "",
     joinDate: employee.join_date.replaceAll(".", "-"),
     leaveDate: exitDateOf(employee),
     ...(firstTermOf(employee)
@@ -177,10 +178,11 @@ function validateDraft(body: Record<string, unknown>) {
   return { employees, rows: normalizedRows } as const;
 }
 
+// R3(Design §4.2.7): /api/hr/compensation 에서 옮겼다. 임금 계산 탭(compensation)으로 인가하고, 감사 module 도 compensation 이다.
 export async function GET(request: Request) {
-  await ensureSchema();
-  const authorization = await authorizeErpRequest(db, "hr", "read");
+  const authorization = await authorizeErpRequest(db, "compensation", "read");
   if (authorization.response) return authorization.response;
+  await ensureSchema();
   await applyDueRetirements(db);
   const period = new URL(request.url).searchParams.get("period")?.trim() ?? "";
   if (!periodPattern.test(period)) return Response.json({ error: "급여월 형식이 올바르지 않습니다." }, { status: 400 });
@@ -192,11 +194,17 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  await ensureSchema();
-  const authorization = await authorizeErpRequest(db, "hr", "write");
+  const authorization = await authorizeErpRequest(db, "compensation", "write");
   if (authorization.response) return authorization.response;
+  await ensureSchema();
   await applyDueRetirements(db);
-  let body = await request.json() as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   const period = String(body.period ?? "").trim();
   const action = String(body.action ?? "").trim();
   if (!periodPattern.test(period)) return Response.json({ error: "급여월 형식이 올바르지 않습니다." }, { status: 400 });
@@ -252,7 +260,7 @@ export async function POST(request: Request) {
       if ((results[0]?.meta.changes ?? 0) < 1) return Response.json({ error: "임금안 상태가 변경되었습니다. 새로고침 후 다시 시도해 주세요." }, { status: 409 });
     }
     const afterState = await readRun(period);
-    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: action === "LOAD_HR" ? "COMPENSATION_HR_DRAFT_LOADED" : "COMPENSATION_DRAFT_CREATED", entityType: "compensationRun", entityId: period, before: beforeState.run ? runJson(beforeState.run, beforeState.lines) : undefined, after: runJson(afterState.run, afterState.lines) });
+    await writeErpAudit(db, { principal: authorization.principal, module: "compensation", action: action === "LOAD_HR" ? "COMPENSATION_HR_DRAFT_LOADED" : "COMPENSATION_DRAFT_CREATED", entityType: "compensationRun", entityId: period, before: beforeState.run ? runJson(beforeState.run, beforeState.lines) : undefined, after: runJson(afterState.run, afterState.lines) });
     return Response.json({ run: runJson(afterState.run, afterState.lines) }, { status: 201 });
   }
 
@@ -369,6 +377,6 @@ export async function POST(request: Request) {
   }
 
   const afterState = await readRun(period);
-  await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: `COMPENSATION_${action}`, entityType: "compensationRun", entityId: period, before: runJson(beforeState.run, beforeState.lines), after: runJson(afterState.run, afterState.lines) });
+  await writeErpAudit(db, { principal: authorization.principal, module: "compensation", action: `COMPENSATION_${action}`, entityType: "compensationRun", entityId: period, before: runJson(beforeState.run, beforeState.lines), after: runJson(afterState.run, afterState.lines) });
   return Response.json({ run: runJson(afterState.run, afterState.lines) });
 }

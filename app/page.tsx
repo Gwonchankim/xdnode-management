@@ -7,7 +7,7 @@ import AuditLogWorkspace from "./audit-log-workspace";
 import LocalCodexAssistant from "./local-codex-assistant";
 
 // R1(M1-3): 재무·영업 모듈과 워크벤치·데이터 통제·알림 센터를 셸에서 뺐다.
-// 'audit'는 data-governance-center 안에 있던 감사 로그를 탭으로 다시 마운트한 임시 키다(서버 게이트 settings:admin 유지).
+// 'audit'는 data-governance-center 안에 있던 감사 로그를 탭으로 다시 마운트한 임시 키다(서버 게이트는 관리자 전용 audit:read).
 // R3에서 탭 레지스트리(app/access-tabs.ts)로 바뀐다.
 type ModuleKey = "hr" | "compensation" | "audit";
 

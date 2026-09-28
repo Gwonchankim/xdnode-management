@@ -44,7 +44,7 @@ test("every mutating API route calls the authorization helper and writes an audi
 test("retirement effectiveness and compensation confirmation are server-controlled", async () => {
   const [retirement, operations, employees, compensation, calculator, calculatorCss, workspace, wonInput, migration, settingsMigration, defaultsMigration] = await Promise.all([
     read("app/hr-retirements.ts"), read("app/api/hr/operations/route.ts"), read("app/api/hr/employee-records/route.ts"),
-    read("app/api/hr/compensation/route.ts"), read("app/compensation-calculator.tsx"), read("app/compensation-calculator.css"), read("app/hr-workspace.tsx"),
+    read("app/api/compensation/route.ts"), read("app/compensation-calculator.tsx"), read("app/compensation-calculator.css"), read("app/hr-workspace.tsx"),
     read("app/won-input.tsx"), read("drizzle/0065_hr_retirement_compensation.sql"), read("drizzle/0068_compensation_draft_settings.sql"),
     read("drizzle/0069_hr_employee_compensation_defaults.sql"),
   ]);
@@ -428,8 +428,9 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.match(recruitmentRoute, /vehicle_allowance, first_term_pay_percent, updated_at\)/);
   assert.match(recruitmentRoute, /offer\.first_term_pay_percent \?\? 100, now, id, now\),/);
   // 임금계산은 인사기록카드의 첫 계약 지급률을 엔진의 수습 구간(일할)에 태운다. 종료일은 계약서와 같은 함수로 계산한다.
-  const compensationRoute = await read("app/api/hr/compensation/route.ts");
-  assert.match(compensationRoute, /import \{ FIXED_TERM_MONTHS, fixedTermEndDate \} from "\.\.\/\.\.\/\.\.\/hr-employment-contract";/);
+  const compensationRoute = await read("app/api/compensation/route.ts");
+  // R3: 라우트가 app/api/compensation 으로 옮겨 상대 경로가 한 단계 줄었다.
+  assert.match(compensationRoute, /import \{ FIXED_TERM_MONTHS, fixedTermEndDate \} from "\.\.\/\.\.\/hr-employment-contract";/);
   assert.match(compensationRoute, /probationRate: firstTermOf\(employee\)!\.rate, probationEndDate: firstTermOf\(employee\)!\.end, manualBasic: false/);
   assert.match(compensationRoute, /if \(employee\.regular_contract_date && employee\.regular_contract_date <= end\) end = dayBefore\(employee\.regular_contract_date\);/);
   const engine = await read("app/compensation-calculation.ts");
@@ -584,12 +585,14 @@ test("applicant popup owns screening and interview, and the list only reports st
   const codexBridge = await read("scripts/codex-assistant-bridge.mjs");
   assert.match(codexBridge, /맞춤 면접 질문은 answer 나 nextSteps 가 아니라 interviewQuestions 배열에만 담으세요/);
   const assistantUi = await read("app/local-codex-assistant.tsx");
-  assert.match(assistantUi, /fetch\(assistantEndpoint, \{/);
+  // R3(D23): 업무 영역은 쿼리로 보내고, 서버는 본문보다 먼저 그 값으로 인가한다.
+  assert.match(assistantUi, /fetch\(`\$\{assistantEndpoint\}\?module=\$\{encodeURIComponent\(module\)\}`, \{/);
   assert.doesNotMatch(assistantUi, /const bridgeUrl = /);
   // 서버 라우트가 다리를 대신 부른다 — 권한 검사와 감사 기록을 다른 라우트와 같은 규약으로 거친다.
   const assistantRoute = await read("app/api/assistant/route.ts");
-  assert.match(assistantRoute, /authorizeErpRequest\(bindings\.DB, MODULE_PERMISSION\[module\], "read"\)/);
-  assert.match(assistantRoute, /compensation: "hr",/);
+  // R3(D23, §4.2.7): 쿼리 module → ASSISTANT_MODULES(레지스트리) → 임금 계산·인센티브는 compensation 탭으로 인가한다.
+  assert.match(assistantRoute, /authorizeErpRequest\(bindings\.DB, permissionModule, "read"\)/);
+  assert.match(await read("app/access-tabs.ts"), /ASSISTANT_MODULES = \{ hr: "hr", compensation: "compensation", incentive: "compensation" \}/);
   assert.match(assistantRoute, /action: "ASSISTANT_ASKED"/);
   // 질문 본문·첨부 자료는 감사 로그에 남기지 않는다.
   assert.match(assistantRoute, /questionLength: question\.length/);
@@ -671,8 +674,9 @@ test("leave and attendance workflows persist real manual records and decide lega
   // 결재 시절에 PENDING 으로 남은 신청은 화면의 승인/반려 버튼(decide)으로 처리한다.
   assert.match(view, /decide\("leaveRequest", item\.id, "APPROVED"\)/);
   assert.doesNotMatch(view, /상단 전자결재에서 처리/);
-  // 체크리스트·입사 과제만 write. 정산 금액 확정과 임금안 반영(severanceToPayroll)은 돈이 움직이므로 approve 권한이다(2026-09-21 점검 후 상향).
-  assert.match(api, /\["retirementChecklist", "lifecycleTask"\]\.includes\(resource\) \? "write" : "approve"/);
+  // R3(D13): 상태 변경도 hr 편집이다. 리소스별 write/approve 분기 없이 본문보다 먼저 hr:write 로 한 번 인가한다.
+  assert.match(api, /export async function PUT\(request: Request\) \{\s*\/\/[^\n]*\n\s*const authorization = await authorizeErpRequest\(db, "hr", "write"\);/);
+  assert.doesNotMatch(api, /"approve"/);
   assert.match(api, /'RECORDED', 'MANUAL'/);
   assert.match(view, /자동연동 전까지 자료 출처는 수기 입력/);
   assert.match(view, /Math\.round\(Number\(leaveDraft\.units\) \* 100\)/);
@@ -950,7 +954,9 @@ test("HR audio transcription separates consent, AI attempts and one-time human r
   ]);
   assert.match(api, /@cf\/openai\/whisper-large-v3-turbo/);
   assert.match(api, /consentConfirmed !== true/);
-  assert.match(api, /authorizeErpRequest\(bindings\.DB, entityModules\[entityType\], "write"\)/);
+  // R3(§4.3.2): 인가 모듈은 리터럴 hr 이고, entityModules 는 감사 module 에만 쓴다.
+  assert.match(api, /authorizeErpRequest\(bindings\.DB, "hr", "write"\)/);
+  assert.doesNotMatch(api, /authorizeErpRequest\([^,]+, entityModules/);
   assert.match(api, /audio\.size > 10 \* 1024 \* 1024/);
   assert.match(api, /QUOTA_EXCEEDED/);
   assert.match(api, /reviewed_at IS NULL/);
@@ -976,7 +982,7 @@ test("enterprise audit trail is admin-only, paginated, redacted and immutable", 
     read("app/erp-platform.ts"), read("db/schema.ts"), read("drizzle/0060_erp_audit_trail.sql"),
     read("docs/erp-audit-trail-plan.md"),
   ]);
-  assert.match(api, /authorizeErpRequest\(db, "settings", "admin"\)/);
+  assert.match(api, /authorizeErpRequest\(db, "audit", "read"\)/);
   assert.match(api, /ORDER BY a\.created_at DESC, a\.id DESC LIMIT 31/);
   assert.match(api, /a\.created_at < \? OR \(a\.created_at = \? AND a\.id < \?\)/);
   assert.match(api, /secretKey\.test\(key\)/);
@@ -989,7 +995,7 @@ test("enterprise audit trail is admin-only, paginated, redacted and immutable", 
   assert.match(shell, /import AuditLogWorkspace from "\.\/audit-log-workspace"/);
   assert.match(shell, /label: "감사 로그"/);
   for (const source of [platform, schema, migration]) assert.match(source, /idx_erp_audit_created_id/);
-  assert.match(plan, /조회는 `settings:admin` 권한/);
+  assert.match(plan, /조회는 관리자 전용 `audit:read` 권한/);
   assert.match(plan, /수정·삭제 경로가 없다/);
 });
 
@@ -1087,11 +1093,11 @@ test("no browser-side code calls the desktop-only Claude bridges directly", asyn
     assert.doesNotMatch(source, /npm run assistant/, `${file}: 사용자에게 터미널 명령을 안내한다`);
   }
   const workspace = await read("app/hr-workspace.tsx");
-  assert.match(workspace, /fetch\("\/api\/assistant", \{/);
+  assert.match(workspace, /fetch\("\/api\/assistant\?module=hr", \{/);
 });
 
 test("wage calculator can append new hires from HR records without rebuilding the roster", async () => {
-  const route = await read("app/api/hr/compensation/route.ts");
+  const route = await read("app/api/compensation/route.ts");
   // GET ?include=hr 은 그 달의 HR 급여 대상만 돌려주고 임금안은 건드리지 않는다.
   assert.match(route, /searchParams\.get\("include"\) === "hr"/);
   assert.match(route, /hrEmployees: await hrPayrollSnapshots\(period\)/);
@@ -1169,11 +1175,12 @@ test("대표이사는 연차 관리 대상에서 빠지고, 연차 촉진·초�
   const workspace = await readFile("app/hr-workspace.tsx", "utf8");
   assert.ok(route.includes('const LEAVE_EXEMPT_POSITIONS = ["대표", "대표이사"];'));
   assert.ok(route.includes("result.results.filter((row) => !LEAVE_EXEMPT_POSITIONS.includes(row.position.trim()))"));
-  assert.ok(workspace.includes("leaveLedgers={leaveLedgers} roles={principalRoles}"));
+  // R3: 대시보드의 역할 입력(roles)은 없어졌다(Design §8.7).
+  assert.ok(workspace.includes("leaveLedgers={leaveLedgers} onNavigate"));
 });
 
 test("임금계산 1단계 수정: 버전 가드, 퇴직일 두 출처, 음수 실지급 허용, 연봉 산식 고정, 올림 기본급", async () => {
-  const route = await readFile("app/api/hr/compensation/route.ts", "utf8");
+  const route = await readFile("app/api/compensation/route.ts", "utf8");
   const operations = await readFile("app/api/hr/operations/route.ts", "utf8");
   const engine = await readFile("app/compensation-calculation.ts", "utf8");
   // H1 — 라인 저장·삭제와 확정 시 급여기록 교체가 모두 임금안 버전 가드 아래 있다.
@@ -1210,9 +1217,10 @@ test("브라우저 기본 대화상자는 앱 내부 대화상자(app/erp-dialog
 });
 
 test("hr_employee_records 정의는 app/hr-employee-schema.ts 한 곳뿐이고 HR 라우트 8곳이 그 헬퍼를 부른다", async () => {
-  const routes = ["employee-records", "operations", "compensation", "recruitment", "recruitment-requisitions", "performance", "training", "workforce-plans"];
+  // R3: 임금 계산 라우트는 app/api/compensation 으로 옮겼다.
+  const routes = ["hr/employee-records", "hr/operations", "compensation", "hr/recruitment", "hr/recruitment-requisitions", "hr/performance", "hr/training", "hr/workforce-plans"];
   for (const name of routes) {
-    const source = await readFile(`app/api/hr/${name}/route.ts`, "utf8");
+    const source = await readFile(`app/api/${name}/route.ts`, "utf8");
     assert.ok(source.includes("await ensureHrEmployeeRecordsSchema(db);"), `${name} does not use the shared schema`);
     assert.ok(!source.includes("CREATE TABLE IF NOT EXISTS hr_employee_records"), `${name} still defines hr_employee_records`);
     assert.ok(!source.includes("PRAGMA table_info(hr_employee_records)"), `${name} still alters hr_employee_records itself`);

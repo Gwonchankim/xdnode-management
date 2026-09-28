@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers";
 import { calculateCompensation, type CompensationEmployee } from "../../../compensation-calculation";
 import { normalizeCompensationSettings } from "../../../compensation-settings";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { unlinkedAccountNames } from "../../../auth-session";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees } from "../../../hr-company-data";
 import { applyDueOnboarding } from "../../../hr-onboarding";
@@ -247,8 +248,11 @@ export async function GET(request: Request) {
       };
     }));
   return Response.json({ personnelActions: actions.results, lifecycleTasks: lifecycle.results, leaveRequests: leaves.results, attendanceRecords: attendance.results, payrollRuns: payrollRuns.results, retirementRequests: retirements.results, retirementSettlements: settlements.results, severanceEstimates ,
-    // HR 첫 화면이 이 응답을 같이 쓰므로 호출자의 권한도 여기서 알려 준다. 대시보드가 역할별로 배치를 바꾸는 데 쓴다.
-    principal: { employeeId: authorization.principal.employeeId, roles: authorization.principal.roles } });
+    // HR 첫 화면이 이 응답을 같이 쓰므로 호출자의 권한도 여기서 알려 준다(R3: 역할 대신 hr 탭 수준과 관리자 여부).
+    principal: { employeeId: authorization.principal.employeeId },
+    access: { hr: authorization.principal.tabs.hr, isAdmin: authorization.principal.isAdmin },
+    // 인사기록과 연결되지 않은 계정(acct_…)이 처리자로 남은 행의 이름 표시용. 비활성 계정 포함, email 은 없다(부록 B #25).
+    accountNames: await unlinkedAccountNames(db) });
 }
 
 export async function POST(request: Request) {
@@ -410,14 +414,20 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  // R3(D13, 부록 B #27): 결정·정산·임금안 반영 같은 상태 변경도 hr 편집이다. 리소스별 write/approve 분기 없이 본문보다 먼저 인가한다.
+  const authorization = await authorizeErpRequest(db, "hr", "write");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
-  const body = await request.json() as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   const resource = String(body.resource ?? "");
   const id = String(body.id ?? "").trim();
   if (!id) return Response.json({ error: "수정할 항목 ID가 필요합니다." }, { status: 400 });
-  // 체크리스트·입사 과제는 write, 정산 금액 확정과 임금안 반영은 휴가·근태 승인과 같은 approve 권한이다.
-  const authorization = await authorizeErpRequest(db, "hr", ["retirementChecklist", "lifecycleTask"].includes(resource) ? "write" : "approve");
-  if (authorization.response) return authorization.response;
   const now = Date.now();
 
   if (resource === "severanceToPayroll") {

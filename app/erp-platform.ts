@@ -1,22 +1,23 @@
 import { headers } from "next/headers";
 import { crossSiteViolation, CROSS_ORIGIN_ERROR } from "./request-guard";
-import {
-  authSchemaStatements, resolveSession, toPrincipal,
-  type AccountPrincipal, type ErpRole as SessionErpRole, type TabKey, type TabLevel,
-} from "./auth-session";
+import { authSchemaStatements, resolveSession, toPrincipal, type AccountPrincipal } from "./auth-session";
+import { accessDecision, type ErpAction, type ErpModule } from "./access-tabs";
 
-// R3(r3-auth, Design §3·§4.3.1): 신원은 세션 쿠키로 정한다. 인사기록 연결은 선택이다(D14).
-// 권한 판정은 탭 수준(none·view·edit)이다. 모듈→탭 대응과 canAccess 는 r3-tabs 에서 app/access-tabs.ts 로 옮긴다.
+// R3(Design §3·§4.3.1): 신원은 세션 쿠키로 정한다. 인사기록 연결은 선택이다(D14).
+// 권한은 계정별 탭 수준(none·view·edit)이고, 모듈→탭 대응과 판정(canAccess)은 app/access-tabs.ts 의 레지스트리가 정한다(D20).
 
-/** @deprecated 임시 호환(r3-tabs 에서 삭제). */
-export type ErpRole = SessionErpRole;
-export type ErpModule = "hr" | "recruitment" | "settings";
-/** 가드가 받는 모듈. r3-tabs 에서 레지스트리 파생 ErpModule 하나로 합친다. */
-export type GuardModule = ErpModule | "compensation" | "audit" | "admin";
-export type ErpAction = "read" | "write" | "approve" | "delete" | "admin";
+export type { ErpAction, ErpModule } from "./access-tabs";
 export type ErpPrincipal = AccountPrincipal;
 /** writeErpAudit 의 행위자. 인증 전 이벤트는 anonymousActor(email). */
 export type AuditActor = Pick<ErpPrincipal, "userId" | "email" | "employeeId">;
+
+/**
+ * self·manager 판정에 쓰는 인사기록 id(Design §10.4-8, 부록 C #27). 연결 없는 계정의 employeeId 는 'acct_…' 이고
+ * 인사기록 id 가 아니므로 null 을 돌려준다. 이 값과 같은지 비교하면 미연결 계정은 누구의 본인·팀장도 되지 않는다.
+ */
+export function linkedEmployeeId(principal: Pick<ErpPrincipal, "linkedEmployee" | "employeeId">): string | null {
+  return principal.linkedEmployee === true ? principal.employeeId : null;
+}
 
 export function anonymousActor(email = ""): AuditActor {
   return { userId: "anonymous", email: email.slice(0, 200), employeeId: "anonymous" };
@@ -77,37 +78,12 @@ export function erpError(status: number, code: string, error: string, extra: Rec
   return Response.json({ error, code, ...extra }, { ...init, status });
 }
 
-// ── 권한 판정(임시, r3-tabs 에서 access-tabs.canAccess 로 교체) ──────
-const MODULE_TAB: ReadonlyMap<string, TabKey> = new Map<string, TabKey>([
-  ["hr", "hr"],
-  ["recruitment", "hr"],
-  ["compensation", "compensation"],
-  // settings 는 R1까지의 관리자 전용 모듈 이름이다(audit-log, authorized-users). r3-tabs 에서 audit·admin 으로 바뀐다.
-  ["settings", "audit"],
-  ["audit", "audit"],
-  ["admin", "admin"],
-]);
-const ADMIN_ONLY_TABS: ReadonlySet<TabKey> = new Set<TabKey>(["audit", "admin"]);
-const LEVEL_RANK: Record<TabLevel, number> = { none: 0, view: 1, edit: 2 };
-const REQUIRED_LEVEL: Record<string, "view" | "edit" | "admin"> = { read: "view", write: "edit", approve: "edit", delete: "edit", admin: "admin" };
-
-function accessDecision(principal: ErpPrincipal, module: string, action: string) {
-  const tab = MODULE_TAB.get(module) ?? null;
-  const required = Object.hasOwn(REQUIRED_LEVEL, action) ? REQUIRED_LEVEL[action] : null;
-  const granted: TabLevel = tab ? principal.tabs[tab] : "none";
-  let allowed: boolean;
-  if (!tab || !required) allowed = false;                         // 모르는 모듈·action 은 관리자에게도 거부(fail closed)
-  else if (required === "admin" || ADMIN_ONLY_TABS.has(tab)) allowed = principal.isAdmin;
-  else if (principal.isAdmin) allowed = true;
-  else allowed = LEVEL_RANK[granted] >= LEVEL_RANK[required];
-  return { allowed, tab, required, granted };
-}
-
 /**
  * 순서(Design §4.3.1): 게이트 → headers() → 교차 출처 403 → 세션 401 → 비밀번호 변경 필요 403 → principal → 권한 403(+ACCESS_DENIED 감사).
  * 시그니처는 R1과 같다. 메서드를 모르므로 비GET 교차 출처 차단은 worker/index.ts 가 먼저 한다.
+ * module 은 호출부의 문자열 리터럴이다(§10.4). 레지스트리에 없는 값이 들어와도(런타임 값) 관리자까지 거부한다.
  */
-export async function authorizeErpRequest(db: D1Database, module: GuardModule, action: ErpAction): Promise<
+export async function authorizeErpRequest(db: D1Database, module: ErpModule, action: ErpAction): Promise<
   { principal: ErpPrincipal; response?: never } | { principal?: never; response: Response }
 > {
   await platformSchemaReady(db);
@@ -142,7 +118,7 @@ function auditJson(value: unknown) {
 
 export async function writeErpAudit(db: D1Database, input: {
   principal: AuditActor;
-  module: GuardModule | "auth";
+  module: ErpModule | "auth";
   action: string;
   entityType: string;
   entityId: string;

@@ -55,7 +55,7 @@ const DAY = 86_400_000;
 
 // 저장된 날짜의 구분자가 한 가지가 아니다. hr_retirement_requests.retirement_date 는 "2026-08-13",
 // hr_employee_records.join_date 는 "2024.11.14" 처럼 점을 쓴다. 앱의 다른 곳도 읽는 쪽에서 맞춰준다
-// (app/api/hr/compensation/route.ts 의 replaceAll(".", "-")). 여기서도 양쪽을 모두 받는다.
+// (app/api/compensation/route.ts 의 replaceAll(".", "-")). 여기서도 양쪽을 모두 받는다.
 export const normalizeDate = (value: string) => (value ?? "").trim().replaceAll(".", "-").replaceAll("/", "-");
 
 const parseDate = (value: string) => {

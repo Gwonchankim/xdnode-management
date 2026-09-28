@@ -134,8 +134,9 @@ async function phaseMain(state) {
   await step("0.1 인증·HR 운영 조회(스키마 생성)", async () => {
     const response = await api("GET", "/api/hr/operations");
     state.principalEmployeeId = response.body?.principal?.employeeId ?? "";
-    const roles = response.body?.principal?.roles ?? [];
-    return expect(response, 200, { canWrite: true }, { canWrite: roles.includes("SUPER_ADMIN") || roles.includes("HR_ADMIN") });
+    // R3: 역할 대신 탭 권한(access.hr, access.isAdmin)을 받는다.
+    const access = response.body?.access ?? {};
+    return expect(response, 200, { canWrite: true }, { canWrite: access.isAdmin === true || access.hr === "edit" });
   });
   for (const path of ["/api/hr/leave", "/api/hr/performance?year=2026", "/api/hr/workforce-plans", "/api/hr/recruitment-requisitions", "/api/hr/recruitment", "/api/hr/organizations"]) {
     await step(`0.2 조회 ${path.split("?")[0]}`, async () => expect(await api("GET", path), 200));
@@ -321,7 +322,7 @@ async function phaseMain(state) {
   for (let year = 2099; year >= 2090 && !period; year -= 1) {
     for (let month = 12; month >= 1 && !period; month -= 1) {
       const candidate = `${year}-${String(month).padStart(2, "0")}`;
-      const [wage, payroll] = await Promise.all([api("GET", `/api/hr/compensation?period=${candidate}`), api("GET", `/api/hr/payroll?month=${candidate}`)]);
+      const [wage, payroll] = await Promise.all([api("GET", `/api/compensation?period=${candidate}`), api("GET", `/api/hr/payroll?month=${candidate}`)]);
       if (wage.status === 200 && wage.body?.run === null && payroll.status === 200 && payroll.body?.summary === null && (payroll.body?.records ?? []).length === 0) period = candidate;
     }
   }
@@ -336,7 +337,7 @@ async function phaseMain(state) {
   row.total = row.basic + row.meal + row.car + row.child + row.incentive + row.bonus + row.extra + row.research + row.severance + row.annualLeave + row.personalExpense - row.deduction;
   const draft = { period, settings: { rounding: "round", columns: { research: true, extra: true, welfare: true, severance: true, deduction: true, annualLeave: true, personalExpense: true } },
     employees: [snapshot], rows: [row] };
-  const wage = (body) => api("POST", "/api/hr/compensation", { ...draft, ...body });
+  const wage = (body) => api("POST", "/api/compensation", { ...draft, ...body });
   const payrollPut = (body) => api("PUT", "/api/hr/payroll", { period, ...body });
   let version = 0;
   const wageStep = async (name, body, expectedStatus, expectedRun) => step(name, async () => {

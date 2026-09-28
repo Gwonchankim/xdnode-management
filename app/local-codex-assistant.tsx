@@ -325,8 +325,8 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
     }
     const prior = previousPeriod(period);
     const [payrollResponse, priorPayrollResponse] = await Promise.all([
-      fetch(`/api/hr/compensation?period=${encodeURIComponent(period)}`, { cache: "no-store" }),
-      fetch(`/api/hr/compensation?period=${encodeURIComponent(prior)}`, { cache: "no-store" }),
+      fetch(`/api/compensation?period=${encodeURIComponent(period)}`, { cache: "no-store" }),
+      fetch(`/api/compensation?period=${encodeURIComponent(prior)}`, { cache: "no-store" }),
     ]);
     const payrollPayload = await payrollResponse.json().catch(() => ({})) as { run?: CompensationRun; error?: string };
     const priorPayrollPayload = await priorPayrollResponse.json().catch(() => ({})) as { run?: CompensationRun; error?: string };
@@ -386,7 +386,8 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         } : undefined,
         ...liveData,
       };
-      const result = await fetch(assistantEndpoint, {
+      // 업무 영역은 쿼리로 보낸다. 서버는 본문을 읽기 전에 이 값으로 인가한다(D23). 본문의 module 은 다리에 넘기지 않는다.
+      const result = await fetch(`${assistantEndpoint}?module=${encodeURIComponent(module)}`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ module, question: request, context }),
       });
@@ -444,10 +445,10 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         if (module !== "hr" || !detail || !Number.isSafeInteger(detail.amount) || detail.amount < 0 || !/^\d{4}-(0[1-9]|1[0-2])$/.test(action.period)) throw new Error("직원·반영 월·퇴직금 금액을 다시 확인해 주세요.");
         if (!fileAnalysis || fileAnalysis !== responseAttachment || fileAnalysis.fileName !== detail.sourceFileName || !detail.evidence?.trim()) throw new Error("분석한 영수증과 추출 근거를 확인해 주세요. 파일을 바꿨다면 다시 분석해 주세요.");
         if (!employees.some((employee) => employee.employeeId === action.employeeId && employee.name.trim() === detail.employeeName.trim())) throw new Error("인사기록과 영수증의 직원명이 일치하지 않습니다.");
-        const before = await fetch(`/api/hr/compensation?period=${encodeURIComponent(action.period)}`, { cache: "no-store" });
+        const before = await fetch(`/api/compensation?period=${encodeURIComponent(action.period)}`, { cache: "no-store" });
         const current = await before.json() as { run?: CompensationRun; error?: string };
         if (!before.ok || !current.run) throw new Error(current.error || `${action.period} 임금안이 없습니다. 임금계산에서 해당 월 급여 작성을 먼저 해 주세요.`);
-        const update = await fetch("/api/hr/compensation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        const update = await fetch("/api/compensation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
           action: "APPLY_RETIREMENT_PAY", period: action.period, version: current.run.version, employeeId: action.employeeId,
           employeeName: detail.employeeName, amount: detail.amount, sourceFileName: detail.sourceFileName,
         }) });
@@ -485,10 +486,10 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         if (payload.record) setEmployees((current) => current.map((employee) => employee.employeeId === payload.record?.employeeId ? payload.record : employee));
       } else if (action.type === "CREATE_COMPENSATION_DRAFT") {
         if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(action.period)) throw new Error("임금 초안 월 형식이 올바르지 않습니다.");
-        const before = await fetch(`/api/hr/compensation?period=${encodeURIComponent(action.period)}`, { cache: "no-store" });
+        const before = await fetch(`/api/compensation?period=${encodeURIComponent(action.period)}`, { cache: "no-store" });
         const beforePayload = await before.json().catch(() => ({})) as { run?: { version?: number }; error?: string };
         if (!before.ok && before.status !== 404) throw new Error(beforePayload.error || "기존 임금안을 확인하지 못했습니다.");
-        const update = await fetch("/api/hr/compensation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "LOAD_HR", period: action.period, version: beforePayload.run?.version }) });
+        const update = await fetch("/api/compensation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "LOAD_HR", period: action.period, version: beforePayload.run?.version }) });
         const payload = await update.json().catch(() => ({})) as { error?: string };
         if (!update.ok) throw new Error(payload.error || "임금 초안을 작성하지 못했습니다.");
       } else if (action.type === "CREATE_RECRUITMENT_APPLICANT") {

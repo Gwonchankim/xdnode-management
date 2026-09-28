@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
-import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
+import { authorizeErpRequest, writeErpAudit, type ErpPrincipal, linkedEmployeeId } from "../../../erp-platform";
+import { isHrManager } from "../../../access-tabs";
 import { LEGACY_PENDING, changedRows, finalizePerformanceCycleStatements, hrConflictResponse } from "../../../hr-transitions";
 
 type Bindings = { DB: D1Database };
@@ -36,7 +37,6 @@ type AppealRow = {
 type EmployeeSnapshot = { id: string; name: string; department: string; status: string; organizationId: string; managerEmployeeId: string };
 
 const ratingValues = new Set(["S", "A", "B", "C", "D"]);
-const privileged = (principal: ErpPrincipal) => principal.roles.includes("SUPER_ADMIN") || principal.roles.includes("HR_ADMIN");
 
 async function ensureSchema() {
   await ensureHrEmployeeRecordsSchema(db);
@@ -123,8 +123,10 @@ async function responseState(principal: ErpPrincipal, cycleId = "") {
   const employees = await employeeSnapshot();
   const employeeMap = new Map(employees.map((employee) => [employee.id, employee]));
   const allParticipants = await db.prepare("SELECT * FROM hr_performance_participants WHERE cycle_id = ? ORDER BY employee_id").bind(selected.id).all<ParticipantRow>();
-  const isAdmin = privileged(principal);
-  const visible = allParticipants.results.filter((participant) => isAdmin || participant.employee_id === principal.employeeId || participant.manager_employee_id === principal.employeeId);
+  const isAdmin = isHrManager(principal);
+  // 본인·팀장 판정은 인사기록과 연결된 계정만 한다(부록 C #27). 미연결 계정은 HR 관리자가 아니면 아무도 보지 못한다.
+  const selfId = linkedEmployeeId(principal);
+  const visible = allParticipants.results.filter((participant) => isAdmin || (selfId !== null && (participant.employee_id === selfId || participant.manager_employee_id === selfId)));
   const ids = new Set(visible.map((participant) => participant.id));
   const [goalResult, reviewResult, appealResult] = await Promise.all([
     db.prepare(`SELECT g.* FROM hr_performance_goals g JOIN hr_performance_participants p ON p.id = g.participant_id
@@ -147,7 +149,7 @@ async function responseState(principal: ErpPrincipal, cycleId = "") {
     if (!ids.has(row.participant_id)) return false;
     if (isAdmin || selected.status === "FINALIZED") return true;
     const participant = visible.find((item) => item.id === row.participant_id);
-    if (participant?.manager_employee_id === principal.employeeId) return row.reviewer_type !== "CALIBRATION";
+    if (selfId !== null && participant?.manager_employee_id === selfId) return row.reviewer_type !== "CALIBRATION";
     return row.reviewer_type === "SELF";
   }).map((row) => ({ id: row.id, participantId: row.participant_id, reviewerType: row.reviewer_type,
     reviewerEmployeeId: row.reviewer_employee_id, score: row.score, rating: row.rating, strengths: row.strengths,
@@ -182,7 +184,7 @@ export async function GET(request: Request) {
   if (authorization.response) return authorization.response;
   await ensureSchema();
   const cycleId = new URL(request.url).searchParams.get("cycleId") ?? "";
-  return Response.json({ principal: authorization.principal, canAdmin: privileged(authorization.principal), ...await responseState(authorization.principal, cycleId) });
+  return Response.json({ principal: authorization.principal, canAdmin: isHrManager(authorization.principal), ...await responseState(authorization.principal, cycleId) });
 }
 
 async function selectedParticipant(id: string) {
@@ -201,7 +203,7 @@ export async function POST(request: Request) {
   const now = Date.now();
 
   if (action === "CREATE_CYCLE") {
-    if (!privileged(principal)) return Response.json({ error: "HR 관리자만 평가주기를 만들 수 있습니다." }, { status: 403 });
+    if (!isHrManager(principal)) return Response.json({ error: "HR 관리자만 평가주기를 만들 수 있습니다." }, { status: 403 });
     const name = String(body.name ?? "").trim().slice(0, 120);
     const period = String(body.period ?? "").trim().slice(0, 30);
     const description = String(body.description ?? "").trim().slice(0, 1500);
@@ -228,7 +230,7 @@ export async function POST(request: Request) {
   }
 
   if (action === "TRANSITION") {
-    if (!privileged(principal)) return Response.json({ error: "HR 관리자만 평가 단계를 변경할 수 있습니다." }, { status: 403 });
+    if (!isHrManager(principal)) return Response.json({ error: "HR 관리자만 평가 단계를 변경할 수 있습니다." }, { status: 403 });
     const cycleId = String(body.cycleId ?? "").trim();
     const target = String(body.target ?? "").toUpperCase();
     const cycle = await db.prepare("SELECT * FROM hr_performance_cycles WHERE id = ?").bind(cycleId).first<CycleRow>();
@@ -248,7 +250,7 @@ export async function POST(request: Request) {
 
   // UI 가 보내는 이름은 그대로 SUBMIT_FINALIZATION 이지만, 결재 없이 곧바로 최종 확정한다(Design §12.2 흐름 5).
   if (action === "SUBMIT_FINALIZATION") {
-    if (!privileged(principal)) return Response.json({ error: "HR 관리자만 평가를 최종 확정할 수 있습니다." }, { status: 403 });
+    if (!isHrManager(principal)) return Response.json({ error: "HR 관리자만 평가를 최종 확정할 수 있습니다." }, { status: 403 });
     const cycleId = String(body.cycleId ?? "").trim();
     const cycle = await db.prepare("SELECT * FROM hr_performance_cycles WHERE id = ?").bind(cycleId).first<CycleRow>();
     if (!cycle || (cycle.status !== "CALIBRATION" && cycle.status !== LEGACY_PENDING.performanceCycle)) return Response.json({ error: "보정 단계의 평가주기만 최종 확정할 수 있습니다." }, { status: 409 });
@@ -263,9 +265,10 @@ export async function POST(request: Request) {
   const participantId = String(body.participantId ?? "").trim();
   const participant = participantId ? await selectedParticipant(participantId) : null;
   if (!participant) return Response.json({ error: "평가 대상자를 찾을 수 없습니다." }, { status: 404 });
-  const isAdmin = privileged(principal);
-  const isSelf = participant.employee_id === principal.employeeId;
-  const isManager = participant.manager_employee_id === principal.employeeId;
+  const isAdmin = isHrManager(principal);
+  const selfId = linkedEmployeeId(principal);
+  const isSelf = selfId !== null && participant.employee_id === selfId;
+  const isManager = selfId !== null && participant.manager_employee_id === selfId;
 
   if (action === "SAVE_GOAL") {
     if (participant.cycle_status !== "GOAL_SETTING" || (!isSelf && !isAdmin)) return Response.json({ error: "목표설정 단계에서 본인 또는 HR 관리자만 목표를 저장할 수 있습니다." }, { status: 403 });

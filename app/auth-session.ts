@@ -1,6 +1,7 @@
 // 계정·세션 저장소, 로그인 시도 예약, peer 판정, principal 조립(Design §3, §7.2, §7.4).
-// erp-platform 을 import하지 않는다(erp-platform → auth-session 한 방향, §9.2). 쿠키는 headers().get("cookie") 로만 읽고,
+// erp-platform 을 import하지 않는다(erp-platform → auth-session → access-tabs 한 방향, §9.2). 쿠키는 headers().get("cookie") 로만 읽고,
 // Set-Cookie 는 라우트가 Response 에 직접 싣는다(cookies() 금지, §10.2).
+import { resolveTabs, type ResolvedTabs } from "./access-tabs";
 
 // ── 상수(§7.2·§7.4) ──────────────────────────────────────────────────
 export const SESSION_COOKIE = "xdm_session";
@@ -38,67 +39,22 @@ export type PeerInfo = { address: string; loopback: boolean };
 export type ResolvedSession = { sessionId: string; account: AuthAccountRow };
 export type LoginReservation = { failedAttempts: number; lockedUntil: number | null };
 
-// ── 탭 해석(임시) ────────────────────────────────────────────────────
-// r3-tabs 에서 app/access-tabs.ts 의 TAB_REGISTRY·resolveTabs 로 옮긴다(Design §4.3.1). 그때까지 R3 탭 4개를 여기 둔다.
-// 키 목록과 규칙은 레지스트리와 같다: 없는 키 = none, 모르는 키·adminOnly 키는 버린다, 관리자는 모두 edit.
-export type TabLevel = "none" | "view" | "edit";
-export const INTERIM_TABS = [
-  { key: "hr", label: "인사관리", adminOnly: false },
-  { key: "compensation", label: "임금 계산", adminOnly: false },
-  { key: "audit", label: "감사 로그", adminOnly: true },
-  { key: "admin", label: "계정 관리", adminOnly: true },
-] as const;
-export type TabKey = (typeof INTERIM_TABS)[number]["key"];
-export type GrantableTabKey = Extract<(typeof INTERIM_TABS)[number], { adminOnly: false }>["key"];
-export type ResolvedTabs = Record<TabKey, TabLevel>;
-export const GRANTABLE_TABS = INTERIM_TABS.filter((tab) => !tab.adminOnly).map((tab) => ({ key: tab.key as GrantableTabKey, label: tab.label }));
-const GRANTABLE_KEYS: ReadonlySet<string> = new Set(GRANTABLE_TABS.map((tab) => tab.key));
-
-export function isGrantableTabKey(key: string): key is GrantableTabKey {
-  return GRANTABLE_KEYS.has(key);
-}
-
-export function parseStoredTabs(tabsJson: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(tabsJson);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : {};
-  } catch {
-    return {};
-  }
-}
-
-export function resolveTabs(tabsJson: string, isAdmin: boolean): ResolvedTabs {
-  const stored = parseStoredTabs(tabsJson);
-  const resolved = {} as ResolvedTabs;
-  for (const tab of INTERIM_TABS) {
-    if (isAdmin) { resolved[tab.key] = "edit"; continue; }
-    const value = !tab.adminOnly && Object.hasOwn(stored, tab.key) ? stored[tab.key] : undefined;
-    resolved[tab.key] = value === "view" || value === "edit" ? value : "none";
-  }
-  return resolved;
-}
-
 // ── principal ────────────────────────────────────────────────────────
-/** 옛 역할 이름. r3-tabs 에서 principal.roles 사용처(analytics·performance·training·operations)를 isHrManager 로 바꾸며 없앤다. */
-export type ErpRole = "SUPER_ADMIN" | "HR_ADMIN" | "RECRUITER" | "VIEWER";
 export type AccountPrincipal = {
   userId: string;
   accountId: string;
   email: string;
   displayName: string;
+  /** 연결된 HR id. 연결이 없으면 accountId('acct_…')이고, 인사기록 id 가 아니다(self·manager 판정 금지). */
   employeeId: string;
   employeeName: string;
   linkedEmployee: boolean;
   isAdmin: boolean;
   tabs: ResolvedTabs;
-  /** @deprecated 임시 호환 필드(r3-auth ~ r3-tabs). 탭 권한에서 파생한다. 새 코드는 isAdmin·tabs 를 쓴다. */
-  roles: ErpRole[];
 };
 
 export function toPrincipal(account: AuthAccountRow): AccountPrincipal {
   const isAdmin = account.is_admin === 1;
-  const tabs = resolveTabs(account.tabs_json, isAdmin);
-  const roles: ErpRole[] = isAdmin ? ["SUPER_ADMIN"] : tabs.hr === "edit" ? ["HR_ADMIN"] : tabs.hr === "view" ? ["VIEWER"] : [];
   return {
     userId: account.id,
     accountId: account.id,
@@ -108,8 +64,7 @@ export function toPrincipal(account: AuthAccountRow): AccountPrincipal {
     employeeName: account.display_name,
     linkedEmployee: account.employee_id !== null,
     isAdmin,
-    tabs,
-    roles,
+    tabs: resolveTabs(account.tabs_json, isAdmin),
   };
 }
 
@@ -295,7 +250,7 @@ export async function accountsExist(db: D1Database) {
   return Boolean(await db.prepare(`SELECT EXISTS(SELECT 1 FROM auth_accounts) AS present`).first<number>("present"));
 }
 
-/** 미연결 계정의 표시 이름(비활성 포함, email 없음). r3-tabs 에서 GET /api/hr/operations 의 accountNames 가 쓴다. */
+/** 미연결 계정의 표시 이름(비활성 포함, email 없음). GET /api/hr/operations 의 accountNames 가 쓴다. */
 export async function unlinkedAccountNames(db: D1Database) {
   const result = await db.prepare(`SELECT id, display_name FROM auth_accounts WHERE employee_id IS NULL`).all<{ id: string; display_name: string }>();
   return Object.fromEntries(result.results.map((row) => [row.id, row.display_name])) as Record<string, string>;

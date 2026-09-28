@@ -17,6 +17,7 @@ type JobRow = {
 
 const bindings = env as unknown as Bindings;
 const modelDefault = "@cf/openai/whisper-large-v3-turbo";
+// 감사 module 에만 쓴다. 인가는 두 대상 모두 같은 hr 탭이라 리터럴 hr 로 먼저 한다(Design §4.3.2, 부록 B #27).
 const entityModules: Record<HrTranscriptionEntityType, "hr" | "recruitment"> = { EMPLOYEE_INTERVIEW: "hr", APPLICANT_INTERVIEW: "recruitment" };
 
 function isEntityType(value: string): value is HrTranscriptionEntityType { return value === "EMPLOYEE_INTERVIEW" || value === "APPLICANT_INTERVIEW"; }
@@ -57,19 +58,20 @@ async function failJob(id: string, status: "FAILED" | "QUOTA_EXCEEDED", code: st
 }
 
 export async function GET(request: Request) {
+  const authorization = await authorizeErpRequest(bindings.DB, "hr", "read"); if (authorization.response) return authorization.response;
   await ensureHrTranscriptionSchema(bindings.DB);
   const url = new URL(request.url); const entityType = String(url.searchParams.get("entityType") ?? ""); const entityId = String(url.searchParams.get("entityId") ?? "").trim();
   if (!isEntityType(entityType) || !entityId) return Response.json({ error: "전사 대상 유형과 식별자가 필요합니다." }, { status: 400 });
-  const authorization = await authorizeErpRequest(bindings.DB, entityModules[entityType], "read"); if (authorization.response) return authorization.response;
   return Response.json({ job: toJob(await latestJob(entityType, entityId)) });
 }
 
 export async function POST(request: Request) {
+  const authorization = await authorizeErpRequest(bindings.DB, "hr", "write"); if (authorization.response) return authorization.response;
   await ensureHrTranscriptionSchema(bindings.DB);
   let body: Record<string, unknown>; try { body = await request.json() as Record<string, unknown>; } catch { return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 }); }
+  if (!body || typeof body !== "object") return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   const action = String(body.action ?? ""); const entityType = String(body.entityType ?? ""); const entityId = String(body.entityId ?? "").trim();
   if (!isEntityType(entityType)) return Response.json({ error: "지원하지 않는 전사 대상입니다." }, { status: 400 });
-  const authorization = await authorizeErpRequest(bindings.DB, entityModules[entityType], "write"); if (authorization.response) return authorization.response;
 
   if (action === "REVIEW") {
     const transcriptionId = String(body.transcriptionId ?? ""); const reviewedText = String(body.reviewedText ?? "").trim().slice(0, 100_000);

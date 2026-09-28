@@ -154,7 +154,7 @@ function WageCalculatorClient() {
   const currentSettings = useEffectEvent(() => ({ rounding, columns, standards }));
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/hr/compensation?period=${key}`).then(async (response) => {
+    fetch(`/api/compensation?period=${key}`).then(async (response) => {
       const payload = await response.json() as { run?: typeof run; error?: string };
       if (!response.ok) throw new Error(payload.error || "임금안을 불러오지 못했습니다.");
       if (cancelled) return;
@@ -287,7 +287,7 @@ function WageCalculatorClient() {
       setAutoSaving(true);
       try {
         const calculated = employeeSnapshot.map((employee) => calculatePay(employee, year, month, rounding, columns));
-        const response = await fetch("/api/hr/compensation", {
+        const response = await fetch("/api/compensation", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "SAVE", period: key, version, employees: employeeSnapshot, settings,
@@ -348,7 +348,7 @@ function WageCalculatorClient() {
     if (run?.status === "CONFIRMED") { setMessage("확정된 임금안은 수정하기를 먼저 눌러 주세요."); return; }
     setHrPickerLoading(true);
     try {
-      const response = await fetch(`/api/hr/compensation?period=${key}&include=hr`, { cache: "no-store" });
+      const response = await fetch(`/api/compensation?period=${key}&include=hr`, { cache: "no-store" });
       const payload = await response.json() as { hrEmployees?: Employee[]; error?: string };
       if (!response.ok) throw new Error(payload.error || "HR 인사기록을 불러오지 못했습니다.");
       const candidates = (payload.hrEmployees ?? []).filter((candidate) => !alreadyListed(candidate, employees))
@@ -452,7 +452,7 @@ function WageCalculatorClient() {
     setSaving(true);
     try {
       const requestAction = async (targetAction: "CREATE" | "LOAD_HR" | "SAVE" | "CONFIRM" | "REOPEN", version?: number) => {
-        const response = await fetch("/api/hr/compensation", {
+        const response = await fetch("/api/compensation", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: targetAction, period: key, version, employees, rows: apiRows(), settings: { rounding, columns, standards } }),
         });
@@ -555,7 +555,7 @@ function WageCalculatorClient() {
     try {
       const monthlyRuns = await Promise.all(Array.from({ length: 12 }, async (_, index) => {
         const period = monthKey(year, index + 1);
-        const response = await fetch(`/api/hr/compensation?period=${period}`);
+        const response = await fetch(`/api/compensation?period=${period}`);
         const payload = await response.json() as { run?: typeof run; error?: string };
         if (!response.ok) throw new Error(payload.error || `${period} 임금안을 불러오지 못했습니다.`);
         return { period, month: index + 1, run: payload.run };

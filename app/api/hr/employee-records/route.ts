@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { ACCOUNT_ID_PREFIX } from "../../../auth-session";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { applyDuePersonnelActions } from "../../../hr-personnel-actions";
 import { applyDueRetirements } from "../../../hr-retirements";
@@ -119,13 +120,23 @@ export async function PUT(request: Request) {
   const auth = await authorizeErpRequest(db, "hr", "write");
   if (auth.response) return auth.response;
   await ensureSchema();
-  const body = await request.json() as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   const stringValue = (key: string) => typeof body[key] === "string" ? String(body[key]) : "";
   const employeeId = stringValue("employeeId").trim();
   const name = stringValue("name").trim();
 
   if (!employeeId || !name) {
     return Response.json({ error: "직원 ID와 이름이 필요합니다." }, { status: 400 });
+  }
+  // 'acct_' 는 인사기록과 연결되지 않은 로그인 계정의 id 다(D14). 인사기록 id 로 쓰면 그 계정이 남의 본인·팀장 권한을 얻는다.
+  if (employeeId.startsWith(ACCOUNT_ID_PREFIX)) {
+    return Response.json({ error: "직원 ID는 acct_ 로 시작할 수 없습니다. acct_ 는 로그인 계정 식별자입니다." }, { status: 400 });
   }
 
   // 부분 수정 호출이 급여 기준값을 0 으로 지우지 않도록, 보내지 않은 항목은 저장된 값을 그대로 쓴다.

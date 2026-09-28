@@ -13,8 +13,7 @@ import {
   TEST_ADMIN_ACCOUNT_ID, TEST_ADMIN_EMAIL, TEST_ADMIN_PASSWORD, TEST_SESSION_TOKEN,
 } from './helpers/hr-api-harness.mjs';
 
-const { verifyPassword, hashPassword, PBKDF2_ITERATIONS, TEMP_PASSWORD_LENGTH } = await import('../app/auth-password.ts');
-const { crossOriginWriteViolation, crossSiteViolation } = await import('../app/request-guard.ts');
+const { verifyPassword, TEMP_PASSWORD_LENGTH } = await import('../app/auth-password.ts');
 const { peerOf, readSessionToken } = await import('../app/auth-session.ts');
 
 const DAY = 86_400_000;
@@ -36,40 +35,7 @@ const bootstrapBody = { email: 'First.Admin@Example.test', displayName: '첫 관
 const bootstrap = (body = bootstrapBody, options = {}) => callApi('auth/bootstrap', 'POST', body, '', { cookie: null, ...options });
 
 // ── 순수 함수 ─────────────────────────────────────────────────────────
-test('password hashes use PBKDF2-SHA256 at the workerd limit and reject out-of-range iteration counts', async () => {
-  assert.ok(PBKDF2_ITERATIONS <= 100_000);
-  const script = readFileSync(new URL('../scripts/reset-admin-password.mjs', import.meta.url), 'utf8');
-  assert.equal(Number(/export const PBKDF2_ITERATIONS = ([\d_]+);/.exec(script)[1].replace(/_/g, '')), PBKDF2_ITERATIONS);
-  const hash = await hashPassword('correct horse');
-  assert.match(hash, /^pbkdf2_sha256\$100000\$[A-Za-z0-9_-]{22}\$[A-Za-z0-9_-]{43}$/);
-  assert.equal(await verifyPassword('correct horse', hash), true);
-  assert.equal(await verifyPassword('wrong horse', hash), false);
-  const [, , salt, digest] = hash.split('$');
-  assert.equal(await verifyPassword('correct horse', `pbkdf2_sha256$100001$${salt}$${digest}`), false);
-  assert.equal(await verifyPassword('correct horse', `pbkdf2_sha256$0$${salt}$${digest}`), false);
-  assert.equal(await verifyPassword('correct horse', 'not-a-hash'), false);
-});
-
-test('request-guard decision tables (worker layer requires Origin or same-origin fetch metadata on writes)', () => {
-  const h = (values) => new Headers(values);
-  const same = { host: 'erp.local:3000', origin: 'http://erp.local:3000' };
-  assert.equal(crossOriginWriteViolation('GET', h({})), false);
-  assert.equal(crossOriginWriteViolation('HEAD', h({ origin: 'http://evil.invalid', host: 'erp.local:3000' })), false);
-  assert.equal(crossOriginWriteViolation('POST', h(same)), false);
-  assert.equal(crossOriginWriteViolation('POST', h({ host: 'erp.local:3000', origin: 'http://erp.local:8765' })), true);
-  assert.equal(crossOriginWriteViolation('PUT', h({ host: 'erp.local:3000', origin: 'null' })), true);
-  assert.equal(crossOriginWriteViolation('DELETE', h({ host: 'erp.local:3000', 'sec-fetch-site': 'same-origin' })), false);
-  assert.equal(crossOriginWriteViolation('POST', h({ host: 'erp.local:3000', 'sec-fetch-site': 'same-site' })), true);
-  assert.equal(crossOriginWriteViolation('POST', h({ host: 'erp.local:3000' })), true, 'no Origin and no Sec-Fetch-Site on a write is a violation');
-  assert.equal(crossSiteViolation(h({ host: 'erp.local:3000' })), false, 'the guard layer passes when both headers are absent');
-  assert.equal(crossSiteViolation(h(same)), false);
-  assert.equal(crossSiteViolation(h({ host: 'erp.local:3000', origin: 'http://evil.invalid' })), true);
-  assert.equal(crossSiteViolation(h({ host: 'erp.local:3000', origin: 'null' })), true);
-  assert.equal(crossSiteViolation(h({ host: 'localhost:3000', 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'cors' })), true);
-  assert.equal(crossSiteViolation(h({ host: 'localhost:3000', 'sec-fetch-site': 'same-site', 'sec-fetch-mode': 'no-cors' })), true);
-  assert.equal(crossSiteViolation(h({ host: 'localhost:3000', 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'navigate' })), false);
-});
-
+// PBKDF2 상수·교차 출처 판정표는 tests/access-policy.test.mjs 로 옮겼다(Design §8.6).
 test('peerOf trusts only a single x-xdm-peer value and never Host, Origin or CF-Connecting-IP', () => {
   assert.deepEqual(peerOf(new Headers({ 'x-xdm-peer': '127.0.0.1' })), { address: '127.0.0.1', loopback: true });
   assert.deepEqual(peerOf(new Headers({ 'x-xdm-peer': '::1' })), { address: '::1', loopback: true });
@@ -461,22 +427,7 @@ test('#19 the last active administrator cannot be demoted or deactivated', async
   expectCode(await admin({ action: 'RESET_PASSWORD', id: TEST_ADMIN_ACCOUNT_ID }), 400, 'VALIDATION');
 });
 
-test('admin UPDATE_TABS merges grantable keys, keeps unknown stored keys, and a non-admin never resolves audit or admin', async () => {
-  const sql = await resetDatabase();
-  const user = await createAccount({ email: 'tabs@example.test', tabs: { hr: 'view', chat: 'edit', audit: 'edit', admin: 'edit' } });
-  const cookie = (await login(user.email, user.password)).cookie;
-  assert.deepEqual(expectCode(await me(cookie), 200).tabs, { hr: 'view', compensation: 'none', audit: 'none', admin: 'none' });
-  expectCode(await callApi('admin/accounts', 'GET', undefined, '', { cookie }), 403, 'FORBIDDEN');
-  expectCode(await callApi('audit-log', 'GET', undefined, '', { cookie }), 403, 'FORBIDDEN');
-  expectCode(await admin({ action: 'UPDATE_TABS', id: user.id, tabs: { audit: 'edit' } }), 400, 'VALIDATION');
-  expectCode(await admin({ action: 'UPDATE_TABS', id: user.id, tabs: { chat: 'view' } }), 400, 'VALIDATION');
-  const updated = expectCode(await admin({ action: 'UPDATE_TABS', id: user.id, tabs: { hr: 'none', compensation: 'edit' } }), 200);
-  assert.deepEqual(updated.account.tabs, { hr: 'none', compensation: 'edit' });
-  assert.deepEqual(JSON.parse(account(sql, user.id).tabs_json), { chat: 'edit', audit: 'edit', admin: 'edit', compensation: 'edit' });
-  assert.deepEqual(expectCode(await me(cookie), 200).tabs, { hr: 'none', compensation: 'edit', audit: 'none', admin: 'none' }, 'applies on the next request');
-  const [audit] = rows(sql, 'ACCOUNT_TABS_UPDATED');
-  assert.deepEqual(JSON.parse(audit.before_json).tabs, { hr: 'view', compensation: 'none' });
-});
+// UPDATE_TABS 부여 규칙(§8.2 #20)은 tests/tab-permissions.test.mjs 로 옮겼다.
 
 test('/api/me is 401 UNAUTHENTICATED for missing, malformed, revoked and inactive sessions, with no-store', async () => {
   const sql = await resetDatabase();

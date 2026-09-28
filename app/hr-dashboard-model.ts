@@ -31,7 +31,6 @@ export type DashboardInput = {
   payrollRuns: DashboardPayrollRun[];
   /** 연차관리 요약(재직자만). 없으면 연차 항목을 대기함에 올리지 않는다. */
   leaveLedgers?: DashboardLeaveLedger[];
-  roles: string[];
   isCurrent: (employee: DashboardEmployee) => boolean;
   isRejectedStage: (stage: string) => boolean;
   /** 채용 깔때기 순서. 화면의 단계 상수를 그대로 넘긴다. */
@@ -352,9 +351,8 @@ export function buildDashboardModel(input: DashboardInput) {
       note: renewals.length ? `가장 이른 만료일 ${renewals[0].endDate} (${dDay(renewals[0].endDate)}) · ${renewals[0].state.label}` : "30일 안에 만료되는 첫 계약이 없습니다" },
   ];
 
-  // 채용담당자에게는 채용 파이프라인이 먼저, 인사담당자에게는 처리 대기함이 먼저 보인다.
-  const recruiterOnly = input.roles.includes("RECRUITER") && !input.roles.some((role) => ["HR_ADMIN", "SUPER_ADMIN"].includes(role));
-  const sectionOrder = recruiterOnly ? ["pipeline", "timeline", "inbox", "renewal", "people", "payroll"] : ["inbox", "renewal", "timeline", "pipeline", "people", "payroll"];
+  // R3(D12): 권한이 탭 단위라 '채용담당자 전용' 계정이 없다. 모두 처리 대기함부터 본다.
+  const sectionOrder = ["inbox", "renewal", "timeline", "pipeline", "people", "payroll"];
 
   return {
     today, employeeCount, metrics, inbox, timeline, renewals, missingRegularRecords, funnel, requisitions, headcount, unassigned, employmentTypes, flow, payroll,

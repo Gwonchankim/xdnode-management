@@ -3,9 +3,9 @@ import { headers } from "next/headers";
 import { authorizeErpRequest, erpError, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
 import { generateTemporaryPassword, hashPassword } from "../../../auth-password";
 import {
-  ACCOUNT_ID_PREFIX, findEmployeeRecord, GRANTABLE_TABS, isGrantableTabKey, isValidEmail, normalizeEmail, parseStoredTabs, peerOf,
-  resolveTabs, revokeAccountSessions, type AuthAccountRow, type GrantableTabKey, type TabLevel,
+  ACCOUNT_ID_PREFIX, findEmployeeRecord, isValidEmail, normalizeEmail, peerOf, revokeAccountSessions, type AuthAccountRow,
 } from "../../../auth-session";
+import { GRANTABLE_TABS, isGrantableTabKey, parseStoredTabs, resolveTabs, type GrantableTabKey, type TabLevel } from "../../../access-tabs";
 import { readOptionalHrRows } from "../../../hr-optional-tables";
 
 // Design §4.2.6. 관리자 전용(admin:read / admin:write). 인가를 먼저 하고 본문은 그다음에 읽는다.

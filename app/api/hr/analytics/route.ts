@@ -2,7 +2,8 @@ import { env } from "cloudflare:workers";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { readOptionalHrRows } from "../../../hr-optional-tables";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
-import { authorizeErpRequest, safeJson, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
+import { authorizeErpRequest, safeJson, writeErpAudit } from "../../../erp-platform";
+import { isHrManager } from "../../../access-tabs";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
@@ -16,7 +17,6 @@ type TrainingRow = { course_id: string; title: string; course_type: string; due_
 type ReportRow = { id: string; report_type: string; title: string; period_start: string; period_end: string; version: number; snapshot_json: string; generated_by: string; created_at: number };
 type EmployeeSnapshot = { id: string; name: string; department: string; status: string; joinDate: string; retirementDate: string };
 
-const privileged = (principal: ErpPrincipal) => principal.roles.includes("SUPER_ADMIN") || principal.roles.includes("HR_ADMIN");
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const normalizeDate = (value: string) => value.trim().replaceAll(".", "-").slice(0, 10);
 const utcTime = (value: string) => new Date(`${value}T00:00:00Z`).getTime();
@@ -172,7 +172,7 @@ export async function GET(request: Request) {
   const authorization = await authorizeErpRequest(db, "hr", "read"); if (authorization.response) return authorization.response;
   await ensureSchema(); const url = new URL(request.url); const from = url.searchParams.get("from") ?? "2026-01-01"; const to = url.searchParams.get("to") ?? new Date().toISOString().slice(0, 10);
   const error = validatePeriod(from, to); if (error) return Response.json({ error }, { status: 400 });
-  const canSensitive = privileged(authorization.principal); const reportId = url.searchParams.get("reportId") ?? "";
+  const canSensitive = isHrManager(authorization.principal); const reportId = url.searchParams.get("reportId") ?? "";
   let snapshot: Awaited<ReturnType<typeof buildSnapshot>>;
   if (reportId) {
     if (!canSensitive) return Response.json({ error: "저장 리포트는 HR 관리자만 열 수 있습니다." }, { status: 403 });
@@ -187,7 +187,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const authorization = await authorizeErpRequest(db, "hr", "write"); if (authorization.response) return authorization.response;
-  await ensureSchema(); if (!privileged(authorization.principal)) return Response.json({ error: "HR 관리자만 리포트 스냅샷을 생성할 수 있습니다." }, { status: 403 });
+  await ensureSchema(); if (!isHrManager(authorization.principal)) return Response.json({ error: "HR 관리자만 리포트 스냅샷을 생성할 수 있습니다." }, { status: 403 });
   const body = await request.json() as Record<string, unknown>; const action = String(body.action ?? "").toUpperCase();
   if (action !== "GENERATE_REPORT") return Response.json({ error: "지원하지 않는 리포트 작업입니다." }, { status: 400 });
   const from = String(body.from ?? "").trim(); const to = String(body.to ?? "").trim(); const error = validatePeriod(from, to);

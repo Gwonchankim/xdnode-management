@@ -372,16 +372,22 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  // R3(D13, 부록 B #27): 상태 변경(승인·마감·재오픈)도 hr 편집이다. 본문을 읽기 전에 한 번만 인가한다.
+  const authorization = await authorizeErpRequest(db, "hr", "write");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
-  const body = await request.json() as { period?: unknown; status?: unknown; reopenedReason?: unknown };
+  let body: { period?: unknown; status?: unknown; reopenedReason?: unknown };
+  try {
+    body = await request.json() as { period?: unknown; status?: unknown; reopenedReason?: unknown };
+  } catch {
+    return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   const period = typeof body.period === "string" ? body.period.trim() : "";
   const status = typeof body.status === "string" ? body.status.trim() : "";
   if (!/^\d{4}-\d{2}$/.test(period) || !["DRAFT", "REVIEW", "APPROVED", "LOCKED"].includes(status)) {
     return Response.json({ error: "급여월과 처리 상태를 확인해 주세요." }, { status: 400 });
   }
-  const action = status === "LOCKED" ? "approve" : "write";
-  const authorization = await authorizeErpRequest(db, "hr", action);
-  if (authorization.response) return authorization.response;
   await syncPayrollRuns();
   const before = await db.prepare("SELECT * FROM hr_payroll_runs WHERE period = ?").bind(period).first<Record<string, unknown>>();
   if (!before) return Response.json({ error: "급여월을 찾을 수 없습니다." }, { status: 404 });
@@ -401,12 +407,9 @@ export async function PUT(request: Request) {
   // 결재 없이 곧바로 반영한다(Design §12.2 흐름 4). 승인(APPROVED)도 일반 전이를 탄다.
   // 재무 지급 건은 더 만들거나 취소하지 않는다(D2-b, 재무 모듈 제거).
   const reopening = status === "DRAFT" && ["APPROVED", "LOCKED"].includes(currentStatus);
-  let principal = authorization.principal;
+  const principal = authorization.principal;
   const reason = typeof body.reopenedReason === "string" ? body.reopenedReason.trim() : "";
   if (reopening) {
-    const approvalAuthorization = await authorizeErpRequest(db, "hr", "approve");
-    if (approvalAuthorization.response) return approvalAuthorization.response;
-    principal = approvalAuthorization.principal;
     if (!reason) return Response.json({ error: "승인·마감된 급여월을 다시 열려면 사유가 필요합니다." }, { status: 400 });
     // 재무에서 지급·전기가 시작된 과거 급여월은 이제 재무 쪽을 확인할 수 없으므로 정적 목록으로 막는다(§12.3).
     if (LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS.includes(period)) {

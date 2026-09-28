@@ -102,7 +102,7 @@ test("HR base-pay default is used and prorated when a manual-basic employee leav
   assert.equal(result.car, Math.floor(100_000 * 12 / 365 * 15));
 });
 
-// 서버 검증식(app/api/hr/compensation/route.ts 의 validateDraft)이 이 total 산식과 어긋나면
+// 서버 검증식(app/api/compensation/route.ts 의 validateDraft)이 이 total 산식과 어긋나면
 // 자동 저장이 통째로 400 으로 막힌다. 화면에서 고친 값이 조용히 사라지고 새로고침하면
 // 예전 값으로 되돌아가는데, 실제로 공제가 있는 달에서 그렇게 됐다. 두 식을 같이 묶어 둔다.
 test("지급총액은 연차수당을 더하고 공제를 뺀 값이다", () => {
@@ -119,7 +119,7 @@ test("지급총액은 연차수당을 더하고 공제를 뺀 값이다", () => 
 
 test("서버 검증식이 연차수당·공제를 함께 센다", async () => {
   const { readFile } = await import("node:fs/promises");
-  const source = await readFile(new URL("../app/api/hr/compensation/route.ts", import.meta.url), "utf8");
+  const source = await readFile(new URL("../app/api/compensation/route.ts", import.meta.url), "utf8");
   assert.match(source, /values\.annualLeave! \+ values\.personalExpense! - values\.deduction!/);
   assert.match(source, /"severance", "annualLeave", "personalExpense", "deduction", "welfare", "total"/);
   // 공제 사유는 숫자 항목이 아니라 따로 실어야 확정할 때 살아남는다.
@@ -151,7 +151,7 @@ test("개인비용지급은 일할계산 없이 지급총액에 더해진다", (
 
 test("서버 검증식이 개인비용지급을 함께 센다", async () => {
   const { readFile } = await import("node:fs/promises");
-  const source = await readFile(new URL("../app/api/hr/compensation/route.ts", import.meta.url), "utf8");
+  const source = await readFile(new URL("../app/api/compensation/route.ts", import.meta.url), "utf8");
   assert.match(source, /values\.annualLeave! \+ values\.personalExpense! - values\.deduction!/);
   assert.match(source, /"annualLeave", "personalExpense", "deduction"/);
   // 확정하면 급여기록의 personal_expense 로 넘어가야 금액의 출처가 남는다.

@@ -2,7 +2,10 @@ import { env } from "cloudflare:workers";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { ACCOUNT_ID_PREFIX } from "../../../auth-session";
 import { validateRecruitmentInterview } from "../../../assistant-recruitment";
+
+const ACCOUNT_ID_REJECTED = "사번은 acct_ 로 시작할 수 없습니다. acct_ 는 로그인 계정 식별자입니다.";
 
 type HrBindings = { DB: D1Database; HR_AUDIO: R2Bucket };
 const bindings = env as unknown as HrBindings;
@@ -288,8 +291,6 @@ export async function PUT(request: Request) {
       return Response.json({ offer: after ? toOffer(after) : null, stage: declinedStage });
     }
 
-    const hrAuthorization = await authorizeErpRequest(db, "hr", "write");
-    if (hrAuthorization.response) return hrAuthorization.response;
     if (applicant.requisition_id) {
       const requisition = await db.prepare("SELECT requested_headcount, status FROM hr_recruitment_requisitions WHERE id = ?")
         .bind(applicant.requisition_id).first<{ requested_headcount: number; status: string }>();
@@ -304,6 +305,8 @@ export async function PUT(request: Request) {
     const position = stringValue("position").trim();
     const jobTitle = stringValue("jobTitle").trim() || offer.proposed_title;
     if (!employeeId || !position || !jobTitle) return Response.json({ error: "입사 전환을 위한 사번·직위·직책을 입력해 주세요." }, { status: 400 });
+    // 'acct_' 는 인사기록과 연결되지 않은 로그인 계정의 id 다. 인사기록 사번으로 쓰면 그 계정이 남의 본인·팀장 권한을 얻는다(부록 C #27).
+    if (employeeId.startsWith(ACCOUNT_ID_PREFIX)) return Response.json({ error: ACCOUNT_ID_REJECTED }, { status: 400 });
     if (employeeIds.has(employeeId)) return Response.json({ error: "이미 회사 기준자료에 등록된 사번입니다." }, { status: 409 });
     const duplicate = await db.prepare("SELECT employee_id FROM hr_employee_records WHERE employee_id = ?")
       .bind(employeeId).first<{ employee_id: string }>();
@@ -361,15 +364,15 @@ export async function PUT(request: Request) {
     const result = await db.batch(statements);
     if ((result[0].meta.changes ?? 0) < 1) return Response.json({ error: "채용 제안 상태가 변경되어 입사 전환하지 못했습니다." }, { status: 409 });
     const after = await db.prepare("SELECT * FROM hr_offer_requests WHERE id = ?").bind(id).first<OfferRow>();
-    await writeErpAudit(db, { principal: hrAuthorization.principal, module: "hr", action: "ONBOARDING_CREATED", entityType: "onboardingCandidate", entityId: id, before: toOffer(offer), after: { offer: after ? toOffer(after) : null, employeeId, tasks: taskTemplates.map((item) => item[1]) }, reason: responseNote });
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "ONBOARDING_CREATED", entityType: "onboardingCandidate", entityId: id, before: toOffer(offer), after: { offer: after ? toOffer(after) : null, employeeId, tasks: taskTemplates.map((item) => item[1]) }, reason: responseNote });
     // 지원 때 본 이력서를 입사자 인사문서로 옮긴다. 실패해도 입사 전환은 그대로 둔다.
     let resumeDocument: Awaited<ReturnType<typeof copyResumeToEmployee>> = null;
     try {
-      resumeDocument = await copyResumeToEmployee(applicant, employeeId, hrAuthorization.principal.employeeId);
+      resumeDocument = await copyResumeToEmployee(applicant, employeeId, authorization.principal.employeeId);
     } catch { resumeDocument = null; }
     if (resumeDocument) {
       await writeErpAudit(db, {
-        principal: hrAuthorization.principal, module: "hr", action: "DOCUMENT_UPLOADED",
+        principal: authorization.principal, module: "hr", action: "DOCUMENT_UPLOADED",
         entityType: "employee", entityId: employeeId,
         after: { ...resumeDocument, category: "RESUME", copiedFromApplicant: applicant.id },
       });
@@ -378,8 +381,6 @@ export async function PUT(request: Request) {
   }
 
   if (["onboardingUpdate", "onboardingComplete", "onboardingCancel"].includes(resource)) {
-    const hrAuthorization = await authorizeErpRequest(db, "hr", "write");
-    if (hrAuthorization.response) return hrAuthorization.response;
     if (!id) return Response.json({ error: "입사 예정자 정보를 확인해 주세요." }, { status: 400 });
     const offer = await db.prepare("SELECT * FROM hr_offer_requests WHERE id = ?").bind(id).first<OfferRow>();
     if (!offer) return Response.json({ error: "입사 예정 정보를 찾을 수 없습니다." }, { status: 404 });
@@ -405,6 +406,7 @@ export async function PUT(request: Request) {
         || !Number.isFinite(annualSalary) || annualSalary <= 0 || !Number.isInteger(probationMonths) || probationMonths < 0 || probationMonths > 12) {
         return Response.json({ error: "사번·입사예정일·소속·직무·직위·직책·고용형태·처우를 확인해 주세요." }, { status: 400 });
       }
+      if (employeeId.startsWith(ACCOUNT_ID_PREFIX)) return Response.json({ error: ACCOUNT_ID_REJECTED }, { status: 400 });
       if (employeeId !== offer.employee_id) {
         if (employeeIds.has(employeeId)) return Response.json({ error: "이미 회사 기준자료에 등록된 사번입니다." }, { status: 409 });
         const duplicate = await db.prepare("SELECT employee_id FROM hr_employee_records WHERE employee_id = ?").bind(employeeId).first<{ employee_id: string }>();
@@ -420,18 +422,18 @@ export async function PUT(request: Request) {
       ]);
       if ((result[0].meta.changes ?? 0) < 1) return Response.json({ error: "입사 예정 정보가 변경되어 저장하지 못했습니다." }, { status: 409 });
       const after = await db.prepare("SELECT * FROM hr_offer_requests WHERE id = ?").bind(id).first<OfferRow>();
-      await writeErpAudit(db, { principal: hrAuthorization.principal, module: "hr", action: "ONBOARDING_UPDATED", entityType: "onboardingCandidate", entityId: id, before: toOffer(offer), after: after ? toOffer(after) : null, reason: responseNote });
+      await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "ONBOARDING_UPDATED", entityType: "onboardingCandidate", entityId: id, before: toOffer(offer), after: after ? toOffer(after) : null, reason: responseNote });
       return Response.json({ offer: after ? toOffer(after) : null });
     }
 
     if (resource === "onboardingCancel") {
       const cancellationReason = stringValue("cancellationReason").trim();
       if (!cancellationReason) return Response.json({ error: "입사 취소 사유를 입력해 주세요." }, { status: 400 });
-      const note = { id: `ONBOARDING-CANCEL-${now}`, text: `입사 취소: ${cancellationReason}`, author: hrAuthorization.principal.employeeId, createdAt: new Date(now).toISOString() };
+      const note = { id: `ONBOARDING-CANCEL-${now}`, text: `입사 취소: ${cancellationReason}`, author: authorization.principal.employeeId, createdAt: new Date(now).toISOString() };
       const notes = [note, ...safeJson<unknown[]>(applicant.screening_memos_json, [])];
       const result = await db.batch([
         db.prepare(`UPDATE hr_offer_requests SET status = 'CANCELLED', cancellation_reason = ?, cancelled_by = ?, cancelled_at = ?, updated_at = ?
-          WHERE id = ? AND status = 'ACCEPTED'`).bind(cancellationReason, hrAuthorization.principal.employeeId, now, now, id),
+          WHERE id = ? AND status = 'ACCEPTED'`).bind(cancellationReason, authorization.principal.employeeId, now, now, id),
         db.prepare(`UPDATE hr_applicants SET stage = '입사 취소', screening_memos_json = ?, updated_at = ? WHERE id = ?
           AND EXISTS (SELECT 1 FROM hr_offer_requests WHERE id = ? AND status = 'CANCELLED' AND updated_at = ?)`)
           .bind(JSON.stringify(notes), now, offer.applicant_id, id, now),
@@ -439,7 +441,7 @@ export async function PUT(request: Request) {
       ]);
       if ((result[0].meta.changes ?? 0) < 1) return Response.json({ error: "입사 예정 상태가 변경되어 취소하지 못했습니다." }, { status: 409 });
       const after = await db.prepare("SELECT * FROM hr_offer_requests WHERE id = ?").bind(id).first<OfferRow>();
-      await writeErpAudit(db, { principal: hrAuthorization.principal, module: "hr", action: "ONBOARDING_CANCELLED", entityType: "onboardingCandidate", entityId: id, before: toOffer(offer), after: after ? toOffer(after) : null, reason: cancellationReason });
+      await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "ONBOARDING_CANCELLED", entityType: "onboardingCandidate", entityId: id, before: toOffer(offer), after: after ? toOffer(after) : null, reason: cancellationReason });
       return Response.json({ offer: after ? toOffer(after) : null, applicantNote: note });
     }
 
@@ -451,7 +453,7 @@ export async function PUT(request: Request) {
     const pay = onboardingPayBreakdown(offer.annual_salary);
     const result = await db.batch([
       db.prepare(`UPDATE hr_offer_requests SET status = 'ONBOARDED', onboarded_by = ?, onboarded_at = ?, updated_at = ?
-        WHERE id = ? AND status = 'ACCEPTED'`).bind(hrAuthorization.principal.employeeId, now, now, id),
+        WHERE id = ? AND status = 'ACCEPTED'`).bind(authorization.principal.employeeId, now, now, id),
       // 확정한 연봉을 여기서 함께 넣는다. 예전에는 처우 컬럼이 빠져 있어 전부 0 으로 들어갔고,
       // 임금계산이 이 표를 그대로 읽는 탓에 갓 입사한 사람이 0원짜리 대상자로 잡혔다.
       db.prepare(`INSERT INTO hr_employee_records
@@ -471,7 +473,7 @@ export async function PUT(request: Request) {
     ]);
     if ((result[0].meta.changes ?? 0) < 1 || (result[1].meta.changes ?? 0) < 1) return Response.json({ error: "입사 예정 상태가 변경되어 완료하지 못했습니다." }, { status: 409 });
     const after = await db.prepare("SELECT * FROM hr_offer_requests WHERE id = ?").bind(id).first<OfferRow>();
-    await writeErpAudit(db, { principal: hrAuthorization.principal, module: "hr", action: "ONBOARDING_COMPLETED", entityType: "employeeRecord", entityId: offer.employee_id, before: toOffer(offer), after: { offer: after ? toOffer(after) : null, employeeId: offer.employee_id } });
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "ONBOARDING_COMPLETED", entityType: "employeeRecord", entityId: offer.employee_id, before: toOffer(offer), after: { offer: after ? toOffer(after) : null, employeeId: offer.employee_id } });
     return Response.json({ offer: after ? toOffer(after) : null, employeeId: offer.employee_id }, { status: 201 });
   }
   const name = stringValue("name").trim();
@@ -540,12 +542,19 @@ export async function PUT(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // R3(D13, 부록 B #27): 오퍼 등록과 채용 담당자 지정 모두 hr 탭 편집이다. 본문을 읽기 전에 한 번만 인가한다.
+  const authorization = await authorizeErpRequest(db, "recruitment", "write");
+  if (authorization.response) return authorization.response;
   await ensureSchema();
-  const body = await request.json() as Record<string, unknown>;
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json() as Record<string, unknown>;
+  } catch {
+    return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
+  }
+  if (!body || typeof body !== "object") return Response.json({ error: "요청 내용을 읽을 수 없습니다." }, { status: 400 });
   const resource = String(body.resource ?? "recruiter");
   if (resource === "offer") {
-    const authorization = await authorizeErpRequest(db, "recruitment", "write");
-    if (authorization.response) return authorization.response;
     const applicantId = String(body.applicantId ?? "").trim();
     const proposedTitle = String(body.proposedTitle ?? "").trim();
     const department = String(body.department ?? "").trim();
@@ -590,8 +599,6 @@ export async function POST(request: Request) {
     return Response.json({ offer: row ? toOffer(row) : null }, { status: 201 });
   }
 
-  const authorization = await authorizeErpRequest(db, "recruitment", "approve");
-  if (authorization.response) return authorization.response;
   const employeeId = String(body.employeeId ?? "").trim();
   if (!employeeIds.has(employeeId)) return Response.json({ error: "회사에 등록된 재직자만 지정할 수 있습니다." }, { status: 400 });
   await db.prepare("INSERT OR IGNORE INTO hr_recruiters (employee_id, created_at) VALUES (?, ?)").bind(employeeId, Date.now()).run();

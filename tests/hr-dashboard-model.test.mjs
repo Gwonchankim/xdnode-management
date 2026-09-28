@@ -18,7 +18,7 @@ const isCurrent = (item) => item.status.trim() !== "퇴직" && !["EFFECTIVE", "C
 function build(overrides = {}) {
   return buildDashboardModel({
     today: TODAY, employees: [], organizations: [{ id: "o1", name: "구매팀" }, { id: "o2", name: "AI사업팀" }], applicants: [], requisitions: [],
-    lifecycleTasks: [], payrollRuns: [], roles: ["HR_ADMIN"], isCurrent, isRejectedStage: (stage) => REJECTED.includes(stage), funnelStages: FUNNEL, firstTerm,
+    lifecycleTasks: [], payrollRuns: [], isCurrent, isRejectedStage: (stage) => REJECTED.includes(stage), funnelStages: FUNNEL, firstTerm,
     ...overrides,
   });
 }
@@ -128,10 +128,9 @@ test("12개월 흐름은 입사·퇴사 건수와 월말 재직 인원을 달마
   assert.deepEqual(model.headcount.map((row) => `${row.organization}:${row.count}`), ["구매팀:3", "AI사업팀:0"]);
 });
 
-test("채용담당자만 가진 사람에게는 채용 파이프라인이 처리 대기함보다 앞선다", () => {
-  assert.equal(build({ roles: ["RECRUITER"] }).sectionOrder[0], "pipeline");
-  assert.equal(build({ roles: ["RECRUITER", "HR_ADMIN"] }).sectionOrder[0], "inbox");
-  assert.equal(build({ roles: [] }).sectionOrder[0], "inbox");
+test("R3: 역할 입력이 없어져 대시보드는 누구에게나 처리 대기함부터 보인다", () => {
+  assert.deepEqual(build({}).sectionOrder, ["inbox", "renewal", "timeline", "pipeline", "people", "payroll"]);
+  assert.equal(build({ roles: ["RECRUITER"] }).sectionOrder[0], "inbox");
 });
 
 test("정규직 전환 예정은 재직자 전원이 대상이고, 만료 60일이 지나도록 기록이 없으면 누락으로 따로 센다", () => {

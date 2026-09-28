@@ -1,7 +1,8 @@
 import { env } from "cloudflare:workers";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
-import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
+import { authorizeErpRequest, writeErpAudit, type ErpPrincipal, linkedEmployeeId } from "../../../erp-platform";
+import { isHrManager } from "../../../access-tabs";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
@@ -20,7 +21,6 @@ type AssignmentRow = {
 };
 type EmployeeSnapshot = { id: string; name: string; department: string; status: string; organizationId: string };
 
-const privileged = (principal: ErpPrincipal) => principal.roles.includes("SUPER_ADMIN") || principal.roles.includes("HR_ADMIN");
 
 async function ensureSchema() {
   await ensureHrEmployeeRecordsSchema(db);
@@ -82,8 +82,8 @@ const assignmentView = (row: AssignmentRow) => ({ id: row.id, courseId: row.cour
 async function responseState(principal: ErpPrincipal, selectedId = "") {
   const allCourses = await db.prepare("SELECT * FROM hr_training_courses ORDER BY year DESC, due_date DESC, created_at DESC").all<CourseRow>();
   const allAssignments = await db.prepare("SELECT * FROM hr_training_assignments ORDER BY course_id, employee_name").all<AssignmentRow>();
-  const isAdmin = privileged(principal);
-  const visibleAssignments = isAdmin ? allAssignments.results : allAssignments.results.filter((item) => item.employee_id === principal.employeeId);
+  const isAdmin = isHrManager(principal);
+  const visibleAssignments = isAdmin ? allAssignments.results : allAssignments.results.filter((item) => item.employee_id === linkedEmployeeId(principal));
   const visibleCourseIds = new Set(visibleAssignments.map((item) => item.course_id));
   const courses = isAdmin ? allCourses.results : allCourses.results.filter((item) => visibleCourseIds.has(item.id));
   const selected = courses.find((item) => item.id === selectedId) ?? courses[0] ?? null;
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
   const authorization = await authorizeErpRequest(db, "hr", "write");
   if (authorization.response) return authorization.response;
   await ensureSchema();
-  const principal = authorization.principal; const isAdmin = privileged(principal);
+  const principal = authorization.principal; const isAdmin = isHrManager(principal);
   const body = await request.json() as Record<string, unknown>; const action = String(body.action ?? "").toUpperCase(); const now = Date.now();
 
   if (action === "CREATE_COURSE") {
@@ -177,7 +177,8 @@ export async function POST(request: Request) {
   const assignmentId = String(body.assignmentId ?? "").trim();
   const assignment = assignmentId ? await db.prepare("SELECT * FROM hr_training_assignments WHERE id = ? AND course_id = ?").bind(assignmentId, courseId).first<AssignmentRow>() : null;
   if (!assignment) return Response.json({ error: "교육 대상자를 찾을 수 없습니다." }, { status: 404 });
-  const isSelf = assignment.employee_id === principal.employeeId;
+  // 본인 판정은 인사기록과 연결된 계정만 한다(acct_… 는 인사기록 id 가 아니다).
+  const isSelf = assignment.employee_id === linkedEmployeeId(principal);
 
   if (action === "UPDATE_ASSIGNMENT") {
     if (course.status !== "OPEN" || (!isSelf && !isAdmin) || ["SUBMITTED", "COMPLETED", "WAIVED"].includes(assignment.status)) return Response.json({ error: "진행 중인 본인 교육만 수정할 수 있습니다." }, { status: 403 });

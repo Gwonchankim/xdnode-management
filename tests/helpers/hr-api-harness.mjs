@@ -1,7 +1,7 @@
 // Runs the real route/auth/SQL code against disposable in-memory SQLite.
 // Cloudflare storage and request headers are the only substituted services.
 // R3(r3-auth, Design §8.5): the caller's identity is a real session cookie for a seeded account, checked by the real
-// session lookup. setAccess(tabs, opts) changes that account's grants; setIdentity(roles) is a temporary shim over it.
+// session lookup. setAccess(tabs, opts) changes that account's grants; the r3-auth role-name shim was removed in r3-tabs.
 import { registerHooks } from 'node:module';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
@@ -147,6 +147,7 @@ export async function resetDatabase({ migrate = false } = {}) {
 
 /**
  * Makes the seeded test account the caller with the given grants. `tabs` is { hr?, compensation? } with 'view' | 'edit'.
+ * Other keys are stored as given (after dropping non-view/edit values), so a test can plant audit/admin grants that resolveTabs must ignore.
  * null signs out (no cookie). The account stays linked to gc.kim unless `employeeId` says otherwise (null = unlinked).
  */
 export function setAccess(tabs, { isAdmin = false, employeeId = 'gc.kim', mustChangePassword = false } = {}) {
@@ -159,20 +160,6 @@ export function setAccess(tabs, { isAdmin = false, employeeId = 'gc.kim', mustCh
     .run(Date.now() + 2_592_000_000, sha256(TEST_SESSION_TOKEN));
   defaults.cookie = TEST_SESSION_TOKEN;
   refreshHeaders();
-}
-
-/**
- * Temporary shim (r3-auth ~ r3-tabs, Design §8.5 / Appendix B #20): maps the old role names onto tab grants.
- * r3-tabs moves the remaining callers to setAccess and deletes this function.
- */
-export function setIdentity(roles = ['SUPER_ADMIN']) {
-  if (roles === null) return setAccess(null);
-  if (roles.includes('SUPER_ADMIN')) return setAccess({}, { isAdmin: true });
-  const rank = { none: 0, view: 1, edit: 2 };
-  const grants = { HR_ADMIN: { hr: 'edit', compensation: 'edit' }, RECRUITER: { hr: 'edit' }, VIEWER: { hr: 'view', compensation: 'view' } };
-  const tabs = {};
-  for (const role of roles) for (const [tab, level] of Object.entries(grants[role] ?? {})) if (rank[level] > rank[tabs[tab] ?? 'none']) tabs[tab] = level;
-  return setAccess(tabs);
 }
 
 /** Inserts an account directly (the admin API is tested separately). Returns { id, email, password }. */

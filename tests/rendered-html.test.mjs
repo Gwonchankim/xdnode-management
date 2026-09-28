@@ -87,11 +87,11 @@ test("shell source keeps only the hr, compensation and audit modules", async () 
   // 저장된 모듈이 더 이상 없으면(예: finance) 'hr'로 돌아간다.
   assert.match(source, /validModuleKeys\.includes\(saved as ModuleKey\) \? saved as ModuleKey : "hr"/);
   assert.match(source, /useState<ModuleKey>\("hr"\)/);
-  // 감사 로그는 data-governance-center 대신 셸의 탭으로 마운트한다. 서버 게이트(settings:admin)는 그대로다.
+  // 감사 로그는 data-governance-center 대신 셸의 탭으로 마운트한다. 서버 게이트는 R3부터 관리자 전용 audit:read 다.
   assert.match(source, /import AuditLogWorkspace from "\.\/audit-log-workspace";/);
   assert.match(source, /<main className="admin-page">\s*<AuditLogWorkspace \/>/);
   const auditRoute = await readFile(new URL("../app/api/audit-log/route.ts", import.meta.url), "utf8");
-  assert.match(auditRoute, /authorizeErpRequest\(db, "settings", "admin"\)/);
+  assert.match(auditRoute, /authorizeErpRequest\(db, "audit", "read"\)/);
   // HR 화면 이동 핸드셰이크는 남긴다.
   assert.match(source, /<HRWorkspace requestedView=\{hrNavigation\.view\} navigationRequestKey=\{hrNavigation\.requestKey\} \/>/);
   assert.doesNotMatch(source, /financeView|FinanceDashboard|SalesDashboard|HrDashboard|SalesWorkspace|OperationsWorkbench|DataGovernanceCenter|ApprovalCenter|finance-current-data|finance-decision-model|결재 대기/);

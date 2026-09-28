@@ -912,7 +912,6 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   // 대시보드의 처리 대기함·급여 상태·역할별 배치에 쓰는 운영 자료. 첫 로드의 /api/hr/operations 응답에서 같이 받는다.
   const [lifecycleTasks, setLifecycleTasks] = useState<DashboardLifecycleTask[]>([]);
   const [payrollRuns, setPayrollRuns] = useState<DashboardPayrollRun[]>([]);
-  const [principalRoles, setPrincipalRoles] = useState<string[]>([]);
   // 전자결재 시절에 SUBMITTED 로 남은 인사발령. 결재가 없어져 여기서 바로 승인·반려한다(Design §12.2 레거시 결정).
   const [legacyPersonnelActions, setLegacyPersonnelActions] = useState<LegacyPersonnelAction[]>([]);
   // 연차관리 요약(촉진 대상·초과 사용). 대시보드 대기함에만 쓴다.
@@ -957,7 +956,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       return data.organizations ?? [];
     }).catch(() => null);
     const loadRetirements = fetch("/api/hr/operations").then(async (response) => {
-      const data = await response.json() as { retirementRequests?: PersistedRetirementRequest[]; personnelActions?: LegacyPersonnelAction[]; lifecycleTasks?: DashboardLifecycleTask[]; payrollRuns?: DashboardPayrollRun[]; principal?: { roles?: string[] }; error?: string };
+      const data = await response.json() as { retirementRequests?: PersistedRetirementRequest[]; personnelActions?: LegacyPersonnelAction[]; lifecycleTasks?: DashboardLifecycleTask[]; payrollRuns?: DashboardPayrollRun[]; error?: string };
       if (!response.ok) throw new Error(data.error || "퇴직 절차를 불러오지 못했습니다.");
       return data;
     }).catch(() => null);
@@ -973,7 +972,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       if (cancelled) return;
       setEmployeesLoading(false);
       const retirementRequests = operations ? operations.retirementRequests ?? [] : null;
-      if (operations) { setLifecycleTasks(operations.lifecycleTasks ?? []); setPayrollRuns(operations.payrollRuns ?? []); setPrincipalRoles(operations.principal?.roles ?? []); setLegacyPersonnelActions((operations.personnelActions ?? []).filter((action) => action.status === "SUBMITTED")); }
+      if (operations) { setLifecycleTasks(operations.lifecycleTasks ?? []); setPayrollRuns(operations.payrollRuns ?? []); setLegacyPersonnelActions((operations.personnelActions ?? []).filter((action) => action.status === "SUBMITTED")); }
       if (jobTitleList?.JOB_TITLE?.length) setJobTitles(jobTitleList.JOB_TITLE);
       if (jobTitleList?.RANK?.length) setRanks(jobTitleList.RANK);
       const leaderByOrganization = new Map((leaders ?? []).map((leader) => [leader.organizationId, leader.leaderEmployeeId]));
@@ -1876,7 +1875,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
 
       <main className="main-content">
         {employeesLoading && EMPLOYEE_LIST_VIEWS.has(active) && <section className="panel hr-employees-loading" role="status" aria-live="polite"><strong>직원 정보를 불러오는 중입니다.</strong><span>잠시만 기다려 주세요.</span></section>}
-        {!employeesLoading && active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} leaveLedgers={leaveLedgers} roles={principalRoles} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
+        {!employeesLoading && active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} leaveLedgers={leaveLedgers} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
         {!employeesLoading && active === "schedule" && <TimeAndLeaveView employees={employees} onNotify={showToast} />}
         {!employeesLoading && active === "documents" && <EmployeeDocumentView employees={employees} onNotify={showToast} />}
         {!employeesLoading && active === "employees" && <EmployeeDirectory employees={employees} organizations={organizations} query={query} onSelect={setSelectedEmployeeId} onAdd={() => setEmployeeModalOpen(true)} />}
@@ -1891,7 +1890,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
         {active === "performance" && <PerformanceManagementView onNotify={showToast} />}
         {active === "training" && <TrainingManagementView onNotify={showToast} />}
         {active === "reports" && <HrAnalyticsView onNotify={showToast} />}
-        {!employeesLoading && active === "settings" && <SettingsView employees={employees} onNotify={showToast} />}
+        {!employeesLoading && active === "settings" && <SettingsView />}
         {selectedEmployee && legacyPersonnelActions.some((action) => action.employee_id === selectedEmployee.id) && <article className="panel"><div className="table-toolbar"><div><h2>처리 대기 인사발령</h2><span>전자결재 시절에 제출돼 남아 있는 발령입니다. 승인하면 시행일에 인사기록에 반영됩니다.</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>구분</th><th>시행일</th><th>사유</th><th>처리</th></tr></thead><tbody>{legacyPersonnelActions.filter((action) => action.employee_id === selectedEmployee.id).map((action) => <tr key={action.id}><td>{action.action_type}</td><td>{action.effective_date}</td><td>{action.reason || "-"}</td><td><div className="row-actions"><button type="button" onClick={() => void decideLegacyPersonnelAction(action, "APPROVED")}>승인</button><button type="button" className="reject-action" onClick={() => void decideLegacyPersonnelAction(action, "REJECTED")}>반려</button></div></td></tr>)}</tbody></table></div></article>}
         {selectedEmployee && <EmployeeDetail key={selectedEmployee.id} employee={selectedEmployee} employees={employees} organizations={organizations} ranks={ranks} jobTitles={jobTitles} onBack={() => setSelectedEmployeeId(null)} onUpdate={updateEmployee} onPersonnelAction={() => setPersonnelAction("인사 발령")} onRetirement={() => setRetirementOpen(true)} onNotify={showToast} />}
       </main>
@@ -3461,7 +3460,8 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
     try {
       // 서버의 /api/assistant 가 데스크탑 안의 Claude CLI 다리를 대신 부른다. 브라우저가 로컬 다리를 직접 부르면
       // 태블릿 등 다른 기기에서는 그 기기 자신을 가리켜 항상 실패했다(어시스턴트 패널과 같은 경로).
-      const response = await fetch("/api/assistant", {
+      // 업무 영역은 쿼리로 보낸다. 서버는 본문을 읽기 전에 이 값으로 인가한다(D23).
+      const response = await fetch("/api/assistant?module=hr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -4573,85 +4573,9 @@ function RetirementModal({ employee, initial, onClose, onSubmit, onLegacyDecisio
   ><div className="modal-header"><div data-korean-heading><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">전자결재 시절에 제출돼 처리되지 않은 퇴직 요청입니다. 승인하면 퇴직 절차가 시작되고, 반려하면 요청을 닫습니다.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="인사담당자 수행 업무" tasks={retirementChecklist.hr} /><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="퇴직자 수행 업무" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button>{pendingApproval ? <><button type="button" className="reject-action" onClick={() => onLegacyDecision("REJECTED")}>반려</button><button type="button" className="primary-button" onClick={() => onLegacyDecision("APPROVED")}>승인</button></> : <button type="submit" className="primary-button">{checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button>}</div></form>{confirmation && <HrModalBackdrop className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section data-korean-heading className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" ><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></HrModalBackdrop>}</HrModalBackdrop>;
 }
 
-function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify: (message: string) => void }) {
+// R3(Design §12.8): '사용자·권한' 절과 /api/hr/authorized-users 는 삭제했다. 계정·탭 권한은 관리자 전용 계정 관리 탭(/api/admin/accounts)이 맡는다.
+function SettingsView() {
   const [section, setSection] = useState("company");
-  type AccessRole = "SUPER_ADMIN" | "HR_ADMIN" | "RECRUITER" | "VIEWER";
-  type AuthorizedUser = { employeeId: string; email: string; roles: AccessRole[]; active: boolean };
-  const roleLabels: Record<AccessRole, string> = { SUPER_ADMIN: "최고 관리자", HR_ADMIN: "HR 관리자", RECRUITER: "채용 담당자", VIEWER: "조회 전용" };
-  const [authorizedUsers, setAuthorizedUsers] = useState<AuthorizedUser[]>([]);
-  const [candidateId, setCandidateId] = useState("");
-  const [candidateRole, setCandidateRole] = useState<AccessRole>("VIEWER");
-  const [permissionsLoading, setPermissionsLoading] = useState(true);
-  const authorizedUserIds = authorizedUsers.map((user) => user.employeeId);
-  const activeEmployees = employees.filter(isCurrentEmployee);
-  const availableEmployees = activeEmployees.filter((employee) => !authorizedUserIds.includes(employee.id));
-
-  useEffect(() => {
-    let cancelled = false;
-    async function loadAuthorizedUsers() {
-      try {
-        const response = await fetch("/api/hr/authorized-users");
-        const payload = await response.json() as { users?: AuthorizedUser[]; error?: string };
-        if (!response.ok) throw new Error(payload.error ?? "사용자 권한을 불러오지 못했습니다.");
-        if (!cancelled) setAuthorizedUsers(payload.users ?? []);
-      } catch (error) {
-        if (!cancelled) onNotify(error instanceof Error ? error.message : "사용자 권한을 불러오지 못했습니다.");
-      } finally {
-        if (!cancelled) setPermissionsLoading(false);
-      }
-    }
-    loadAuthorizedUsers();
-    return () => { cancelled = true; };
-  }, [onNotify]);
-
-  async function addAuthorizedUser(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!candidateId) return;
-    const response = await fetch("/api/hr/authorized-users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId: candidateId, roles: [candidateRole] }),
-    });
-    const payload = await response.json() as { user?: AuthorizedUser; error?: string };
-    if (!response.ok || !payload.user) {
-      onNotify(payload.error ?? "사용자를 추가하지 못했습니다.");
-      return;
-    }
-    setAuthorizedUsers((value) => [...value.filter((user) => user.employeeId !== payload.user!.employeeId), payload.user!]);
-    setCandidateId("");
-    setCandidateRole("VIEWER");
-    onNotify("사용자 권한을 추가했습니다.");
-  }
-
-  async function updateAuthorizedUserRole(employeeId: string, role: AccessRole) {
-    const response = await fetch("/api/hr/authorized-users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId, roles: [role] }),
-    });
-    const payload = await response.json() as { user?: AuthorizedUser; error?: string };
-    if (!response.ok || !payload.user) {
-      onNotify(payload.error ?? "사용자 역할을 변경하지 못했습니다.");
-      return;
-    }
-    setAuthorizedUsers((value) => value.map((user) => user.employeeId === employeeId ? payload.user! : user));
-    onNotify("사용자 역할을 변경했습니다.");
-  }
-
-  async function removeAuthorizedUser(employeeId: string) {
-    const response = await fetch("/api/hr/authorized-users", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId }),
-    });
-    const payload = await response.json() as { error?: string };
-    if (!response.ok) {
-      onNotify(payload.error ?? "사용자 권한을 삭제하지 못했습니다.");
-      return;
-    }
-    setAuthorizedUsers((value) => value.filter((user) => user.employeeId !== employeeId));
-    onNotify("사용자 접근 권한을 비활성화했습니다.");
-  }
 
   const sectionTitle = section === "company"
     ? "회사·조직 정보"
@@ -4659,47 +4583,23 @@ function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify
       ? "인사 기준정보"
       : section === "notifications"
         ? "알림 설정"
-        : section === "permissions"
-          ? "사용자·권한"
-          : "데이터·백업";
+        : "데이터·백업";
 
   return <div className="page-wrap settings-page">
     <section className="module-hero">
-      <div data-korean-heading><h1>환경설정</h1><p>회사 정보, 인사 기준, 알림과 접근 권한을 설정합니다.</p></div>
+      <div data-korean-heading><h1>환경설정</h1><p>회사 정보, 인사 기준과 알림을 설정합니다. 계정과 탭 권한은 관리자의 계정 관리 탭에서 정합니다.</p></div>
       {/* 회사·기준정보·알림·데이터 섹션은 아직 저장 경로가 없다. 예전에는 「변경사항 저장」이 성공 토스트만 띄웠다. */}
-      {section === "permissions" ? null : <span className="payroll-import-badge">표시 전용 · 저장 기능 준비 중</span>}
+      <span className="payroll-import-badge">표시 전용 · 저장 기능 준비 중</span>
     </section>
     <div className="settings-layout">
       <aside className="panel settings-nav">
-        {[["company", "회사·조직 정보"], ["hr", "인사 기준정보"], ["notifications", "알림 설정"], ["permissions", "사용자·권한"], ["data", "데이터·백업"]].map(([id, label]) => <button type="button" className={section === id ? "active" : ""} key={id} onClick={() => setSection(id)}>{label}<span>›</span></button>)}
+        {[["company", "회사·조직 정보"], ["hr", "인사 기준정보"], ["notifications", "알림 설정"], ["data", "데이터·백업"]].map(([id, label]) => <button type="button" className={section === id ? "active" : ""} key={id} onClick={() => setSection(id)}>{label}<span>›</span></button>)}
       </aside>
       <section className="panel settings-content">
         <div className="detail-card-heading"><div data-korean-heading><h2>{sectionTitle}</h2></div></div>
         {section === "company" && <div className="settings-form"><label><span>회사명</span><input defaultValue="XD NODE" /></label><label><span>대표자</span><input defaultValue="이정민" /></label><label><span>사업자등록번호</span><input defaultValue="123-45-67890" /></label><label><span>기본 근무지</span><input defaultValue="서울 본사" /></label><label className="wide"><span>회사 주소</span><input defaultValue="서울특별시 성동구 아차산로 00" /></label></div>}
         {section === "hr" && <div className="setting-list"><SettingToggle title="사번 자동 발급" description="입사연도와 순번으로 사번을 자동 생성합니다." checked /><SettingToggle title="수습기간 종료 알림" description="종료 14일 전에 담당자와 부서장에게 알립니다." checked /><SettingToggle title="급여 마감 후 수정 제한" description="마감된 급여는 급여관리자만 다시 열 수 있습니다." checked /></div>}
         {section === "notifications" && <div className="setting-list"><SettingToggle title="시스템 알림" description="업무 마감과 승인 요청을 알림센터에서 받습니다." checked /><SettingToggle title="이메일 알림" description="중요 HR 일정을 이메일로도 받습니다." checked /><SettingToggle title="미처리 업무 재알림" description="기한이 지난 업무를 매일 오전 다시 알립니다." checked={false} /></div>}
-        {section === "permissions" && <div className="permission-management">
-          <form className="permission-add-form" onSubmit={addAuthorizedUser}>
-            <label><span>회사 등록 인물</span><select value={candidateId} onChange={(event) => setCandidateId(event.target.value)} disabled={permissionsLoading || availableEmployees.length === 0}><option value="">{availableEmployees.length === 0 ? "추가 가능한 인물이 없습니다" : "사용자 선택"}</option>{availableEmployees.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.department}</option>)}</select></label>
-            <label><span>기본 역할</span><select value={candidateRole} onChange={(event) => setCandidateRole(event.target.value as AccessRole)}>{(["VIEWER", "HR_ADMIN", "RECRUITER"] as AccessRole[]).map((role) => <option value={role} key={role}>{roleLabels[role]}</option>)}</select></label>
-            <button type="submit" className="primary-button" disabled={!candidateId}>사용자 추가</button>
-          </form>
-          <p className="permission-help">회사 인사기록에 등록된 재직자만 추가할 수 있으며 역할별 권한은 서버에서 검사되고 변경이력은 감사기록에 남습니다.</p>
-          <div className="permission-list">
-            {permissionsLoading && <div className="permission-loading">사용자 권한을 불러오는 중입니다.</div>}
-            {!permissionsLoading && authorizedUsers.map((access) => {
-              const employeeId = access.employeeId;
-              const employee = employees.find((item) => item.id === employeeId);
-              if (!employee) return null;
-              const isCurrentAdministrator = employeeId === "gc.kim";
-              return <div key={employeeId}>
-                <span className="owner-chip">{employee.name.slice(0, 1)}</span>
-                <p><strong>{employee.name}</strong><small>{employee.department} · {access.email}</small></p>
-                <div className="permission-row-actions">{isCurrentAdministrator ? <><em>{roleLabels.SUPER_ADMIN}</em><span className="permission-current">현재 사용자</span></> : <><select aria-label={`${employee.name} 역할`} value={access.roles[0] ?? "VIEWER"} onChange={(event) => void updateAuthorizedUserRole(employeeId, event.target.value as AccessRole)}>{(["VIEWER", "HR_ADMIN", "RECRUITER"] as AccessRole[]).map((role) => <option value={role} key={role}>{roleLabels[role]}</option>)}</select><button type="button" onClick={() => removeAuthorizedUser(employeeId)}>비활성화</button></>}</div>
-              </div>;
-            })}
-          </div>
-        </div>}
         {section === "data" && <div className="data-settings"><div><strong>자동 백업</strong><span>미설정 · 로컬 D1 파일을 수동으로 보관합니다</span><button type="button" disabled title="준비 중">지금 백업</button></div><div><strong>개인정보 보유기간</strong><span>퇴사 후 3년(방침) · 자동 삭제는 미구현</span><button type="button" disabled title="준비 중">정책 관리</button></div><div><strong>엑셀 데이터 가져오기</strong><span>재무 「데이터 통제」의 가져오기를 사용하세요</span><button type="button" disabled title="준비 중">가져오기</button></div></div>}
       </section>
     </div>
@@ -4711,9 +4611,9 @@ function SettingToggle({ title, description, checked }: { title: string; descrip
   return <button type="button" className="setting-toggle" onClick={() => setEnabled((value) => !value)}><div><strong>{title}</strong><span>{description}</span></div><i className={enabled ? "on" : ""}><em></em></i></button>;
 }
 
-function Dashboard({ employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, leaveLedgers, roles, onNavigate, onOpenEmployee, onOpenApplicant, onMarkRegular, onEndContract }: {
+function Dashboard({ employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, leaveLedgers, onNavigate, onOpenEmployee, onOpenApplicant, onMarkRegular, onEndContract }: {
   employees: Employee[]; organizations: Organization[]; applicants: Applicant[]; requisitions: RecruitmentRequisitionOption[];
-  lifecycleTasks: DashboardLifecycleTask[]; payrollRuns: DashboardPayrollRun[]; leaveLedgers: DashboardLeaveLedger[]; roles: string[];
+  lifecycleTasks: DashboardLifecycleTask[]; payrollRuns: DashboardPayrollRun[]; leaveLedgers: DashboardLeaveLedger[];
   onNavigate: (id: string) => void; onOpenEmployee: (id: string) => void; onOpenApplicant: (id: string) => void;
   onMarkRegular: (employee: Employee, date: string, review: FirstTermReview) => void; onEndContract: (employee: Employee, endDate: string, review: FirstTermReview) => void;
 }) {
@@ -4721,7 +4621,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
   const today = useKoreanToday();
   // 계산은 전부 hr-dashboard-model 에 있다. 이 컴포넌트는 그 결과를 배치하고 클릭을 연결할 뿐이다.
   const model = buildDashboardModel({
-    today, employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, leaveLedgers, roles,
+    today, employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, leaveLedgers,
     isCurrent: (employee) => isCurrentEmployee(employee as Employee),
     isRejectedStage: (stage) => REJECTED_STAGES.includes(stage),
     funnelStages: [SCREENING_PENDING_STAGE, SCREENING_PASSED_STAGE, "면접", INTERVIEW_PASSED_STAGE, OFFER_PREPARED_STAGE, "입사 예정", "입사 완료"],

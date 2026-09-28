@@ -1,51 +1,57 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resetDatabase, callRoute, callApi, setIdentity, setAccess, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
+import { resetDatabase, callRoute, callApi, setAccess, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
 import { calculateCompensation } from '../app/compensation-calculation.ts';
 
 const reads = {
   'employee-records': '', organizations: '', 'organization-leaders': '', payroll: '?period=2026-09',
   compensation: '?period=2026-09&include=hr', operations: '', leave: '', recruitment: '',
-  'recruitment-requisitions': '', 'authorized-users': '', catalogs: '?kind=RANK',
+  'recruitment-requisitions': '', catalogs: '?kind=RANK',
   'message-templates': '', interviews: '?employeeId=audit-employee',
   analytics: '?year=2026', 'workforce-plans': '?year=2026', performance: '?year=2026', training: '?year=2026',
   transcriptions: '?entityType=EMPLOYEE_INTERVIEW&entityId=audit-missing',
   'applicant-interview-recordings': '?applicantId=audit-missing',
 };
 
+// R3(Design §4.2.7): 임금 계산은 /api/compensation 으로 옮겼다. 나머지는 /api/hr/<name> 이다.
+const callHr = (name, ...args) => name === 'compensation' ? callApi('compensation', ...args) : callRoute(name, ...args);
+// 탭 보기 계정(예전 VIEWER 역할과 같은 범위). 새 테스트는 setAccess 만 쓴다(Design §8.5).
+const viewOnly = () => setAccess({ hr: 'view', compensation: 'view' });
+const hrAndCompensationEditor = () => setAccess({ hr: 'edit', compensation: 'edit' });
+
 for (const [name, query] of Object.entries(reads)) {
   test(`HR API fresh database GET ${name} responds without schema errors`, async () => {
     await resetDatabase();
-    const result = await callRoute(name, 'GET', undefined, query);
+    const result = await callHr(name, 'GET', undefined, query);
     assert.ok(result.status < 500, `${result.status}: ${JSON.stringify(result.body)}`);
   });
   test(`HR API unauthenticated GET ${name} is rejected`, async () => {
-    await resetDatabase(); setIdentity(null);
-    assert.equal((await callRoute(name, 'GET', undefined, query)).status, 401);
+    await resetDatabase(); setAccess(null);
+    assert.equal((await callHr(name, 'GET', undefined, query)).status, 401);
   });
 }
 
 const mutations = {
   'employee-records': ['PUT'], organizations: ['POST', 'PUT'], 'organization-leaders': ['PUT'],
   payroll: ['POST', 'PUT'], compensation: ['POST'], operations: ['POST', 'PUT'], leave: ['POST', 'DELETE'],
-  recruitment: ['POST', 'PUT', 'DELETE'], 'recruitment-requisitions': ['POST'], 'authorized-users': ['POST', 'DELETE'],
+  recruitment: ['POST', 'PUT', 'DELETE'], 'recruitment-requisitions': ['POST'],
   catalogs: ['POST', 'DELETE'], 'message-templates': ['PUT', 'DELETE'], interviews: ['POST'],
   analytics: ['POST'], 'workforce-plans': ['POST'], performance: ['POST'], training: ['POST'],
   transcriptions: ['POST'], 'applicant-interview-recordings': ['POST'], 'resume-analysis': ['POST'],
 };
 for (const [name, methods] of Object.entries(mutations)) {
-  for (const method of methods) test(`HR API VIEWER cannot ${method} ${name}`, async () => {
-    await resetDatabase(); setIdentity(['VIEWER']);
+  for (const method of methods) test(`HR API view-only account cannot ${method} ${name}`, async () => {
+    await resetDatabase(); viewOnly();
     const body = name === 'payroll' ? { period: '2026-09', status: 'LOCKED' }
       : name === 'operations' ? { resource: 'retirementSettlement', id: 'audit-missing' }
         : name === 'transcriptions' ? { entityType: 'EMPLOYEE_INTERVIEW', entityId: 'audit-missing', action: 'REVIEW' } : {};
-    assert.equal((await callRoute(name, method, body)).status, 403);
+    assert.equal((await callHr(name, method, body)).status, 403);
   });
 }
 
 for (const [name, query] of Object.entries(reads)) test(`HR API migrated database GET ${name}`, async () => {
   await resetDatabase({ migrate: true });
-  const result = await callRoute(name, 'GET', undefined, query);
+  const result = await callHr(name, 'GET', undefined, query);
   assert.ok(result.status < 500, `${result.status}: ${JSON.stringify(result.body)}`);
 });
 
@@ -73,7 +79,7 @@ test('recruitment assistant saves applicant, schedule and questions together and
   assert.equal(sqlite.prepare('SELECT name FROM hr_applicants WHERE id=?').get(applicant.id).name, applicant.name);
   const unscheduled = { ...applicant, id: 'AP-unscheduled', email: 'unscheduled@example.test', phone: '', stage: '서류 검토', interview: { questions: '경력 확인 질문' } };
   assert.equal((await callRoute('recruitment', 'PUT', unscheduled)).status, 200);
-  setIdentity(['VIEWER']);
+  viewOnly();
   assert.equal((await callRoute('recruitment', 'PUT', { ...applicant, id: 'AP-denied' })).status, 403);
 });
 const draftFor = (monthly = {}) => {
@@ -82,7 +88,7 @@ const draftFor = (monthly = {}) => {
   void ignored;
   return { period: '2026-09', settings, employees: [item], rows: [{ ...row, employeeId: item.id }] };
 };
-const postWage = body => callRoute('compensation', 'POST', body);
+const postWage = body => callApi('compensation', 'POST', body);
 const expectStatus = (result, status) => { assert.equal(result.status, status, JSON.stringify(result.body)); return result.body; };
 
 test('assistant receipt updates only retirement pay, replaces instead of accumulating, and rejects stale or locked writes', async () => {
@@ -115,9 +121,9 @@ test('assistant retirement pay respects write permission and atomic version chec
   const created = expectStatus(await postWage({ ...draftFor(), action: 'CREATE' }), 201).run;
   const request = { action: 'APPLY_RETIREMENT_PAY', period: '2026-09', version: created.version,
     employeeId: employee.id, employeeName: employee.name, amount: 4000000, sourceFileName: 'synthetic.txt' };
-  setIdentity(['VIEWER']);
+  viewOnly();
   expectStatus(await postWage(request), 403);
-  setIdentity(['HR_ADMIN']);
+  hrAndCompensationEditor();
   beforeBatch((statements, sql) => {
     if (statements.some(statement => statement.sql.includes("INSERT INTO hr_compensation_lines"))) {
       sql.prepare("UPDATE hr_compensation_runs SET version = version + 1 WHERE period = '2026-09'").run();
@@ -125,7 +131,7 @@ test('assistant retirement pay respects write permission and atomic version chec
     }
   });
   expectStatus(await postWage(request), 409);
-  const latest = expectStatus(await callRoute('compensation', 'GET', undefined, '?period=2026-09'), 200).run;
+  const latest = expectStatus(await callApi('compensation', 'GET', undefined, '?period=2026-09'), 200).run;
   assert.equal(latest.employees[0].monthly['2026-09'].severance, undefined);
   assert.equal(latest.grossPay, created.grossPay);
 });
@@ -235,7 +241,7 @@ test('applicant save, offer decline and memo editing preserve declined stage', a
 test('HR dashboard parallel loading initializes a new database without duplicate columns', async () => {
   await resetDatabase();
   const results = await Promise.allSettled(Object.entries(reads).map(async ([name, query]) => {
-    const result = await callRoute(name, 'GET', undefined, query);
+    const result = await callHr(name, 'GET', undefined, query);
     assert.ok(result.status < 500, name);
   }));
   assert.deepEqual(results.filter(result => result.status === 'rejected').map(result => result.reason.message), []);
@@ -330,7 +336,7 @@ for (const [path, query] of [['documents', '?module=hr&entityType=employee&entit
   test(`HR connected API ${path} GET and unauthenticated rejection`, async () => {
     await resetDatabase({ migrate: true });
     expectStatus(await callApi(path, 'GET', undefined, query), 200);
-    setIdentity(null);
+    setAccess(null);
     expectStatus(await callApi(path, 'GET', undefined, query), 401);
   });
 }
@@ -676,7 +682,7 @@ test('R1 legacy decisions: stranded SUBMITTED personnel actions are approved onc
   assert.deepEqual(auditActions(sql, 'legacy-action'), ['PERSONNEL_ACTION_APPROVED', 'PERSONNEL_ACTION_EFFECTIVE']);
   assert.deepEqual(auditActions(sql, 'legacy-reject'), ['PERSONNEL_ACTION_REJECTED']);
   assert.equal(sql.prepare("SELECT reason FROM erp_audit_logs WHERE entity_id='legacy-reject'").get().reason, 'Audit legacy decision');
-  setIdentity(['VIEWER']);
+  viewOnly();
   expectStatus(await decide('legacy-reject', 'APPROVED'), 403);
 });
 
@@ -715,7 +721,7 @@ test('R1 legacy decisions: a stranded SUBMITTED retirement can be approved or re
 });
 
 test('R1 HR direct-apply flows stay behind the existing write/approve gates', async () => {
-  await resetDatabase(); await seedAuditEmployee(); setIdentity(['VIEWER']);
+  await resetDatabase(); await seedAuditEmployee(); viewOnly();
   const denied = [
     ['operations', 'POST', { resource: 'personnelAction', employeeId: employee.id }],
     ['operations', 'POST', { resource: 'retirement', employeeId: employee.id }],
@@ -732,7 +738,7 @@ test('R1 HR direct-apply flows stay behind the existing write/approve gates', as
 
 test('R1 static legacy period lists block re-confirming and reopening those months', async () => {
   const sql = await resetDatabase(); const draft = draftFor();
-  const compensationRoute = await import('../app/api/hr/compensation/route.ts');
+  const compensationRoute = await import('../app/api/compensation/route.ts');
   const payrollRoute = await import('../app/api/hr/payroll/route.ts');
   assert.deepEqual([...compensationRoute.LEGACY_SALES_INCENTIVE_PERIODS], []);
   assert.deepEqual([...payrollRoute.LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS], []);
@@ -804,14 +810,14 @@ test('R1 documents: legacy finance/sales rows are 404 even for administrators, a
   assert.equal(objects.size, 0);
 });
 
-test('R1 documents POST authorizes before reading the form, then requires hr:write for hr uploads', async () => {
+test('R3 documents POST authorizes hr:write before reading the form, for hr and recruitment uploads alike', async () => {
   const sql = await resetDatabase();
   const broken = { rawBody: 'this is not multipart', contentType: 'multipart/form-data; boundary=audit' };
-  setIdentity(['VIEWER']);
+  viewOnly();
   expectStatus(await callApi('documents', 'POST', undefined, '', broken), 403);
-  setIdentity(null);
+  setAccess(null);
   expectStatus(await callApi('documents', 'POST', undefined, '', broken), 401);
-  setIdentity(['SUPER_ADMIN']);
+  setAccess({}, { isAdmin: true });
   expectStatus(await callApi('documents', 'POST', undefined, '', broken), 400);
   const upload = module => {
     const form = new FormData();
@@ -819,35 +825,28 @@ test('R1 documents POST authorizes before reading the form, then requires hr:wri
     form.set('file', new File(['Audit document'], 'audit.txt', { type: 'text/plain' }));
     return callApi('documents', 'POST', form);
   };
-  // R3(r3-auth, D12): 권한은 탭 단위라 'recruitment 전용' 계정이 없다. setIdentity 호환 shim 은 RECRUITER 를 hr 편집으로 옮기므로
-  // (Design §8.5) 채용 문서 업로드만 확인한다. hr 보기 계정의 거부는 위 VIEWER 403 이 확인한다.
-  setIdentity(['RECRUITER']);
+  // R3(D12): hr·recruitment 는 같은 hr 탭이다. hr 편집 계정은 둘 다 올리고, 임금 계산 편집만 있는 계정은 둘 다 못 올린다.
+  setAccess({ compensation: 'edit' });
+  expectStatus(await upload('recruitment'), 403);
+  setAccess({ hr: 'edit' });
   expectStatus(await upload('recruitment'), 201);
   assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM erp_documents WHERE module='hr'").get().n, 0);
-  assert.equal(sql.prepare("SELECT action FROM erp_audit_logs WHERE action='DOCUMENT_UPLOADED'").get().action, 'DOCUMENT_UPLOADED');
-  setIdentity(['HR_ADMIN']);
+  assert.equal(sql.prepare("SELECT module FROM erp_audit_logs WHERE action='DOCUMENT_UPLOADED'").get().module, 'recruitment');
   expectStatus(await upload('hr'), 201);
 });
 
-test('R1 assistant: the incentive mode authorizes as hr and the old sales mode is rejected before authorization', async () => {
+test('R3 assistant: the query module picks the tab, and unknown modules are rejected before authorization', async () => {
   await resetDatabase();
-  expectStatus(await callApi('assistant', 'POST', { module: 'sales', question: 'audit' }), 400);
-  setIdentity(null);
-  expectStatus(await callApi('assistant', 'POST', { module: 'sales', question: 'audit' }), 400);
-  // R3(r3-auth, D12): 'recruitment 전용' 역할이 없어졌다. 탭 권한이 하나도 없는 계정으로 브리지 호출 전 403 을 확인한다.
-  setAccess({});
-  expectStatus(await callApi('assistant', 'POST', { module: 'incentive', question: 'audit' }), 403);
-  expectStatus(await callApi('assistant', 'POST', { module: 'compensation', question: 'audit' }), 403);
-});
-
-test('R1 authorized users no longer grant the finance or sales administrator roles', async () => {
-  await resetDatabase();
-  const { companyEmployees } = await import('../app/hr-company-data.ts');
-  const target = companyEmployees.find(item => item.id !== 'gc.kim' && item.email && item.email !== '미입력');
-  for (const role of ['FINANCE_ADMIN', 'SALES_ADMIN']) {
-    const saved = (await callRoute('authorized-users', 'POST', { employeeId: target.id, roles: [role] })).body;
-    assert.deepEqual(saved.user.roles, ['VIEWER'], role);
+  const ask = (module, body = { question: 'audit' }) => callApi('assistant', 'POST', body, module === undefined ? '' : `?module=${module}`);
+  for (const moduleName of ['sales', '__proto__', 'constructor', 'toString', undefined]) {
+    expectStatus(await ask(moduleName), 400);
   }
+  setAccess(null);
+  expectStatus(await ask('sales'), 400);
+  expectStatus(await ask('hr'), 401);
+  // 탭 권한이 하나도 없는 계정은 브리지를 부르기 전에 403 이다. 본문의 module 은 보지 않는다.
+  setAccess({});
+  for (const moduleName of ['hr', 'compensation', 'incentive']) expectStatus(await ask(moduleName, { module: 'hr', question: 'audit' }), 403);
 });
 
 test('R1 platform: a fresh database no longer creates approval, task or sync tables (Design §12.4, D4)', async () => {

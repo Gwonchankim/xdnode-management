@@ -129,7 +129,10 @@ test("R1: no kept source fetches a removed API path", async () => {
 
 test("R1: finance and sales roles, modules and period helpers are gone from the platform", async () => {
   const platform = await read("app/erp-platform.ts");
-  assert.match(platform, /export type ErpModule = "hr" \| "recruitment" \| "settings";/);
+  // R3(r3-tabs): ErpModule 은 app/access-tabs.ts 레지스트리의 modules 에서 파생된다. finance·sales·operations·settings 는 어느 탭에도 없다.
+  assert.match(platform, /export type \{ ErpAction, ErpModule \} from "\.\/access-tabs";/);
+  const registry = await read("app/access-tabs.ts");
+  assert.doesNotMatch(registry.slice(registry.indexOf("TAB_REGISTRY"), registry.indexOf("] as const;")), /"(?:finance|sales|operations|settings)"/);
   assert.doesNotMatch(platform, /blockedFinancePeriods|isFinancePeriodLocked|finance_close_runs/);
   assert.doesNotMatch(platform, /"(?:operations|finance|sales):(?:read|write|approve|delete|admin)"/);
   const offenders = [];
@@ -141,7 +144,7 @@ test("R1: finance and sales roles, modules and period helpers are gone from the 
 
 test("R1: documents accept only hr·recruitment, and HR payroll/compensation no longer touch finance or sales tables", async () => {
   const [documents, payroll, compensation] = await Promise.all([
-    read("app/api/documents/route.ts"), read("app/api/hr/payroll/route.ts"), read("app/api/hr/compensation/route.ts"),
+    read("app/api/documents/route.ts"), read("app/api/hr/payroll/route.ts"), read("app/api/compensation/route.ts"),
   ]);
   assert.match(documents, /DOCUMENT_MODULES[^=]*= new Set<DocumentModule>\(\["hr", "recruitment"\]\)/);
   assert.doesNotMatch(stripComments(payroll), /finance_expense_requests|finance_project_allocations/);
@@ -180,4 +183,27 @@ test("R2: renaming the product keeps the local D1/R2 identifiers, so the app kee
   assert.equal(JSON.parse(await read("package.json")).name, "xdnode-management");
   assert.ok(existsSync(path.join(root, "scripts/Start-XDNodeManagement.ps1")));
   assert.ok(!existsSync(path.join(root, "scripts/Start-XDNodeERP.ps1")));
+});
+
+// ── R3(r3-tabs, Design §8.6 removal-guards R3 행 중 r3-tabs 몫) ────────────────────────────
+test("R3 r3-tabs: the role-name harness shim, principal.roles and the old access tables are gone", async () => {
+  const offenders = [];
+  for (const dir of ["tests"]) {
+    for (const name of await readdir(path.join(root, dir), { recursive: true })) {
+      const file = `${dir}/${String(name).replaceAll("\\", "/")}`;
+      if (!/\.m?js$/.test(file) || file === "tests/removal-guards.test.mjs") continue;
+      if (/\bsetIdentity\(/.test(await read(file))) offenders.push(`${file}: setIdentity(`);
+    }
+  }
+  for (const file of await listSources()) {
+    if (!file.startsWith("app/")) continue;
+    const source = stripComments(await read(file));
+    if (/principal\.roles|\.roles\.includes\(/.test(source)) offenders.push(`${file}: roles`);
+    if (/\b(?:erp_user_access|hr_authorized_users)\b/.test(source)) offenders.push(`${file}: old access table`);
+    if (/\b(?:ErpRole|rolePermissions|RECRUITER|SUPER_ADMIN|HR_ADMIN)\b/.test(source)) offenders.push(`${file}: old role name`);
+  }
+  assert.deepEqual(offenders, []);
+  for (const file of ["app/api/hr/authorized-users/route.ts", "app/api/hr/compensation/route.ts", "tests/hr-local-permissions.test.mjs"]) {
+    assert.equal(existsSync(path.join(root, file)), false, `${file} should be gone`);
+  }
 });

@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { authorizeErpRequest, safeJson } from "../../erp-platform";
+import { hrTablesExist } from "../../hr-optional-tables";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
@@ -19,7 +20,8 @@ type AuditRow = {
   created_at: number;
 };
 
-const allowedModules = new Set(["ALL", "operations", "finance", "hr", "recruitment", "sales", "settings"]);
+// Design §6.1 아래 목록. 뒤의 네 값(operations·finance·sales·settings)은 R1·R3 이전에 쌓인 과거 행 조회용이다.
+const allowedModules = new Set(["ALL", "hr", "recruitment", "compensation", "chat", "audit", "admin", "auth", "operations", "finance", "sales", "settings"]);
 const secretKey = /password|passcode|secret|token|api.?key|authorization|cookie|private.?key|access.?key/i;
 
 function dateStart(value: string) {
@@ -62,7 +64,8 @@ function escapeLike(value: string) {
 }
 
 export async function GET(request: Request) {
-  const authorization = await authorizeErpRequest(db, "settings", "admin");
+  // 감사 탭은 관리자 전용이다(D23). audit 탭이 adminOnly 라 read 여도 isAdmin 으로만 판정한다.
+  const authorization = await authorizeErpRequest(db, "audit", "read");
   if (authorization.response) return authorization.response;
 
   const url = new URL(request.url);
@@ -87,24 +90,28 @@ export async function GET(request: Request) {
   if (dateTo) { where.push("a.created_at < ?"); binds.push(dateEnd(dateTo)); }
   if (query) {
     const like = `%${escapeLike(query)}%`;
-    where.push(`(a.action LIKE ? ESCAPE '\\' OR a.entity_type LIKE ? ESCAPE '\\' OR a.entity_id LIKE ? ESCAPE '\\' OR a.reason LIKE ? ESCAPE '\\' OR a.actor_email LIKE ? ESCAPE '\\' OR a.actor_employee_id LIKE ? ESCAPE '\\' OR e.name LIKE ? ESCAPE '\\')`);
-    binds.push(like, like, like, like, like, like, like);
+    where.push(`(a.action LIKE ? ESCAPE '\\' OR a.entity_type LIKE ? ESCAPE '\\' OR a.entity_id LIKE ? ESCAPE '\\' OR a.reason LIKE ? ESCAPE '\\' OR a.actor_email LIKE ? ESCAPE '\\' OR a.actor_employee_id LIKE ? ESCAPE '\\' OR e.name LIKE ? ESCAPE '\\' OR ac.display_name LIKE ? ESCAPE '\\')`);
+    binds.push(like, like, like, like, like, like, like, like);
   }
   const baseWhere = where.join(" AND ");
   const pageWhere = cursorAt ? `${baseWhere} AND (a.created_at < ? OR (a.created_at = ? AND a.id < ?))` : baseWhere;
   const pageBinds = cursorAt ? [...binds, cursorAt, cursorAt, cursorId] : binds;
 
+  // 이름: 인사기록 이름이 있으면 그것, 없으면(미연결 계정) 계정 표시 이름(§3.2).
+  // 인사기록 표는 HR 화면을 한 번도 열지 않은 새 DB 에는 아직 없다. 그때는 빈 대역으로 붙여 계정 이름만 쓴다.
+  const employeeSource = await hrTablesExist(db, "hr_employee_records")
+    ? "hr_employee_records"
+    : "(SELECT NULL AS employee_id, NULL AS name WHERE 0)";
+  const joins = `FROM erp_audit_logs a LEFT JOIN ${employeeSource} e ON e.employee_id = a.actor_employee_id
+      LEFT JOIN auth_accounts ac ON ac.id = a.actor_user_id`;
   const [rows, count, actors, actions] = await Promise.all([
-    db.prepare(`SELECT a.id, a.actor_email, a.actor_employee_id, e.name AS actor_name,
+    db.prepare(`SELECT a.id, a.actor_email, a.actor_employee_id, COALESCE(e.name, ac.display_name) AS actor_name,
       a.module, a.action, a.entity_type, a.entity_id, a.before_json, a.after_json, a.reason, a.created_at
-      FROM erp_audit_logs a LEFT JOIN hr_employee_records e ON e.employee_id = a.actor_employee_id
+      ${joins}
       WHERE ${pageWhere} ORDER BY a.created_at DESC, a.id DESC LIMIT 31`).bind(...pageBinds).all<AuditRow>(),
-    db.prepare(`SELECT COUNT(*) AS total, MAX(a.created_at) AS latest_at FROM erp_audit_logs a
-      LEFT JOIN hr_employee_records e ON e.employee_id = a.actor_employee_id WHERE ${baseWhere}`).bind(...binds).first<{ total: number; latest_at: number | null }>(),
-    db.prepare(`SELECT COUNT(DISTINCT a.actor_employee_id) AS total FROM erp_audit_logs a
-      LEFT JOIN hr_employee_records e ON e.employee_id = a.actor_employee_id WHERE ${baseWhere}`).bind(...binds).first<{ total: number }>(),
-    db.prepare(`SELECT a.action, COUNT(*) AS count FROM erp_audit_logs a
-      LEFT JOIN hr_employee_records e ON e.employee_id = a.actor_employee_id WHERE ${baseWhere}
+    db.prepare(`SELECT COUNT(*) AS total, MAX(a.created_at) AS latest_at ${joins} WHERE ${baseWhere}`).bind(...binds).first<{ total: number; latest_at: number | null }>(),
+    db.prepare(`SELECT COUNT(DISTINCT a.actor_employee_id) AS total ${joins} WHERE ${baseWhere}`).bind(...binds).first<{ total: number }>(),
+    db.prepare(`SELECT a.action, COUNT(*) AS count ${joins} WHERE ${baseWhere}
       GROUP BY a.action ORDER BY count DESC, a.action LIMIT 40`).bind(...binds).all<{ action: string; count: number }>(),
   ]);
   const hasMore = rows.results.length > 30;
