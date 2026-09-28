@@ -855,3 +855,17 @@ test('R1 platform: a fresh database no longer creates approval, task or sync tab
   assert.ok(tables.includes('erp_audit_logs'));
   assert.deepEqual(tables.filter(name => /^erp_approval_|^erp_tasks$|^erp_sync_runs$/.test(name)), []);
 });
+
+test('organization rename succeeds on a fresh database without payroll or compensation tables (SC-4 new DB)', async () => {
+  const sql = await resetDatabase();
+  // HR 화면은 열 때 직원 기록을 먼저 불러온다. 급여·임금 계산은 한 번도 열지 않은 상태다.
+  expectStatus(await callRoute('employee-records'), 200);
+  const tableExists = name => Boolean(sql.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(name));
+  assert.equal(tableExists('hr_payroll_records'), false);
+  assert.equal(tableExists('hr_compensation_lines'), false);
+  const created = expectStatus(await callRoute('organizations', 'POST', { name: 'Fresh Rename Team' }), 201);
+  const organizationId = (created.organization ?? created.item ?? created).organizationId;
+  assert.ok(organizationId);
+  expectStatus(await callRoute('organizations', 'PUT', { organizationId, name: 'Fresh Rename Team 2', previousName: 'Fresh Rename Team' }), 200);
+  assert.equal(sql.prepare('SELECT name FROM hr_organization_records WHERE organization_id=?').get(organizationId).name, 'Fresh Rename Team 2');
+});

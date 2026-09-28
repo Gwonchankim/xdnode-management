@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { companyOrganizations } from "../../../hr-company-data";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { hrTablesExist } from "../../../hr-optional-tables";
 
 type OrganizationRow = {
   organization_id: string;
@@ -102,8 +103,13 @@ export async function PUT(request: Request) {
     statements.push(db.prepare(`UPDATE hr_employee_records SET department = ?, updated_at = ?
       WHERE department = ?`).bind(name, updatedAt, previousName));
     // 부서명을 문자열로 들고 있는 파생 표도 같이 바꾼다. 안 바꾸면 급여·통계가 옛 이름과 새 이름으로 갈린다.
-    statements.push(db.prepare("UPDATE hr_payroll_records SET department = ? WHERE department = ?").bind(name, previousName));
-    statements.push(db.prepare("UPDATE hr_compensation_lines SET snapshot_json = json_set(snapshot_json, '$.department', ?), updated_at = ? WHERE json_valid(snapshot_json) = 1 AND json_extract(snapshot_json, '$.department') = ?").bind(name, updatedAt, previousName));
+    // 급여·임금 계산을 한 번도 열지 않은 새 DB 에는 이 표가 아직 없다. 없는 표는 건너뛴다(SC-4 새 DB).
+    if (await hrTablesExist(db, "hr_payroll_records")) {
+      statements.push(db.prepare("UPDATE hr_payroll_records SET department = ? WHERE department = ?").bind(name, previousName));
+    }
+    if (await hrTablesExist(db, "hr_compensation_lines")) {
+      statements.push(db.prepare("UPDATE hr_compensation_lines SET snapshot_json = json_set(snapshot_json, '$.department', ?), updated_at = ? WHERE json_valid(snapshot_json) = 1 AND json_extract(snapshot_json, '$.department') = ?").bind(name, updatedAt, previousName));
+    }
   }
   await db.batch(statements);
 

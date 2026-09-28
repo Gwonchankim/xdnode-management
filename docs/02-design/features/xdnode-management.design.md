@@ -3106,6 +3106,16 @@ export const LEGACY_PENDING = {
 - SC-4를 서버 PC에서 기존 D1 사본(별도 폴더)과 새 DB 양쪽으로 실행한다(§8.4).
 - `bundle-exposure`와 `removal-guards`가 통과한다.
 
+**실행 결과 (2026-09-28, `r1-verify` 완료)**
+- 사전 조회 재실행(스냅샷 `C:\xdm\snapshots\r1-verify-20260928-1436\`, integrity ok): 레거시 대기 행 0, `sales_incentive_payroll_links` 0, `payroll:%` 재무 행 20건 전부 미전기 → 두 정적 목록은 `[]` 그대로. 재무·영업·결재 테이블 104개가 DB에 남아 있다(SC-8).
+- SC-4: 점검 인스턴스(`f203ede` worktree, `127.0.0.1:3100`, 저장소 밖)에서 `scripts/sc4-hr-regression.mjs`로 실행했다. 3단계(main → 서버 정지 중 offline-prep → due)다.
+  - 기존 D1 사본: 48 + 4 + 13 전부 PASS.
+  - 새 DB: 처음에 1.2 '조직명 수정'이 500이었다. `hr_payroll_records`가 아직 없는 DB에서 조직 PUT이 그 표를 UPDATE했기 때문이고, R1 이전부터 있던 결함이다. 급여·임금 계산 표가 있을 때만 갱신하도록 고쳤다(`organizations/route.ts`, `hrTablesExist`, 회귀 테스트 추가). 그 뒤 48 + 4 + 13 전부 PASS.
+  - 사본 실행 전후 비교(`verify-state-snapshot --compare`): 재무·영업·결재 테이블 행 변화 0. 바뀐 표는 HR 19개뿐이다.
+  - 'SC-4 임금 계산 전용 계정'은 계정이 없는 R1에서는 해당 없음이다. R3 전환 점검에서 한다.
+- 점검 인스턴스와 그 안의 데이터 사본은 지웠다.
+- `npm test` 298/298.
+
 ### 12.8 R2·R3의 제거와 교체
 
 - R2(리네임)
