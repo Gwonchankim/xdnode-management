@@ -531,7 +531,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
     try {
       await writeXlsxFile(data, {
         sheet: "개인별 인센티브",
-        freezeRows: 1,
+        stickyRowsCount: 1,
         showGridLines: true,
       }).toFile(`개인별_인센티브_${new Date().toISOString().slice(0, 10)}.xlsx`);
       setMessage("개인별 인센티브 결과를 엑셀로 저장했습니다.");
@@ -567,18 +567,18 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
   return (
     <main className={`${styles.page} ${embedded ? styles.embedded : ""}`}>
       {!embedded && <header className={styles.topbar}>
-        <Link href="/" className={styles.brand}><span>XD</span><div><strong>인센티브 계산기</strong><small>PERSONAL WORKSPACE</small></div></Link>
+        <Link href="/" className={styles.brand}><span>XD</span><div><strong>인센티브 계산기</strong></div></Link>
         <div className={styles.saved}><i /> 이 브라우저에 자동 저장</div>
       </header>}
 
       <div className={styles.container}>
         <section className={styles.hero}>
-          <div><p>2026 INCENTIVE RULE</p><h1>매출을 넣으면<br />지급액까지 한 번에.</h1><span>거래별 초과마진을 계산하고, 제외 매출과 지급 조정을 반영해 개인별 급여 입력액을 만듭니다.</span></div>
+          <div data-korean-heading><h1>매출을 넣으면<br />지급액까지 한 번에.</h1><span>거래별 초과마진을 계산하고, 제외 매출과 지급 조정을 반영해 개인별 급여 입력액을 만듭니다.</span></div>
           <div className={styles.formula}><small>현재 적용 산식</small><strong>MAX((마진 − 매출×{config.hurdleRate}%) × {config.payoutRate}%, 0)</strong><p>인바운드 · 단독 RAM · 온라인은 기본 제외 · 케이블은 거래별 판단</p></div>
         </section>
 
         <section className={styles.panel}>
-          <div className={styles.panelHead}><div><p>INCENTIVE CONTROL</p><h2>산식·예외 처리 기준</h2></div><span>원본 계산기 기본값 5% · 5%</span></div>
+          <div className={styles.panelHead}><div data-korean-heading><h2>산식·예외 처리 기준</h2></div><span>원본 계산기 기본값 5% · 5%</span></div>
           <div className={styles.dealForm}>
             <label>허들 마진율 %<input type="number" min="0" step="0.1" value={config.hurdleRate} onChange={(event) => setConfig((current) => ({ ...current, hurdleRate: asNumber(event.target.value) }))} /></label>
             <label>인센 지급률 %<input type="number" min="0" step="0.1" value={config.payoutRate} onChange={(event) => setConfig((current) => ({ ...current, payoutRate: asNumber(event.target.value) }))} /></label>
@@ -598,7 +598,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
 
         <section className={styles.workGrid}>
           <article className={styles.panel}>
-            <div className={styles.panelHead}><div><p>DATA IMPORT</p><h2>거래 불러오기</h2></div><button type="button" onClick={loadExample}>예시 불러오기</button></div>
+            <div className={styles.panelHead}><div data-korean-heading><h2>거래 불러오기</h2></div><button type="button" onClick={loadExample}>예시 불러오기</button></div>
             <button className={styles.dropzone} type="button" onClick={() => fileInput.current?.click()}>
               <span>↑</span><div><strong>엑셀 또는 CSV 선택</strong><small>현재 인센정리 형식의 담당자·품목·수량·원가·매출 열을 자동 인식합니다.</small></div>
               <input ref={fileInput} type="file" accept=".xlsx,.csv" onChange={onFile} />
@@ -613,7 +613,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
           </article>
 
           <article className={styles.panel}>
-            <div className={styles.panelHead}><div><p>DIRECT INPUT</p><h2>거래 직접 입력</h2></div></div>
+            <div className={styles.panelHead}><div data-korean-heading><h2>거래 직접 입력</h2></div></div>
             <div className={styles.dealForm}>
               <label>담당자<select value={draft.personId} onChange={(e) => { const id = e.target.value; const found = employees.find((employee) => employee.id === id); setDraft({ ...draft, personId: id, person: found?.name ?? "" }); }}><option value="">선택</option>{employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}{employee.status !== "재직" ? ` · ${employee.status}` : ""}</option>)}</select></label>
               <label>발주일<input type="date" value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} /></label>
@@ -631,7 +631,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
         </section>
 
         {unresolvedPeople.length > 0 && <section className={styles.panel}>
-          <div className={styles.panelHead}><div><p>NEEDS REVIEW</p><h2>담당자 확인 필요 · {unresolvedPeople.length}명</h2></div></div>
+          <div className={styles.panelHead}><div data-korean-heading><h2>담당자 확인 필요 · {unresolvedPeople.length}명</h2></div></div>
           <div className={styles.notice}>엑셀로 가져온 이름이 인사기록과 정확히 1명으로 매칭되지 않았습니다(동명이인 또는 명부에 없음). 실제 직원을 지정하기 전까지 이 매출·조정 건은 급여 인센티브 반영 대상에서 제외됩니다.</div>
           <div className={styles.peopleChoices}>{unresolvedPeople.map((group) => {
             const rawName = group.key.slice("unresolved:".length);
@@ -647,45 +647,45 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
         </section>}
 
         <section className={`${styles.panel} ${styles.resultPanel}`}>
-          <div className={styles.panelHead}><div><p>EXPECTED INCENTIVE</p><h2>개인별 예상 인센티브</h2><span className={styles.calculationHint}>월 인센티브 액은 거래별 확정액 합계입니다.</span></div><button type="button" onClick={exportResults} disabled={!summaries.length}>개인별 결과 엑셀 저장</button></div>
+          <div className={styles.panelHead}><div data-korean-heading><h2>개인별 예상 인센티브</h2><span className={styles.calculationHint}>월 인센티브 액은 거래별 확정액 합계입니다.</span></div><button type="button" onClick={exportResults} disabled={!summaries.length}>개인별 결과 엑셀 저장</button></div>
           <div className={styles.summaryTableWrap}><table className={styles.summaryTable}><thead><tr><th>인물</th><th>월 총 매출</th><th>월 총 마진</th><th>월 인바운드 매출</th><th>단독램 매출</th><th>케이블 매출</th><th>인센 인정 매출</th><th>월 인센티브 액</th></tr></thead>
           <tbody>{summaries.map((item) => <tr key={item.person}><td><strong>{item.person}</strong><small>{item.count}건</small></td><td>{won(item.sales)}</td><td>{won(item.margin)}</td><td>{won(item.inboundSales)}</td><td>{won(item.ramSales)}</td><td>{won(item.cableSales)}</td><td>{won(item.eligibleSales)}</td><td><strong>{won(item.incentive)}</strong><small>거래별 확정액 합계</small></td></tr>)}{!summaries.length && <tr><td colSpan={8} className={styles.empty}>거래를 불러오면 개인별 예상 인센티브가 표시됩니다.</td></tr>}</tbody></table></div>
         </section>
 
         <section className={`${styles.panel} ${styles.companyDashboard}`}>
-          <div className={styles.panelHead}><div><p>COMPANY ANALYSIS</p><h2>전체 인센티브 대시보드</h2><span className={styles.dashboardHint}>전체 매출 비중은 완전 제외 인원 설정과 무관하게 모든 원본 거래를 포함합니다.</span></div></div>
+          <div className={styles.panelHead}><div data-korean-heading><h2>전체 인센티브 대시보드</h2><span className={styles.dashboardHint}>전체 매출 비중은 완전 제외 인원 설정과 무관하게 모든 원본 거래를 포함합니다.</span></div></div>
           <div className={styles.companyDashboardGrid}>
             <article className={styles.dashboardTile}>
-              <div className={styles.tileHeading}><span>SALES BY PERSON</span><h3>인원별 전체 매출 비중</h3></div>
+              <div data-korean-heading className={styles.tileHeading}><h3>인원별 전체 매출 비중</h3></div>
               <RankedBars breakdown={overallSalesByPerson} label="전체 매출" emptyLabel="매출 거래가 없습니다." />
             </article>
             <article className={styles.dashboardTile}>
-              <div className={styles.tileHeading}><span>SALES MIX</span><h3>제품 · 거래 구분별 매출</h3></div>
+              <div data-korean-heading className={styles.tileHeading}><h3>제품 · 거래 구분별 매출</h3></div>
               <div className={styles.rankedBarsGrid}><RankedBars breakdown={overallSalesByProduct} label="제품별" emptyLabel="제품 매출이 없습니다." /><RankedBars breakdown={overallSalesByKind} label="거래 구분별" emptyLabel="구분별 매출이 없습니다." /></div>
             </article>
             <article className={styles.dashboardTile}>
-              <div className={styles.tileHeading}><span>INCENTIVE BY PERSON</span><h3>인원별 전체 인센티브 비중</h3></div>
+              <div data-korean-heading className={styles.tileHeading}><h3>인원별 전체 인센티브 비중</h3></div>
               <RankedBars breakdown={overallIncentiveByPerson} label="전체 인센티브" emptyLabel="발생한 인센티브가 없습니다." />
             </article>
           </div>
         </section>
 
         <section className={`${styles.panel} ${styles.personalDashboard}`}>
-          <div className={styles.panelHead}><div><p>PERSONAL ANALYSIS</p><h2>개인 인센티브 대시보드</h2></div><label className={styles.dashboardSelect}>인원<select value={dashboardPerson} onChange={(event) => setDashboardPerson(event.target.value)}><option value="">선택</option>{people.map((group) => <option key={group.key} value={group.key}>{group.label}</option>)}</select></label></div>
+          <div className={styles.panelHead}><div data-korean-heading><h2>개인 인센티브 대시보드</h2></div><label className={styles.dashboardSelect}>인원<select value={dashboardPerson} onChange={(event) => setDashboardPerson(event.target.value)}><option value="">선택</option>{people.map((group) => <option key={group.key} value={group.key}>{group.label}</option>)}</select></label></div>
           <div className={styles.personalDashboardGrid}>
             <article className={styles.dashboardTile}>
-              <div className={styles.tileHeading}><span>PERSONAL SALES MIX</span><h3>{dashboardPersonLabel || "선택 인원"} 매출 구성</h3></div>
+              <div data-korean-heading className={styles.tileHeading}><h3>{dashboardPersonLabel || "선택 인원"} 매출 구성</h3></div>
               <div className={styles.rankedBarsGrid}><RankedBars breakdown={personalSalesByProduct} label="제품별" emptyLabel="제품 매출이 없습니다." /><RankedBars breakdown={personalSalesByKind} label="거래 구분별" emptyLabel="구분별 매출이 없습니다." /></div>
             </article>
             <article className={styles.dashboardTile}>
-              <div className={styles.tileHeading}><span>PERSONAL INCENTIVE MIX</span><h3>{dashboardPersonLabel || "선택 인원"} 제품별 인센티브 비중</h3></div>
+              <div data-korean-heading className={styles.tileHeading}><h3>{dashboardPersonLabel || "선택 인원"} 제품별 인센티브 비중</h3></div>
               <RankedBars breakdown={personalIncentiveByProduct} label="개인 인센티브" emptyLabel="발생한 인센티브가 없습니다." />
             </article>
           </div>
         </section>
 
         <section className={`${styles.panel} ${styles.dealReviewPanel}`}>
-          <div className={styles.panelHead}><div><p>DEAL REVIEW</p><h2>거래별 계산 내역</h2></div></div>
+          <div className={styles.panelHead}><div data-korean-heading><h2>거래별 계산 내역</h2></div></div>
           <div className={styles.dealTools}>
             <div className={styles.dealFilter}><label>담당자<select value={dealFilterPerson} onChange={(event) => setDealFilterPerson(event.target.value)}><option value="">전체 담당자</option>{people.map((group) => <option key={group.key} value={group.key}>{group.label}</option>)}</select></label></div>
             <button type="button" className={styles.cableBulkButton} onClick={excludeCableDealsForPerson} disabled={!dealFilterPerson || !selectedCableDeals.length}>케이블 미반영 일괄 적용{selectedCableDeals.length ? ` · ${selectedCableDeals.length.toLocaleString("ko-KR")}건` : ""}</button>
@@ -703,7 +703,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
         </section>
 
         <section className={`${styles.panel} ${styles.adjustmentPanel}`}>
-            <div className={styles.panelHead}><div><p>PAYMENT ADJUSTMENT</p><h2>지급 조정</h2></div></div>
+            <div className={styles.panelHead}><div data-korean-heading><h2>지급 조정</h2></div></div>
             <div className={styles.adjustForm}>
               <label>대상<select value={adjustmentDraft.targetKey} onChange={(e) => setAdjustmentDraft({ ...adjustmentDraft, targetKey: e.target.value })}><option value="">선택</option>{people.map((group) => <option key={group.key} value={group.key}>{group.label}</option>)}</select></label>
               <label>조정<select value={adjustmentDraft.kind} onChange={(e) => setAdjustmentDraft({ ...adjustmentDraft, kind: e.target.value as AdjustmentKind })}><option>추가지급</option><option>차감</option><option>복지기금 전환</option></select></label>

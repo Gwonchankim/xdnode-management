@@ -26,7 +26,7 @@ test("renders the integrated ERP finance workspace", async () => {
   assert.doesNotMatch(html, /2026년 8월/);
   assert.match(html, /aria-label="재무회계 메뉴"/);
   assert.match(html, /임금 계산/);
-  assert.match(html, /XDNODE FINANCE/);
+  assert.match(html, /<strong>재무회계<\/strong>/);
   assert.match(html, /class="finance-side-alert"/);
   assert.match(html, /알림 센터/);
   assert.match(html, /내보내기/);

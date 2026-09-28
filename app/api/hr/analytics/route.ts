@@ -1,4 +1,6 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
+import { readOptionalHrRows } from "../../../hr-optional-tables";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 import { authorizeErpRequest, safeJson, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
 
@@ -21,6 +23,7 @@ const utcTime = (value: string) => new Date(`${value}T00:00:00Z`).getTime();
 const daysBetween = (from: string, to: string) => Math.round((utcTime(to) - utcTime(from)) / 86400000);
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_analytics_reports (
       id TEXT PRIMARY KEY NOT NULL, report_type TEXT NOT NULL DEFAULT 'HR_OVERVIEW', title TEXT NOT NULL,
@@ -76,18 +79,18 @@ const countBy = <T>(items: T[], key: (item: T) => string) => [...items.reduce<Ma
 async function buildSnapshot(from: string, to: string, canSensitive: boolean) {
   const employees = await employeesSnapshot(); const fromMonth = from.slice(0, 7); const toMonth = to.slice(0, 7);
   const [applicantsResult, offersResult, payrollResult, performanceResult, trainingResult] = await Promise.all([
-    db.prepare("SELECT id, applied, stage, source, interview_json FROM hr_applicants WHERE REPLACE(applied, '.', '-') BETWEEN ? AND ? ORDER BY applied").bind(from, to).all<ApplicantRow>(),
-    db.prepare(`SELECT o.applicant_id, o.status, o.start_date FROM hr_offer_requests o
-      JOIN hr_applicants a ON a.id = o.applicant_id WHERE REPLACE(a.applied, '.', '-') BETWEEN ? AND ? ORDER BY o.created_at`).bind(from, to).all<OfferRow>(),
-    canSensitive ? db.prepare(`SELECT year_month, department, COUNT(*) AS employee_count,
+    readOptionalHrRows<ApplicantRow>(db, ["hr_applicants"], "SELECT id, applied, stage, source, interview_json FROM hr_applicants WHERE REPLACE(applied, '.', '-') BETWEEN ? AND ? ORDER BY applied", from, to),
+    readOptionalHrRows<OfferRow>(db, ["hr_offer_requests", "hr_applicants"], `SELECT o.applicant_id, o.status, o.start_date FROM hr_offer_requests o
+      JOIN hr_applicants a ON a.id = o.applicant_id WHERE REPLACE(a.applied, '.', '-') BETWEEN ? AND ? ORDER BY o.created_at`, from, to),
+    canSensitive ? readOptionalHrRows<PayrollRow>(db, ["hr_payroll_records"], `SELECT year_month, department, COUNT(*) AS employee_count,
       COALESCE(SUM(gross_pay), 0) AS gross_pay, COALESCE(SUM(deductions), 0) AS deductions, COALESCE(SUM(net_pay), 0) AS net_pay
-      FROM hr_payroll_records WHERE year_month BETWEEN ? AND ? GROUP BY year_month, department ORDER BY year_month`).bind(fromMonth, toMonth).all<PayrollRow>() : Promise.resolve({ results: [] as PayrollRow[] }),
-    canSensitive ? db.prepare(`SELECT p.final_score, p.final_rating, p.finalized_at FROM hr_performance_participants p
+      FROM hr_payroll_records WHERE year_month BETWEEN ? AND ? GROUP BY year_month, department ORDER BY year_month`, fromMonth, toMonth) : Promise.resolve({ results: [] as PayrollRow[] }),
+    canSensitive ? readOptionalHrRows<PerformanceRow>(db, ["hr_performance_participants", "hr_performance_cycles"], `SELECT p.final_score, p.final_rating, p.finalized_at FROM hr_performance_participants p
       JOIN hr_performance_cycles c ON c.id = p.cycle_id WHERE c.status = 'FINALIZED' AND p.status = 'FINALIZED'
-      AND p.finalized_at BETWEEN ? AND ?`).bind(utcTime(from), utcTime(to) + 86399999).all<PerformanceRow>() : Promise.resolve({ results: [] as PerformanceRow[] }),
-    db.prepare(`SELECT c.id AS course_id, c.title, c.course_type, c.due_date, a.status AS assignment_status, a.department
+      AND p.finalized_at BETWEEN ? AND ?`, utcTime(from), utcTime(to) + 86399999) : Promise.resolve({ results: [] as PerformanceRow[] }),
+    readOptionalHrRows<TrainingRow>(db, ["hr_training_courses", "hr_training_assignments"], `SELECT c.id AS course_id, c.title, c.course_type, c.due_date, a.status AS assignment_status, a.department
       FROM hr_training_courses c JOIN hr_training_assignments a ON a.course_id = c.id
-      WHERE c.due_date BETWEEN ? AND ? AND c.status IN ('OPEN', 'CLOSED') ORDER BY c.due_date, c.title`).bind(from, to).all<TrainingRow>(),
+      WHERE c.due_date BETWEEN ? AND ? AND c.status IN ('OPEN', 'CLOSED') ORDER BY c.due_date, c.title`, from, to),
   ]);
 
   const current = employees.filter((item) => activeOn(item, to)); const start = employees.filter((item) => activeOn(item, from));
@@ -95,7 +98,13 @@ async function buildSnapshot(from: string, to: string, canSensitive: boolean) {
   const exits = employees.filter((item) => item.retirementDate >= from && item.retirementDate <= to);
   const averageHeadcount = (start.length + current.length) / 2;
   const headcountTrend = monthEnds(from, to).map((point) => ({ period: point.label, value: employees.filter((item) => activeOn(item, point.date)).length }));
-  const organization = companyOrganizations.map((item) => ({ label: item.name, value: current.filter((employee) => employee.department === item.name).length }))
+  // 조직관리에서 이름을 바꾼 조직은 hr_organization_records 의 이름으로 센다(정적 이름만 보면 개명한 조직이 통계에서 사라진다).
+  let renamed = new Map<string, string>();
+  try {
+    const rows = await db.prepare("SELECT organization_id, name FROM hr_organization_records").all<{ organization_id: string; name: string }>();
+    renamed = new Map(rows.results.map((row) => [row.organization_id, row.name]));
+  } catch { /* 조직관리를 한 번도 열지 않은 환경에는 표가 없다 — 기준자료 이름을 쓴다. */ }
+  const organization = companyOrganizations.map((item) => renamed.get(item.id) ?? item.name).map((label) => ({ label, value: current.filter((employee) => employee.department === label).length }))
     .filter((item) => item.value > 0).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 
   const applicants = applicantsResult.results; const applicantIds = new Set(applicants.map((item) => item.id));

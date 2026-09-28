@@ -104,7 +104,7 @@ export default function TieOutBoardWorkspace({ onNavigate }: { onNavigate: (view
 
   return <div className="tie-out-board-workspace">
     <section className="tie-out-board-hero">
-      <div><p>RECONCILIATION BOARD</p><h1>대사 현황판</h1><span>보조부 ↔ 총계정원장 tie-out 5종을 한 화면에서 확인하고, 차이가 있으면 담당 화면으로 이동해 사유를 등록합니다.</span></div>
+      <div data-korean-heading><h1>대사 현황판</h1><span>보조부 ↔ 총계정원장 tie-out 5종을 한 화면에서 확인하고, 차이가 있으면 담당 화면으로 이동해 사유를 등록합니다.</span></div>
       <label>기준월<input type="month" min="2026-01" max={currentPeriod} value={period} onChange={(event) => changePeriod(event.target.value)} /></label>
     </section>
 
@@ -119,7 +119,7 @@ export default function TieOutBoardWorkspace({ onNavigate }: { onNavigate: (view
 
     <section className="panel tie-out-board-panel">
       <header>
-        <div><p>SUBSIDIARY ↔ LEDGER TIE-OUT</p><h2>대사 현황</h2></div>
+        <div data-korean-heading><h2>대사 현황</h2></div>
         <button type="button" onClick={() => void recomputeAll()} disabled={Boolean(busyType)}>{busyType === "ALL" ? "전체 계산 중…" : "전체 다시 계산"}</button>
       </header>
       <div className="tie-out-board-row head"><span>유형·계정</span><span>보조부 잔액</span><span>원장 잔액</span><span>차이</span><span>상태</span><span>작업</span></div>

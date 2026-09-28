@@ -93,7 +93,7 @@ export default function FinanceRiskPolicyWorkspace({ onPolicyChange }: { onPolic
 
   return <div className="finance-policy-workspace">
     <section className="finance-policy-hero">
-      <div><p>FINANCE GOVERNANCE</p><h1>회사 재무정책</h1><span>경영진이 승인한 기준으로 자금예측·계좌 위험도·통합 알림을 일관되게 통제합니다.</span></div>
+      <div data-korean-heading><h1>회사 재무정책</h1><span>경영진이 승인한 기준으로 자금예측·계좌 위험도·통합 알림을 일관되게 통제합니다.</span></div>
       <div className={`finance-policy-score ${preview?.level === "높음" ? "high" : preview?.level === "주의" ? "watch" : "stable"}`}><small>현재 조기경보</small><strong>{preview?.score ?? 0}<em>/100</em></strong><span>{preview?.level ?? "확인 필요"}</span></div>
     </section>
 
@@ -101,7 +101,7 @@ export default function FinanceRiskPolicyWorkspace({ onPolicyChange }: { onPolic
 
     <section className="finance-policy-grid">
       <form className="panel finance-policy-form" onSubmit={save}>
-        <header><div><p>POLICY THRESHOLDS</p><h2>경보 기준 설정</h2></div><span>{policy.configured ? `적용 중 · v${policy.version}` : "초기 기준 · 미확정"}</span></header>
+        <header><div data-korean-heading><h2>경보 기준 설정</h2></div><span>{policy.configured ? `적용 중 · v${policy.version}` : "초기 기준 · 미확정"}</span></header>
         <div className="finance-policy-fields">
           <label><span>최소 운영자금</span><input type="number" min="0" step="10000" value={form.minimumOperatingCash} onChange={(event) => field("minimumOperatingCash", event.target.value)} /><small>원화 입출금계좌 잔액과 비교하며 13주 자금예측에도 동일하게 적용됩니다.</small></label>
           <label><span>최소 대출 커버리지</span><div><input type="number" min="100" max="300" step="1" value={form.minimumDebtCoverageBps} onChange={(event) => field("minimumDebtCoverageBps", event.target.value)} /><b>%</b></div><small>은행성 자산 ÷ 대출잔액의 주의 기준입니다.</small></label>
@@ -115,7 +115,7 @@ export default function FinanceRiskPolicyWorkspace({ onPolicyChange }: { onPolic
       </form>
 
       <article className="panel finance-policy-preview">
-        <header><div><p>LIVE PREVIEW</p><h2>현재 데이터 적용 결과</h2></div><span>{policy.updatedAt ? new Date(policy.updatedAt).toLocaleDateString("ko-KR") : "미저장"}</span></header>
+        <header><div data-korean-heading><h2>현재 데이터 적용 결과</h2></div><span>{policy.updatedAt ? new Date(policy.updatedAt).toLocaleDateString("ko-KR") : "미저장"}</span></header>
         <div className="finance-policy-driver-list">
           {(preview?.drivers ?? []).map((driver) => <div className={driver.status} key={driver.key}><span>{driver.label}</span><strong>+{driver.points}<small>/{driver.maxPoints}</small></strong><p>{driver.evidence}</p><em>{driver.rule}</em></div>)}
         </div>

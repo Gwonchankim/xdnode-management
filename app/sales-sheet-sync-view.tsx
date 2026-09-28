@@ -173,7 +173,7 @@ export default function SalesSheetSyncView() {
   const inProgress = data?.summary.find((row) => row.deal_status === "IN_PROGRESS");
 
   return <section className="panel sales-sheet-sync-view">
-    <header><div><p>GOOGLE SHEET SYNC</p><h2>구글 시트 영업 데이터 동기화</h2><span>'26년 매출'·'진행 딜'을 포함해 시트 7개 탭을 읽어와 반영합니다. 버튼을 누를 때만 동기화합니다.</span></div>
+    <header><div data-korean-heading><h2>구글 시트 영업 데이터 동기화</h2><span>'26년 매출'·'진행 딜'을 포함해 시트 7개 탭을 읽어와 반영합니다. 버튼을 누를 때만 동기화합니다.</span></div>
       <div className="sales-sheet-sync-actions">
         <button type="button" disabled={exporting || !data?.records.length && !data?.tabs.some((tab) => tab.records.length)} onClick={() => void exportCurrent()}>{exporting ? "내보내는 중…" : "엑셀로 내보내기"}</button>
         <button type="button" disabled={Boolean(syncing) || data?.configured === false} onClick={() => void sync()}>{syncing === "all" ? "동기화 중…" : "지금 동기화"}</button>

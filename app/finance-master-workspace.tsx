@@ -97,7 +97,7 @@ export default function FinanceMasterWorkspace() {
 
   return <div className="finance-master-workspace">
     <section className="finance-master-hero">
-      <div><p>FINANCE MASTER DATA</p><h1>통합 재무 마스터</h1><span>계정과목·거래처·은행계좌·세금코드를 한 기준으로 통제하고 변경은 결재 후 반영합니다.</span></div>
+      <div data-korean-heading><h1>통합 재무 마스터</h1><span>계정과목·거래처·은행계좌·세금코드를 한 기준으로 통제하고 변경은 결재 후 반영합니다.</span></div>
       <div><small>기준일</small><strong>{data?.asOf ?? "—"}</strong><em>과거 전표 스냅샷 보존</em></div>
     </section>
 

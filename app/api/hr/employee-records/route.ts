@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { applyDuePersonnelActions } from "../../../hr-personnel-actions";
 import { applyDueRetirements } from "../../../hr-retirements";
 import { applyDueOnboarding } from "../../../hr-onboarding";
@@ -39,51 +40,7 @@ type HrBindings = { DB: D1Database };
 const db = (env as unknown as HrBindings).DB;
 
 async function ensureSchema() {
-  await db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-    employee_id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    birth TEXT NOT NULL,
-    email TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    address TEXT NOT NULL,
-    department TEXT NOT NULL,
-    manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL,
-      join_date TEXT NOT NULL DEFAULT '',
-      position TEXT NOT NULL,
-      job_title TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT '재직',
-      history_json TEXT NOT NULL DEFAULT '[]',
-      retirement_json TEXT,
-      annual_salary INTEGER NOT NULL DEFAULT 0,
-      base_pay INTEGER NOT NULL DEFAULT 0,
-      meal_allowance INTEGER NOT NULL DEFAULT 0,
-      childcare_allowance INTEGER NOT NULL DEFAULT 0,
-      vehicle_allowance INTEGER NOT NULL DEFAULT 0,
-      first_term_pay_percent INTEGER NOT NULL DEFAULT 100,
-      regular_contract_date TEXT NOT NULL DEFAULT '',
-      first_term_review_json TEXT,
-      updated_at INTEGER NOT NULL
-  )`).run();
-  const columns = await db.prepare("PRAGMA table_info(hr_employee_records)").all<{ name: string }>();
-  const existing = new Set(columns.results.map((column) => column.name));
-  const additions = [
-    ["join_date", "TEXT NOT NULL DEFAULT ''"],
-    ["status", "TEXT NOT NULL DEFAULT '재직'"],
-    ["history_json", "TEXT NOT NULL DEFAULT '[]'"],
-    ["retirement_json", "TEXT"],
-    ["annual_salary", "INTEGER NOT NULL DEFAULT 0"],
-    ["base_pay", "INTEGER NOT NULL DEFAULT 0"],
-    ["meal_allowance", "INTEGER NOT NULL DEFAULT 0"],
-    ["childcare_allowance", "INTEGER NOT NULL DEFAULT 0"],
-    ["vehicle_allowance", "INTEGER NOT NULL DEFAULT 0"],
-    ["first_term_pay_percent", "INTEGER NOT NULL DEFAULT 100"],
-    ["regular_contract_date", "TEXT NOT NULL DEFAULT ''"],
-    ["first_term_review_json", "TEXT"],
-  ].filter(([name]) => !existing.has(name));
-  for (const [name, definition] of additions) {
-    await db.prepare(`ALTER TABLE hr_employee_records ADD COLUMN ${name} ${definition}`).run();
-  }
+  await ensureHrEmployeeRecordsSchema(db);
   await ensureEmployeeRosterSeeded(db);
 }
 
@@ -171,32 +128,40 @@ export async function PUT(request: Request) {
     return Response.json({ error: "직원 ID와 이름이 필요합니다." }, { status: 400 });
   }
 
+  // 부분 수정 호출이 급여 기준값을 0 으로 지우지 않도록, 보내지 않은 항목은 저장된 값을 그대로 쓴다.
+  const existing = await db.prepare("SELECT * FROM hr_employee_records WHERE employee_id = ?").bind(employeeId).first<EmployeeRecordRow>();
+  const retainedString = (key: string, stored: string | null | undefined) => body[key] === undefined ? stored ?? "" : stringValue(key);
+  const retainedJson = (stored: string | null | undefined, fallback: unknown) => {
+    try { return stored ? JSON.parse(stored) : fallback; } catch { return fallback; }
+  };
   const record = {
     employeeId,
     name,
-    birth: stringValue("birth"),
-    email: stringValue("email"),
-    phone: stringValue("phone"),
-    address: stringValue("address"),
-    department: stringValue("department"),
-    type: stringValue("type"),
-    joinDate: stringValue("joinDate"),
-    position: stringValue("position"),
-    jobTitle: stringValue("jobTitle"),
-    status: stringValue("status") || "재직",
-    history: Array.isArray(body.history) ? body.history : [],
-    retirement: body.retirement && typeof body.retirement === "object" ? body.retirement : null,
-    annualSalary: 0,
-    basePay: 0,
-    mealAllowance: 0,
-    childcareAllowance: 0,
-    vehicleAllowance: 0,
-    firstTermPayPercent: 100,
-    regularContractDate: /^\d{4}-\d{2}-\d{2}$/.test(stringValue("regularContractDate")) ? stringValue("regularContractDate") : "",
-    firstTermReview: body.firstTermReview && typeof body.firstTermReview === "object" ? body.firstTermReview as Record<string, unknown> : null,
+    birth: retainedString("birth", existing?.birth),
+    email: retainedString("email", existing?.email),
+    phone: retainedString("phone", existing?.phone),
+    address: retainedString("address", existing?.address),
+    department: retainedString("department", existing?.department),
+    type: retainedString("type", existing?.employment_type),
+    joinDate: retainedString("joinDate", existing?.join_date),
+    position: retainedString("position", existing?.position),
+    jobTitle: retainedString("jobTitle", existing?.job_title),
+    status: retainedString("status", existing?.status) || "재직",
+    history: body.history === undefined ? retainedJson(existing?.history_json, []) : Array.isArray(body.history) ? body.history : [],
+    retirement: body.retirement === undefined ? retainedJson(existing?.retirement_json, null) : body.retirement && typeof body.retirement === "object" ? body.retirement : null,
+    annualSalary: existing?.annual_salary ?? 0,
+    basePay: existing?.base_pay ?? 0,
+    mealAllowance: existing?.meal_allowance ?? 0,
+    childcareAllowance: existing?.childcare_allowance ?? 0,
+    vehicleAllowance: existing?.vehicle_allowance ?? 0,
+    firstTermPayPercent: existing?.first_term_pay_percent ?? 100,
+    regularContractDate: body.regularContractDate === undefined ? (existing?.regular_contract_date ?? "")
+      : /^\d{4}-\d{2}-\d{2}$/.test(stringValue("regularContractDate")) ? stringValue("regularContractDate") : "",
+    firstTermReview: body.firstTermReview === undefined ? retainedJson(existing?.first_term_review_json, null) : body.firstTermReview && typeof body.firstTermReview === "object" ? body.firstTermReview as Record<string, unknown> : null,
     updatedAt: Date.now(),
   };
   for (const [source, target] of [["annualSalary", "annualSalary"], ["basePay", "basePay"], ["mealAllowance", "mealAllowance"], ["childcareAllowance", "childcareAllowance"], ["vehicleAllowance", "vehicleAllowance"]] as const) {
+    if (body[source] === undefined) continue;
     const value = Number(body[source] ?? 0);
     if (!Number.isFinite(value) || value < 0) return Response.json({ error: "연봉·기본급과 수당은 0원 이상으로 입력해 주세요." }, { status: 400 });
     record[target] = Math.round(value);

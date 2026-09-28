@@ -43,7 +43,7 @@ export default function MasterImpactDialog({ entityType, entityId, action, onClo
 
   return <div className="master-impact-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !working) onClose(); }}>
     <section className="master-impact-dialog" role="dialog" aria-modal="true" aria-labelledby="master-impact-title">
-      <header><div><p>MASTER DATA IMPACT</p><h2 id="master-impact-title">변경 영향도 확인</h2><span>{actionLabels[action] ?? action} 전에 실제 연결 원장을 점검합니다.</span></div><button type="button" onClick={onClose} disabled={working} aria-label="닫기">×</button></header>
+      <header><div data-korean-heading><h2 id="master-impact-title">변경 영향도 확인</h2><span>{actionLabels[action] ?? action} 전에 실제 연결 원장을 점검합니다.</span></div><button type="button" onClick={onClose} disabled={working} aria-label="닫기">×</button></header>
       {message && <div className="master-impact-loading" role="status">{message}</div>}
       {assessment && <>
         <div className={`master-impact-summary ${assessment.riskLevel.toLowerCase()}`}><div><small>대상</small><strong>{assessment.entityLabel}</strong></div><div><small>위험도</small><strong>{riskLabels[assessment.riskLevel]}</strong></div><div><small>연결 레코드</small><strong>{assessment.impactedRecordCount.toLocaleString("ko-KR")}건</strong></div><div><small>차단 / 주의</small><strong>{assessment.blockingCount} / {assessment.warningCount}건</strong></div></div>

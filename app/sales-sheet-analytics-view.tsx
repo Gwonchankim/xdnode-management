@@ -70,7 +70,7 @@ export default function SalesSheetAnalyticsView() {
 
   return <>
     <section className="panel sales-analytics-trend">
-      <header><div><p>SALES ANALYTICS</p><h2>월별 매출 추이</h2><span>날짜 형식이 온전한 건만 집계합니다 (자유 텍스트 날짜 제외).</span></div></header>
+      <header><div data-korean-heading><h2>월별 매출 추이</h2><span>날짜 형식이 온전한 건만 집계합니다 (자유 텍스트 날짜 제외).</span></div></header>
       {message && <div className="sales-live-message" role="status">{message}</div>}
       {anomalyMessages.map((text) => <div className="sales-live-message" role="status" key={text}>⚠ {text}</div>)}
       <div className="sales-analytics-bars">
@@ -87,7 +87,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>REP PERFORMANCE</p><h2>담당자별 실적</h2><span>확정 매출 기준, 마진율 포함.</span></div></header>
+      <header><div data-korean-heading><h2>담당자별 실적</h2><span>확정 매출 기준, 마진율 포함.</span></div></header>
       <div className="sales-analytics-rank-list">
         {(data?.repPerformance ?? []).map((rep, index) => <div className="sales-analytics-rank-row rank" key={rep.rep}>
           <b>{index + 1}</b><strong>{rep.rep}</strong>
@@ -99,7 +99,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>CUSTOMER CONCENTRATION</p><h2>거래처 집중도</h2><span>상위 거래처가 확정 매출에서 차지하는 비중.</span></div></header>
+      <header><div data-korean-heading><h2>거래처 집중도</h2><span>상위 거래처가 확정 매출에서 차지하는 비중.</span></div></header>
       <div className="sales-analytics-rank-list">
         {(data?.customerConcentration.customers ?? []).map((customer) => <div className="sales-analytics-rank-row" key={customer.customer_name}>
           <strong>{customer.customer_name}</strong>
@@ -114,7 +114,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>MARGIN DISTRIBUTION</p><h2>마진율 분포</h2><span>확정 매출 평균 마진율 {data ? pct(data.marginDistribution.averageMarginRate) : "-"}</span></div></header>
+      <header><div data-korean-heading><h2>마진율 분포</h2><span>확정 매출 평균 마진율 {data ? pct(data.marginDistribution.averageMarginRate) : "-"}</span></div></header>
       <div className="sales-analytics-rank-list">
         {(data?.marginDistribution.buckets ?? []).map((bucket) => <div className="sales-analytics-rank-row" key={bucket.key}>
           <strong>{bucket.label}</strong>
@@ -125,7 +125,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>ITEM PERFORMANCE</p><h2>품목별 실적</h2><span>확정 매출 상위 20개 품목 (품목명 원문 기준, 표기 차이는 정규화하지 않음).</span></div></header>
+      <header><div data-korean-heading><h2>품목별 실적</h2><span>확정 매출 상위 20개 품목 (품목명 원문 기준, 표기 차이는 정규화하지 않음).</span></div></header>
       <div className="sales-analytics-rank-list">
         {(data?.itemPerformance ?? []).map((item, index) => <div className="sales-analytics-rank-row rank" key={item.item}>
           <b>{index + 1}</b><strong>{item.item}</strong>
@@ -137,7 +137,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-trend">
-      <header><div><p>COLLECTION STATUS</p><h2>수금 현황</h2>
+      <header><div data-korean-heading><h2>수금 현황</h2>
         <span>전체 수금율 {data ? pct(data.collectionSummary.collectionRate) : "-"} · 미수금 {data ? won(data.collectionSummary.outstandingTotal) : "-"} ({data?.collectionSummary.outstandingCount ?? 0}건) · 연체 {data ? won(data.collectionSummary.overdueTotal) : "-"} ({data?.collectionSummary.overdueCount ?? 0}건)</span>
       </div></header>
       <div className="sales-analytics-bars">
@@ -154,7 +154,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>CONVERSION FUNNEL</p><h2>인바운드 리드 전환</h2>
+      <header><div data-korean-heading><h2>인바운드 리드 전환</h2>
         <span>전체 {data?.inboundLeadFunnel.total ?? 0}건 · 계약 성공률 {data ? pct(data.inboundLeadFunnel.overallRate) : "-"} (결론난 건 기준 {data ? pct(data.inboundLeadFunnel.resolvedRate) : "-"})</span>
       </div></header>
       <div className="sales-analytics-rank-list">
@@ -167,7 +167,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>CONVERSION FUNNEL</p><h2>영업보호 전환</h2>
+      <header><div data-korean-heading><h2>영업보호 전환</h2>
         <span>등록 {data?.leadProtectionFunnel.total ?? 0}건 · WIN율 {data ? pct(data.leadProtectionFunnel.overallRate) : "-"} · 확정매출 매칭 완전일치 {data ? pct(data.leadProtectionFunnel.revenueMatchRate) : "-"} → 느슨한 매칭(부분일치) {data ? pct(data.leadProtectionFunnel.looseRevenueMatchRate) : "-"} ({data?.leadProtectionFunnel.looseMatchedCustomers ?? 0}/{data?.leadProtectionFunnel.registeredCustomers ?? 0}개사) — 대학·연구기관은 학과/연구실 명의로 등록되고 매출은 본교 명의로 잡히는 경우가 많아 완전일치만 보면 실제보다 낮게 나옵니다.</span>
       </div></header>
       <div className="sales-analytics-rank-list">
@@ -187,7 +187,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>PIPELINE OUTLOOK</p><h2>진행 파이프라인 전망</h2>
+      <header><div data-korean-heading><h2>진행 파이프라인 전망</h2>
         <span>진행딜 합계 {data ? won(data.pipelineConfidence.rawTotal) : "-"} · 가중 예측 매출 {data ? won(data.pipelineConfidence.weightedForecast) : "-"} (평균 확률 {data ? pct(data.pipelineConfidence.averageProbability) : "-"}, 영업보호 등록 상태와 거래처명 매칭 기반)
           {data && data.pipelineCoverage.coverageRatio != null
             ? ` · ${data.pipelineCoverage.period} 승인 목표 대비 커버리지 ${data.pipelineCoverage.coverageRatio.toFixed(1)}배`
@@ -204,7 +204,7 @@ export default function SalesSheetAnalyticsView() {
     </section>
 
     <section className="panel sales-analytics-rank">
-      <header><div><p>WHITESPACE</p><h2>거래처별 교차판매 후보</h2><span>확정 매출 상위 10개 거래처가 아직 구매하지 않은 제품군 (품목명 키워드 기반 대략적 분류, 정밀한 카테고리 아님).</span></div></header>
+      <header><div data-korean-heading><h2>거래처별 교차판매 후보</h2><span>확정 매출 상위 10개 거래처가 아직 구매하지 않은 제품군 (품목명 키워드 기반 대략적 분류, 정밀한 카테고리 아님).</span></div></header>
       <div>
         {(data?.whitespace ?? []).map((row) => <div className="sales-whitespace-row" key={row.customer_name}>
           <div className="head"><strong>{row.customer_name}</strong><span>{won(row.sale_total)}</span></div>

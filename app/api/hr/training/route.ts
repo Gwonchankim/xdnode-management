@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
 
@@ -22,6 +23,7 @@ type EmployeeSnapshot = { id: string; name: string; department: string; status: 
 const privileged = (principal: ErpPrincipal) => principal.roles.includes("SUPER_ADMIN") || principal.roles.includes("HR_ADMIN");
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_training_courses (
       id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, course_type TEXT NOT NULL DEFAULT 'MANDATORY',
@@ -42,12 +44,6 @@ async function ensureSchema() {
     db.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_hr_training_assignment_course_employee ON hr_training_assignments(course_id, employee_id)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_hr_training_assignment_employee_status ON hr_training_assignments(employee_id, status)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_hr_training_assignment_course_status ON hr_training_assignments(course_id, status)"),
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-      employee_id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT NOT NULL, email TEXT NOT NULL,
-      phone TEXT NOT NULL, address TEXT NOT NULL, department TEXT NOT NULL, manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL, join_date TEXT NOT NULL DEFAULT '', position TEXT NOT NULL,
-      job_title TEXT NOT NULL, status TEXT NOT NULL DEFAULT '재직', history_json TEXT NOT NULL DEFAULT '[]',
-      retirement_json TEXT, updated_at INTEGER NOT NULL)`),
     db.prepare("CREATE TABLE IF NOT EXISTS hr_organization_records (organization_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, updated_at INTEGER NOT NULL)"),
   ]);
 }

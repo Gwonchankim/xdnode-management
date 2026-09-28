@@ -98,7 +98,7 @@ export default function TaxReconciliationWorkspace() {
 
   return <div className="tax-workspace">
     <section className="tax-hero">
-      <div><p>VAT RECONCILIATION</p><h1>부가세 검토센터</h1><span>Clobe 공급가액과 홈택스·이카운트 확인값, 증빙, 월마감 상태를 한 원장으로 연결합니다.</span></div>
+      <div data-korean-heading><h1>부가세 검토센터</h1><span>Clobe 공급가액과 홈택스·이카운트 확인값, 증빙, 월마감 상태를 한 원장으로 연결합니다.</span></div>
       <label>검토월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label>
     </section>
 
@@ -114,7 +114,7 @@ export default function TaxReconciliationWorkspace() {
 
     <section className="tax-grid">
       <article className="panel tax-form-panel">
-        <header><div><p>REPORTED FIGURES</p><h2>신고 확인값</h2></div><span className={`tax-status ${(data?.record?.status ?? "DRAFT").toLowerCase()}`}>{data?.record?.status === "REVIEWED" ? "검토 완료" : "작성 중"}</span></header>
+        <header><div data-korean-heading><h2>신고 확인값</h2></div><span className={`tax-status ${(data?.record?.status ?? "DRAFT").toLowerCase()}`}>{data?.record?.status === "REVIEWED" ? "검토 완료" : "작성 중"}</span></header>
         <div className="tax-form-grid">
           <label>신고 매출 공급가액<input disabled={readonly} type="number" min="0" value={draft.declaredSalesSupply} onChange={(event) => setDraft({ ...draft, declaredSalesSupply: event.target.value })} /></label>
           <label>신고 매입 공급가액<input disabled={readonly} type="number" min="0" value={draft.declaredPurchaseSupply} onChange={(event) => setDraft({ ...draft, declaredPurchaseSupply: event.target.value })} /></label>
@@ -133,14 +133,14 @@ export default function TaxReconciliationWorkspace() {
       </article>
 
       <article className="panel tax-check-panel">
-        <header><div><p>CONTROL CHECKS</p><h2>검토 통제</h2></div><span>{data?.checks.filter((item) => item.pass).length ?? 0}/{data?.checks.length ?? 0}</span></header>
+        <header><div data-korean-heading><h2>검토 통제</h2></div><span>{data?.checks.filter((item) => item.pass).length ?? 0}/{data?.checks.length ?? 0}</span></header>
         <div>{data?.checks.map((check, index) => <div className={check.pass ? "pass" : "review"} key={check.key}><span>{check.pass ? "✓" : "!"}</span><p><strong>{String(index + 1).padStart(2, "0")} · {check.label}</strong><small>{check.detail}</small></p><em>{check.pass ? "확인" : "필요"}</em></div>)}</div>
         {!data?.taxCodeCount && <aside>세금코드는 ‘통합 재무 마스터’에서 실제 코드와 세율을 결재 등록한 후 사용합니다.</aside>}
       </article>
     </section>
 
     <section className="panel tax-evidence">
-      <header><div><p>TAX EVIDENCE</p><h2>검토 증빙</h2><span>신고서·세금계산서 합계표·검토표를 월별로 버전 보관합니다.</span></div><label className={working || data?.locked ? "disabled" : ""}>+ 파일 첨부<input disabled={working || data?.locked} type="file" accept=".pdf,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(event) => void upload(event)} /></label></header>
+      <header><div data-korean-heading><h2>검토 증빙</h2><span>신고서·세금계산서 합계표·검토표를 월별로 버전 보관합니다.</span></div><label className={working || data?.locked ? "disabled" : ""}>+ 파일 첨부<input disabled={working || data?.locked} type="file" accept=".pdf,.xlsx,.csv,.png,.jpg,.jpeg" onChange={(event) => void upload(event)} /></label></header>
       <div>{data?.documents.map((document) => <a href={document.downloadUrl} key={document.id}><span>{document.fileName.split(".").pop()?.toUpperCase()}</span><p><strong>{document.fileName}</strong><small>v{document.version} · {document.uploadedBy || "담당자"} · {new Date(document.createdAt).toLocaleString("ko-KR")}</small></p><em>다운로드</em></a>)}{!data?.documents.length && <p className="tax-empty">검토 완료 전에 원본 근거 파일을 1건 이상 첨부해 주세요.</p>}</div>
     </section>
   </div>;

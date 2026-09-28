@@ -1077,7 +1077,7 @@ test("customer 360 implementation includes guarded merge, reassignment and opera
   assert.match(api, /MERGE_ACCOUNT/);
   assert.match(api, /진행 중 영업기회 또는 미수금이 있는 거래처는 비활성화할 수 없습니다/);
   assert.match(api, /status NOT IN \('퇴직','입사 예정'\)/);
-  assert.match(ui, /CUSTOMER 360°/);
+  assert.match(ui, /<h2>\{data\.account\.name\}<\/h2>/);
   assert.match(ui, /재무 거래처 마스터는 자동 병합하지 않습니다/);
   assert.match(operations, /sales-account-governance-risk/);
   assert.match(operations, /30일 이상 미접촉 진행 건/);

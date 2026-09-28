@@ -182,6 +182,9 @@ button { color: inherit; }
 .organization-member-list.columns-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .organization-member-list.columns-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .organization-member { min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 43px; padding: 6px 8px; }
+.organization-member[type="button"] { width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: box-shadow .15s ease; }
+.organization-member[type="button"]:hover { box-shadow: 0 0 0 1px #a1a1aa; }
+.organization-member[type="button"]:focus-visible { outline: 2px solid #ff5a00; outline-offset: 3px; }
 .organization-member > span { width: 25px; height: 25px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; font-weight: 800; }
 .organization-member > div { min-width: 0; }
 .organization-member strong, .organization-member small { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
@@ -558,6 +561,8 @@ button { color: inherit; }
 .lifecycle-section-heading { min-height: 64px; padding: 0 4px 12px; display: flex; align-items: end; justify-content: space-between; gap: 16px; border-bottom: 2px solid #18181b; }
 .lifecycle-section-heading p, .lifecycle-section-heading h2 { margin: 0; }.lifecycle-section-heading p { color: #ef5b36; font-size: 9px; font-weight: 900; letter-spacing: .1em; }.lifecycle-section-heading h2 { margin-top: 5px; font-size: 22px; }.lifecycle-section-heading > strong { min-width: 40px; height: 32px; display: grid; place-items: center; border-radius: 12px; background: #18181b; color: #fff; font-size: 11px; }
 .lifecycle-card-list { min-width: 0; display: grid; gap: 10px; }
+/* 입·퇴사 관리의 이름 칸. 누르면 지원자 관리와 같은 지원·면접 기록 팝업이 뜬다. */
+.lifecycle-onboarding-table .lifecycle-applicant-link { display: flex; font: inherit; font-weight: 800; color: #18181b; text-align: left; }
 .lifecycle-onboarding-table-wrap { min-width: 0; overflow-x: auto; }.lifecycle-onboarding-table { width: 100%; min-width: 720px; border-collapse: collapse; background: #fff; }.lifecycle-onboarding-table th { padding: 12px 13px; color: #71717a; border-bottom: 1px solid #d4d4d8; background: #f4f4f5; text-align: left; font-size: 9px; white-space: nowrap; }.lifecycle-onboarding-table td { padding: 13px; border-bottom: 1px solid #ececee; font-size: 10px; vertical-align: middle; }.lifecycle-onboarding-table tbody tr:last-child td { border-bottom: 0; }.lifecycle-onboarding-table td > strong, .lifecycle-onboarding-table td > small { display: block; }.lifecycle-onboarding-table td > small { margin-top: 4px; color: #71717a; font-size: 8px; }.lifecycle-onboarding-table .onboarding-completed-row { background: #f0fdf4; }.onboarding-progress { display: inline-flex; padding: 6px 8px; border-radius: 9px; background: #fff7ed; color: #9a3412; font-size: 8px; font-weight: 900; white-space: nowrap; }.onboarding-row-actions { display: flex; justify-content: flex-end; gap: 6px; white-space: nowrap; }.onboarding-row-actions button { min-height: 34px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fff; font-size: 8px; font-weight: 900; cursor: pointer; }.onboarding-row-actions .onboarding-complete-button { color: #fff; border-color: #18181b; background: #18181b; }.onboarding-row-actions .onboarding-complete-button.completed { color: #166534; border-color: #bbf7d0; background: #dcfce7; }.onboarding-row-actions button:disabled { cursor: default; opacity: 1; }.onboarding-row-actions .onboarding-edit-button:disabled { color: #a1a1aa; background: #f4f4f5; }
 .lifecycle-person { min-width: 0; padding: 0; overflow: hidden; transition: border-color .16s ease, box-shadow .16s ease; }.lifecycle-person.collapsed:hover { border-color: #a1a1aa; box-shadow: 0 9px 22px rgba(24,24,27,.05); }
 .lifecycle-card-toggle { width: 100%; min-width: 0; padding: 17px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; color: #18181b; border: 0; background: #fff; text-align: left; cursor: pointer; }.lifecycle-card-toggle:focus-visible { outline: 3px solid rgba(239,91,54,.28); outline-offset: -3px; }
@@ -1046,9 +1051,10 @@ button { color: inherit; }
 .rejected-applicant-panel { margin-top: 24px; }
 .rejected-reason { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border: 1px solid #fecaca; border-radius: 999px; background: #fef2f2; color: #b91c1c; font-size: 11px; font-weight: 700; }
 
-/* 면접 합격자 표. 탈락자 표 바로 위에 놓인다. */
-.passed-applicant-panel { margin-top: 24px; }
-.passed-status { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 999px; background: #f4f4f5; color: #52525b; font-size: 11px; font-weight: 700; white-space: nowrap; }
+/* 면접 결과 입력 표. 면접 전형 진행 표 바로 아래에 놓이고, 면접 시각이 지난 사람만 담는다. */
+.interview-result-panel { margin-top: 24px; }
+.interview-result-button { height: 30px; padding: 0 12px; border: 1px solid #18181b; border-radius: 999px; background: #18181b; color: #fff; font-size: 11px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.interview-result-button:hover { background: #ff5a00; border-color: #ff5a00; }
 
 /* 모듈 상단 제목 영역 -------------------------------------------------------
    눈금(EYEBROW)·제목·설명을 세로로 쌓아 두니 실측 145px 이라 표가 화면에 거의
@@ -1187,8 +1193,43 @@ button { color: inherit; }
 .settlement-provisional .outline-button:hover { border-color: #d9a95c; background: #fffdf7; }
 
 /* 공제액 오른편 빈 칸에 놓는 "임금안에 반영". 라벨이 없는 칸이라 입력칸과 아래를 맞춘다. */
-.settlement-apply-cell { display: flex; align-items: flex-end; }
-.settlement-apply-cell .outline-button { width: 100%; height: 38px; border-radius: 11px; }
+.settlement-apply-cell { display: flex; align-self: end; }
+.settlement-apply-cell .outline-button { width: 100%; height: 40px; border-radius: 11px; }
+
+/* 보조 버튼 유무와 관계없이 같은 행의 입력칸을 위쪽 기준으로 맞춘다. */
+.retirement-settlement { min-width: 0; container: retirement-settlement / inline-size; }
+.retirement-process-modal .retirement-settlement { margin-top: 0; }
+.retirement-settlement > .detail-card-heading { min-height: 0; gap: 12px; margin-bottom: 16px; padding: 0 0 14px; }
+.retirement-settlement > .detail-card-heading h3 { margin: 5px 0 0; font-size: 16px; line-height: 1.5; }
+.retirement-settlement > .detail-card-heading .status-pill { flex-shrink: 0; white-space: nowrap; }
+.retirement-settlement-amounts { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 14px 12px; }
+.retirement-settlement-amounts > label { min-width: 0; align-content: start; gap: 6px; font-size: 11px; line-height: 18px; }
+.retirement-settlement-amounts input { box-sizing: border-box; width: 100%; height: 40px; font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; }
+.retirement-settlement-amounts .leave-link { justify-self: start; text-align: left; line-height: 1.5; }
+.retirement-settlement .settlement-compare th { width: auto; white-space: normal; word-break: keep-all; }
+.retirement-settlement .settlement-compare th, .retirement-settlement .settlement-compare td { padding: 9px 6px; line-height: 1.6; }
+.retirement-settlement .settlement-compare td:last-child { width: 32px; white-space: nowrap; }
+.retirement-settlement .settlement-net { margin: 16px 0; padding: 12px; border: 1px solid #e4e4e7; border-radius: 11px; background: #fff; line-height: 1.6; }
+.retirement-control-list { gap: 8px; }
+.retirement-control-list label { box-sizing: border-box; min-height: 44px; gap: 10px; padding: 10px 12px; }
+.retirement-control-list label > span { flex: 0 0 20px; }
+.retirement-control-list label > strong { min-width: 0; line-height: 1.5; }
+.retirement-settlement > .outline-button { width: 100%; min-height: 40px; margin-top: 14px; }
+@container retirement-settlement (max-width: 360px) {
+  .settlement-compare, .settlement-compare tbody { display: block; }
+  .settlement-compare tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 8px; border-top: 1px solid #e4e4e7; }
+  .retirement-settlement .settlement-compare th, .retirement-settlement .settlement-compare td { width: auto; padding: 3px 0; border: 0; }
+  .settlement-compare th { grid-column: 1; grid-row: 1; }
+  .settlement-compare td:nth-child(2) { grid-column: 1 / -1; grid-row: 2; }
+  .settlement-compare td:nth-child(3) { grid-column: 2; grid-row: 1; }
+  .retirement-settlement .settlement-compare td:last-child { width: auto; grid-column: 2; grid-row: 3; }
+  .settlement-compare td:last-child:empty { display: none; }
+  .settlement-provisional label { flex-wrap: wrap; }
+  .settlement-provisional input { flex-basis: 100%; width: 100%; box-sizing: border-box; }
+}
+@container retirement-settlement (max-width: 260px) {
+  .retirement-settlement-amounts { grid-template-columns: minmax(0, 1fr); }
+}
 
 /* 통합 대시보드 — 면접·입사·퇴사를 한 줄로 세운 일정과 그 아래 상세 표들. */
 .dashboard-timeline-panel { margin-bottom: 20px; padding: 18px 20px 14px; }
@@ -1350,6 +1391,7 @@ button { color: inherit; }
 .offer-message-controls label { min-width: 0; display: grid; gap: 5px; color: #71717a; font-size: 10px; font-weight: 800; }
 .offer-message-controls input[type="date"], .offer-message-controls input[type="number"] { min-width: 0; height: 36px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fff; font: inherit; font-size: 11px; }
 .offer-message-controls input:disabled { color: #a1a1aa; background: #f4f4f5; }
+.offer-reply-adjusted { font-style: normal; font-weight: 700; color: #ff5a00; }
 .offer-message-toggle { display: flex; align-items: center; gap: 8px; align-self: end; height: 36px; }
 .offer-message-toggle input { width: 16px; height: 16px; }
 .offer-message-text { width: 100%; min-width: 0; padding: 12px; border: 1px solid #d4d4d8; border-radius: 12px; background: #fff; color: #18181b; font: inherit; font-size: 11px; line-height: 1.7; resize: vertical; }
@@ -1377,10 +1419,6 @@ button { color: inherit; }
 /* 면접 결과 표의 진행 상태. 아래 채용 종료 표의 "종료 구분"과 같은 색 어휘를 쓴다 —
    같은 사람이 두 표에 모두 나오므로 색이 어긋나면 다른 상태로 읽힌다.
    회신을 기다리는 "채용 제안 준비"만 손댈 일이 남았다는 뜻으로 따로 둔다. */
-.passed-status.waiting { border-color: #c7d2fe; background: #eef2ff; color: #3730a3; }
-.passed-status.join { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
-.passed-status.decline { border-color: #fcd9a4; background: #fffaf0; color: #92400e; }
-.passed-status.other { border-color: #d4d4d8; background: #f4f4f5; color: #52525b; }
 
 /* 채용 페이지의 나머지 표(면접 전형 진행·입사 예정자·면접 결과)도 지원 현황과 같은 리듬으로 맞춘다.
    같은 열(연락처·채용요청·TO·담당자)이 표마다 다른 너비면 위아래로 훑을 때 어긋나 보인다.
@@ -1469,6 +1507,9 @@ button { color: inherit; }
 .applicant-interview-pane-actions .applicant-counter-proposal input { width: 100%; min-width: 0; height: 34px; padding: 0 11px; border: 1px solid #d4d4d8; border-radius: 11px; background: #fff; font: inherit; font-size: 11px; }
 .applicant-interview-pane-actions button { min-width: 120px; height: 34px; padding: 0 12px; border-radius: 11px; font-size: 11px; font-weight: 800; }
 .applicant-interview-pane-actions button:disabled { cursor: not-allowed; opacity: .45; }
+/* 심화·역제안 질문 버튼. 역제안 칸 오른쪽에 나란히 둔다. */
+.applicant-question-buttons { display: flex; gap: 6px; flex-shrink: 0; }
+.applicant-interview-pane-actions .applicant-question-buttons button { min-width: 104px; }
 .applicant-interview-pane .applicant-screening-hint { margin-top: 8px; }
 @media (max-width: 900px) { .applicant-interview-split { grid-template-columns: 1fr; } }
 
@@ -1700,3 +1741,155 @@ button { color: inherit; }
 .payroll-status-select { max-width: 160px; }
 .payroll-status-notice { margin: 0 24px 12px; padding: 10px 12px; border-radius: 12px; background: #f4f4f5; color: #18181b; font-size: 12px; }
 .payroll-status-notice.error { background: #fef2f2; color: #991b1b; }
+
+/* ── 연차관리 (app/hr-leave-view.tsx) ────────────────────────────────────────── */
+.leave-toolbar { display: flex; align-items: center; gap: 12px; }
+.leave-toolbar input[type="text"], .leave-toolbar input:not([type]) { height: 34px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 12px; font: inherit; font-size: 12px; }
+.leave-toolbar label { display: flex; align-items: center; gap: 6px; color: #52525b; font-size: 12px; }
+.leave-table thead th:first-child, .leave-table td:first-child { width: 200px; }
+.leave-ledger-link { display: inline-flex; align-items: center; gap: 12px; padding: 6px 0; border: 0; background: transparent; color: #18181b; font: inherit; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.leave-ledger-link > span { flex: none; color: #71717a; font-size: 11px; font-weight: 500; white-space: nowrap; }
+.leave-ledger-link:hover > span { color: #18181b; text-decoration: underline; }
+.leave-ledger-link:focus-visible { outline: 2px solid #18181b; outline-offset: 4px; border-radius: 4px; }
+.leave-table { min-width: 1120px; table-layout: fixed; }
+.leave-table th, .leave-table td { padding: 12px 16px; white-space: nowrap; vertical-align: middle; }
+.leave-table thead th { height: 46px; }
+.leave-table td { height: 62px; }
+.leave-table thead th:nth-child(2) { width: 120px; }
+.leave-table thead th:nth-child(8) { width: 112px; }
+.leave-table thead th:nth-child(9), .leave-table thead th:nth-child(10) { width: 88px; }
+.leave-table th:nth-child(2), .leave-table td:nth-child(2), .leave-table th:nth-child(9), .leave-table td:nth-child(9), .leave-table th:nth-child(10), .leave-table td:nth-child(10) { text-align: center; }
+.leave-table .leave-number { text-align: right; font-variant-numeric: tabular-nums; }
+.leave-table .leave-balance-cell { background: #f0f6f3; }
+.leave-table .leave-balance { min-width: 64px; padding: 6px 10px; border-color: #c8dfd2; background: #e1efe7; color: #22543d; font-size: 14px; text-align: center; }
+.leave-table .leave-balance.negative { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.leave-table .leave-balance.zero { border-color: #e4e4e7; background: #f4f4f5; color: #71717a; }
+.leave-table .leave-team-row th { height: 42px; padding: 10px 18px; border-top: 1px solid #e4e4e7; border-bottom: 1px solid #e4e4e7; background: #f0f1f3; text-align: left; }
+.leave-team-row th > div { display: flex; align-items: center; gap: 10px; }
+.leave-team-row strong { color: #18181b; font-size: 13px; }
+.leave-team-row span { color: #71717a; font-size: 11px; font-weight: 500; }
+.leave-table-note { margin: 0; padding: 12px 24px; border-bottom: 1px solid #ececee; color: #71717a; font-size: 11px; line-height: 1.6; }
+.leave-balance { display: inline-block; padding: 3px 9px; border-radius: 999px; border: 1px solid #e4e4e7; background: #f4f4f5; color: #18181b; font-size: 12px; font-weight: 800; }
+.leave-balance.negative { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.leave-balance.zero { color: #71717a; }
+.leave-muted { color: #a1a1aa; }
+.leave-link { padding: 0; border: 0; background: none; color: #18181b; font: inherit; font-size: 11px; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.leave-link.danger { color: #991b1b; }
+.leave-link:disabled { opacity: .5; cursor: progress; }
+.leave-queue { margin-bottom: 20px; }
+.leave-queue table { margin-top: 10px; }
+/* 원장 본문 — 팝업과 인사기록카드 카드가 같이 쓴다 */
+.leave-body { display: grid; min-width: 0; gap: 16px; padding: 4px 0 0; container: leave-ledger / inline-size; }
+.leave-body > *, .leave-columns > section { min-width: 0; }
+.leave-card-modal .leave-body { padding: 0 24px 22px; }
+.leave-summary { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.leave-summary > div { display: grid; min-width: 0; gap: 4px; padding: 12px; border-radius: 12px; background: #f4f4f5; }
+.leave-summary > div > span:not(.leave-balance) { color: #71717a; font-size: 10px; font-weight: 800; }
+.leave-summary .leave-balance { justify-self: start; }
+.leave-summary strong { color: #18181b; font-size: 15px; }
+.leave-promotions { display: grid; gap: 6px; }
+.leave-promotions > div { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #fcd9a4; border-radius: 12px; background: #fffaf0; font-size: 12px; }
+.leave-promotions small { color: #92400e; }
+.leave-promotions button { margin-left: auto; height: 28px; padding: 0 10px; border: 1px solid #18181b; border-radius: 9px; background: #fff; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.leave-form { display: grid; grid-template-columns: 150px 190px 80px minmax(140px, 1fr) auto; align-items: end; gap: 10px; padding: 12px; border: 1px solid #ececee; border-radius: 14px; }
+.leave-form label { display: grid; min-width: 0; gap: 5px; color: #52525b; font-size: 10px; font-weight: 800; }
+.leave-form input, .leave-form select { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; height: 36px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fff; font: inherit; font-size: 12px; }
+.leave-form .primary-button { min-width: 0; height: 36px; white-space: nowrap; }
+.leave-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+.leave-columns .dash-subtitle { margin-top: 0; }
+.leave-columns .dash-subtitle em { margin-left: 6px; color: #71717a; font-style: normal; font-weight: 700; }
+.leave-scroll { min-width: 0; max-width: 100%; max-height: 320px; overflow: auto; }
+.leave-scroll table { min-width: 600px; margin-top: 0; }
+.leave-note { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+tr.leave-dim td { color: #a1a1aa; }
+/* 연간 격자 — 시트의 월별 표를 그대로 옮긴 모양 */
+.leave-body {
+  --leave-annual: #dcecff;
+  --leave-half: #ddf3e6;
+  --leave-quarter: #fff0c9;
+  --leave-birthday_half: #fce0eb;
+  --leave-official: #e8e0fa;
+  --leave-sick: #ffe3d2;
+  --leave-family: #d9f2f3;
+  --leave-other: #ece7df;
+}
+.leave-year-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.leave-year-head .dash-subtitle { margin: 0; }
+.leave-legend { display: flex; flex-wrap: wrap; flex-basis: 100%; gap: 6px 16px; margin: 0; padding: 0; list-style: none; }
+.leave-legend li, .leave-kind-label { display: inline-flex; align-items: center; gap: 5px; color: #52525b; font-size: 12px; white-space: nowrap; }
+.leave-grid-wrap { min-width: 0; max-width: 100%; overflow-x: auto; }
+.leave-grid { width: 100%; min-width: 800px; border-collapse: separate; border-spacing: 2px; font-size: 10px; }
+.leave-grid th { color: #71717a; font-weight: 700; text-align: center; }
+.leave-grid tbody th { padding-right: 6px; text-align: right; white-space: nowrap; }
+.leave-grid td { min-width: 22px; height: 24px; padding: 2px; border-radius: 5px; background: #f4f4f5; text-align: center; }
+.leave-grid td.weekend { background: #e4e4e7; }
+.leave-grid td.void { background: transparent; }
+.leave-grid td.today { box-shadow: inset 0 0 0 2px #18181b; }
+.leave-swatch { display: inline-grid; flex: 0 0 20px; place-items: center; width: 20px; height: 20px; border-radius: 4px; font-family: "Segoe UI Symbol", "Noto Sans Symbols 2", sans-serif; font-size: 15px; line-height: 1; font-style: normal; font-weight: 400; color: #18181b; background: #fff; }
+.leave-swatch.annual { background: var(--leave-annual); }
+.leave-swatch.half { background: var(--leave-half); }
+.leave-swatch.quarter { background: var(--leave-quarter); }
+.leave-swatch.birthday_half { background: var(--leave-birthday_half); }
+.leave-swatch.official { background: var(--leave-official); }
+.leave-swatch.sick { background: var(--leave-sick); }
+.leave-swatch.family { background: var(--leave-family); }
+.leave-swatch.other { background: var(--leave-other); }
+.leave-day-records { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.leave-panel .leave-body { padding-top: 12px; }
+/* 직원 카드 팝업 — 다른 팝업과 같은 규칙(곡률·안쪽 왼편 스크롤바·접히는 제목줄) */
+.leave-card-modal { width: min(1120px, calc(100vw - 36px)); max-height: 92vh; overflow-y: auto; border-radius: 9px; direction: rtl; scrollbar-width: thin; scrollbar-color: #c7c7cc transparent; }
+.leave-card-modal > * { direction: ltr; }
+.leave-card-modal::-webkit-scrollbar { width: 10px; }
+.leave-card-modal::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.leave-card-modal::-webkit-scrollbar-track { margin: 10px 0; background: transparent; }
+.leave-card-modal::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 999px; background-color: #c7c7cc; background-clip: content-box; }
+.leave-card-modal .modal-header { position: sticky; top: 0; z-index: 5; background: #fff; transition: min-height .18s ease; }
+.leave-card-modal.condensed .modal-header { min-height: 46px; box-shadow: 0 1px 0 rgba(9, 9, 11, .08); }
+.leave-card-modal.condensed .modal-header p { display: none; }
+.leave-card-modal.condensed .modal-header h2 { font-size: 16px; }
+.leave-card-modal.condensed .modal-header button { font-size: 20px; }
+/* 인사기록카드 안에서도 창 폭이 아닌 본문 폭을 기준으로 줄바꿈한다. */
+@container leave-ledger (max-width: 1000px) {
+  .leave-columns { grid-template-columns: minmax(0, 1fr); }
+  .leave-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container leave-ledger (max-width: 800px) {
+  .leave-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .leave-form .primary-button { grid-column: 1 / -1; }
+}
+@container leave-ledger (max-width: 460px) {
+  .leave-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .leave-form { grid-template-columns: minmax(0, 1fr); }
+  .leave-year-head .dash-chips { flex-wrap: wrap; }
+}
+
+/* ---- 앱 내부 대화상자 (app/erp-dialog.tsx). 브라우저 confirm/alert/prompt 대체. 팝업 공식과 같은 곡률·3단 구성. ---- */
+.erp-dialog-backdrop { z-index: 90; }
+.erp-dialog { width: min(460px, 100%); overflow: hidden; border: 1px solid #ececee; border-radius: 28px; background: #fff; animation: modalUp .2s ease; }
+.erp-dialog-head { padding: 22px 24px 0; }
+.erp-dialog-kicker { margin: 0 0 4px; color: #82908d; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.erp-dialog.danger .erp-dialog-kicker { color: #ff5a00; }
+.erp-dialog-head h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: #18181b; text-transform: none; }
+.erp-dialog-body { display: grid; gap: 12px; padding: 12px 24px 20px; }
+.erp-dialog-body p { margin: 0; color: #3f4a49; font-size: 13px; line-height: 1.65; white-space: pre-line; }
+.erp-dialog-body input, .erp-dialog-body textarea { width: 100%; height: auto; padding: 10px 12px; border: 1px solid #d4d4d8; border-radius: 12px; background: #f4f4f5; color: #18181b; font: inherit; font-size: 13px; outline: 0; }
+.erp-dialog-body textarea { resize: vertical; min-height: 72px; }
+.erp-dialog-body input:focus, .erp-dialog-body textarea:focus { border-color: #52525b; background: #fff; box-shadow: 0 0 0 3px #ececee; }
+.erp-dialog-hint { color: #82908d; font-size: 11px; }
+.erp-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; height: auto; padding: 14px 24px; border-top: 1px solid #ececee; background: #fafbfc; }
+.erp-dialog-actions button, .erp-dialog-actions > button:first-child { height: 38px; padding: 0 16px; border: 1px solid #dce1e9; border-radius: 10px; background: #fff; color: #667084; font-size: 12px; font-weight: 700; cursor: pointer; }
+.erp-dialog-actions .erp-dialog-primary { border-color: #18181b; background: #18181b; color: #fff; }
+.erp-dialog.danger .erp-dialog-actions .erp-dialog-primary { border-color: #e04e00; background: #ff5a00; }
+.erp-dialog-actions button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Single-language headings: align titles after removing English captions. */
+[data-korean-heading] { min-width: 0; }
+[data-korean-heading] > :is(h1, h2, h3, h4) { margin-block-start: 0; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; }
+
+.welcome-row > div:first-child, .module-hero > div:first-child { grid-template-columns: minmax(0, 1fr); row-gap: 6px; }
+.welcome-row h1, .module-hero h1 { grid-column: 1; }
+.section-heading, .table-toolbar, .detail-card-heading, .panel-header { min-height: 72px; height: auto; padding: 18px 24px; align-items: center; gap: 12px; }
+.modal-header { min-height: 72px; height: auto; padding: 14px 24px; gap: 16px; }
+.condensed .modal-header { padding-block: 10px; }
+.lifecycle-section-heading { min-height: 48px; align-items: center; }
+.checklist-group-heading { min-height: 52px; padding-block: 12px; }

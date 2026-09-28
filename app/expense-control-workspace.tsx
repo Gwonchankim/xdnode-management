@@ -87,7 +87,7 @@ export default function ExpenseControlWorkspace() {
   const eligibleExpenses = (transaction: CardTransaction) => data?.expenses.filter((expense) => expense.status === "APPROVED"
     && expense.payment_method === "CORPORATE_CARD" && expense.amount === transaction.amount && !expense.card_transaction_id) ?? [];
   return <div className="expense-control-workspace">
-    <section className="expense-control-hero"><div><p>SPEND CONTROL</p><h1>법인카드·지출증빙</h1><span>지출결의, 법인카드 거래, 증빙 검토, 지급원장과 은행 대사를 하나의 통제 흐름으로 연결합니다.</span></div><label>관리월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label></section>
+    <section className="expense-control-hero"><div data-korean-heading><h1>법인카드·지출증빙</h1><span>지출결의, 법인카드 거래, 증빙 검토, 지급원장과 은행 대사를 하나의 통제 흐름으로 연결합니다.</span></div><label>관리월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label></section>
     <div className="expense-control-guidance"><strong>자동 확정 금지</strong><span>{data?.sourceNote}</span><em>{data?.locked ? "마감 잠금" : "명시적 검토"}</em></div>
     {message && <div className="expense-control-message" role="status">{message}</div>}
     <section className="expense-control-metrics">
@@ -99,14 +99,14 @@ export default function ExpenseControlWorkspace() {
     </section>
 
     <section className="expense-control-setup">
-      <article className="panel corporate-card-form"><header><div><p>CARD MASTER</p><h2>법인카드 등록</h2></div><span>민감정보 최소화</span></header><form onSubmit={createCard}>
+      <article className="panel corporate-card-form"><header><div data-korean-heading><h2>법인카드 등록</h2></div><span>민감정보 최소화</span></header><form onSubmit={createCard}>
         <label>카드사<input required value={cardDraft.issuer} onChange={(event) => setCardDraft({ ...cardDraft, issuer: event.target.value })} /></label>
         <label>별칭<input required value={cardDraft.nickname} onChange={(event) => setCardDraft({ ...cardDraft, nickname: event.target.value })} placeholder="대표이사 카드" /></label>
         <label>끝 4자리<input required inputMode="numeric" maxLength={4} value={cardDraft.last4} onChange={(event) => setCardDraft({ ...cardDraft, last4: event.target.value.replace(/\D/g, "") })} /></label>
         <label>사용자<select value={cardDraft.holderEmployeeId} onChange={(event) => setCardDraft({ ...cardDraft, holderEmployeeId: event.target.value })}><option value="">공용·미지정</option>{companyEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label>
         <label>월 한도<input type="number" min="0" value={cardDraft.monthlyLimit} onChange={(event) => setCardDraft({ ...cardDraft, monthlyLimit: event.target.value })} /></label><button disabled={working}>카드 등록</button>
       </form><div className="corporate-card-list">{data?.cards.map((card) => <div key={card.id}><span>{card.issuer}</span><p><strong>{card.nickname} · •••• {card.last4}</strong><small>{companyEmployees.find((employee) => employee.id === card.holder_employee_id)?.name ?? "공용"} · 한도 {won(card.monthly_limit)}</small></p><em>{card.status}</em>{card.status === "ACTIVE" && <button type="button" onClick={() => void mutate({ action: "SET_CARD_STATUS", cardId: card.id, status: "SUSPENDED" }, "카드를 사용중지했습니다.")}>중지</button>}{card.status !== "ACTIVE" && <button type="button" onClick={() => void mutate({ action: "SET_CARD_STATUS", cardId: card.id, status: "ACTIVE" }, "카드를 다시 활성화했습니다.")}>활성화</button>}</div>)}</div></article>
-      <article className="panel card-transaction-form"><header><div><p>CARD SOURCE</p><h2>카드 거래 등록</h2></div><span>명세서 연동 전 직접 등록</span></header><form onSubmit={registerTransaction}>
+      <article className="panel card-transaction-form"><header><div data-korean-heading><h2>카드 거래 등록</h2></div><span>명세서 연동 전 직접 등록</span></header><form onSubmit={registerTransaction}>
         <label>카드<select required value={transactionDraft.cardId} onChange={(event) => setTransactionDraft({ ...transactionDraft, cardId: event.target.value })}><option value="">선택</option>{activeCards.map((card) => <option key={card.id} value={card.id}>{card.nickname} · {card.last4}</option>)}</select></label>
         <label>카드사 거래 참조값<input required minLength={4} value={transactionDraft.externalReference} onChange={(event) => setTransactionDraft({ ...transactionDraft, externalReference: event.target.value })} /></label>
         <label>거래일<input required type="date" max={data?.asOf} value={transactionDraft.transactionDate} onChange={(event) => setTransactionDraft({ ...transactionDraft, transactionDate: event.target.value })} /></label>
@@ -116,7 +116,7 @@ export default function ExpenseControlWorkspace() {
       </form></article>
     </section>
 
-    <section className="panel card-transaction-ledger"><header><div><p>CARD RECONCILIATION</p><h2>{period} 카드 거래 대사</h2></div><span>{data?.transactions.length ?? 0}건</span></header>
+    <section className="panel card-transaction-ledger"><header><div data-korean-heading><h2>{period} 카드 거래 대사</h2></div><span>{data?.transactions.length ?? 0}건</span></header>
       <div className="card-transaction-row head"><span>카드·거래일</span><span>가맹점·참조값</span><span>금액</span><span>상태</span><span>지출결의 연결</span><span>처리</span></div>
       {data?.transactions.map((transaction) => <div className={`card-transaction-row ${transaction.status.toLowerCase()}`} key={transaction.id}>
         <p><strong>{transaction.nickname} · {transaction.last4}</strong><small>{transaction.transaction_date} · {transaction.direction === "CHARGE" ? "승인" : "취소·환불"}</small></p>
@@ -127,7 +127,7 @@ export default function ExpenseControlWorkspace() {
       </div>)}{!data?.transactions.length && <p className="expense-control-empty">등록된 카드 거래가 없습니다. 실제 카드사 참조값이 있는 거래만 등록해 주세요.</p>}
     </section>
 
-    <section className="panel expense-evidence-ledger"><header><div><p>EVIDENCE & SETTLEMENT</p><h2>{period} 지출증빙·지급 대사</h2><span>증빙 파일 존재만으로 적격성을 자동 확정하지 않습니다.</span></div><em>{data?.expenses.length ?? 0}건</em></header>
+    <section className="panel expense-evidence-ledger"><header><div data-korean-heading><h2>{period} 지출증빙·지급 대사</h2><span>증빙 파일 존재만으로 적격성을 자동 확정하지 않습니다.</span></div><em>{data?.expenses.length ?? 0}건</em></header>
       {data?.expenses.map((expense) => { const review = reviewFor(expense); const completed = ["VERIFIED", "EXEMPT"].includes(expense.evidence_status); return <article className={Number(expense.duplicate_count) > 0 ? "duplicate" : ""} key={expense.id}>
         <div className="expense-evidence-head"><p><strong>{expense.vendor || "거래처 미입력"} · {expense.title}</strong><small>{expense.requested_date} · {paymentLabel[expense.payment_method] ?? expense.payment_method} · {expense.account_name || "계정 미지정"}</small></p><strong>{won(expense.amount)}</strong><em>{expense.status}</em>{Number(expense.duplicate_count) > 0 && <span>중복 후보 {expense.duplicate_count}건</span>}</div>
         <div className="expense-evidence-documents"><label><input type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" disabled={working || data.locked} onChange={(event) => void uploadEvidence(expense, event)} /><span>+ 증빙 추가</span></label>{expense.documents.map((document) => <a key={document.id} href={document.downloadUrl}>{document.fileName} · v{document.version}</a>)}</div>

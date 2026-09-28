@@ -117,7 +117,7 @@ export default function MasterImpactCaseWorkspace() {
   const overdueIds = useMemo(() => new Set((data?.cases ?? []).filter((item) => item.isOverdue).map((item) => item.id)), [data]);
 
   return <div className="master-impact-case-body">
-    <section className="master-impact-case-boundary"><div><p>MASTER DATA RESOLUTION</p><h3>기준정보 영향 해결 큐</h3><span>차단 항목을 담당자·기한·SLA·원장 재검증·증빙까지 연결해 종결합니다.</span></div><ul><li>자동 해결 없음</li><li>자동 재배정 없음</li><li>회사 직원만 배정</li><li>재검증 필수</li><li>증빙 필수</li></ul></section>
+    <section className="master-impact-case-boundary"><div data-korean-heading><h3>기준정보 영향 해결 큐</h3><span>차단 항목을 담당자·기한·SLA·원장 재검증·증빙까지 연결해 종결합니다.</span></div><ul><li>자동 해결 없음</li><li>자동 재배정 없음</li><li>회사 직원만 배정</li><li>재검증 필수</li><li>증빙 필수</li></ul></section>
     {message && <div className="master-impact-case-message" role="status">{message}</div>}
     {loading && <div className="master-impact-case-loading">차단 영향과 담당 업무를 불러오는 중입니다.</div>}
     {data && <>

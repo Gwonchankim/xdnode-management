@@ -56,7 +56,7 @@ export default function SalesSheetInsightsView() {
 
   return <>
     <section className="panel sales-sheet-account-view">
-      <header><div><p>ACCOUNT TIMELINE</p><h2>거래처 통합 뷰</h2><span>고객사명으로 검색하면 선점권 등록·문의·매출·납품·AS 이력을 한 번에 봅니다. 완전히 같은 이름만 묶입니다.</span></div></header>
+      <header><div data-korean-heading><h2>거래처 통합 뷰</h2><span>고객사명으로 검색하면 선점권 등록·문의·매출·납품·AS 이력을 한 번에 봅니다. 완전히 같은 이름만 묶입니다.</span></div></header>
       {message && <div className="sales-live-message" role="status">{message}</div>}
       <div className="sales-sheet-account-search">
         <input type="search" placeholder="고객사명 검색 (예: 한국과학기술원)" value={accountQuery} onChange={(event) => onAccountQueryChange(event.target.value)} />
@@ -77,7 +77,7 @@ export default function SalesSheetInsightsView() {
     </section>
 
     <section className="panel sales-sheet-alerts-view">
-      <header><div><p>DATA QUALITY</p><h2>데이터 품질 경고</h2><span>지금 챙겨야 할 수금 지연·정체 건을 모아 보여줍니다.</span></div></header>
+      <header><div data-korean-heading><h2>데이터 품질 경고</h2><span>지금 챙겨야 할 수금 지연·정체 건을 모아 보여줍니다.</span></div></header>
       <div className="sales-sheet-alert-group">
         <h3>수금예정일이 지났는데 수금이 안 된 확정 매출 ({alerts?.overdueCollections.length ?? 0}건)</h3>
         {(alerts?.overdueCollections ?? []).map((row) => <div key={row.id}><span>{row.customer_name}{row.end_customer_name ? ` · ${row.end_customer_name}` : ""}</span><span>{row.item}</span><time>{row.collection_due_date} 예정</time><strong>{won(row.sale_total)}</strong></div>)}

@@ -1,44 +1,44 @@
 // HR·임금계산 보조 어시스턴트를 Claude CLI 로 구동하는 로컬 다리.
 //
 // scripts/codex-assistant-bridge.mjs 를 대체한다. 요청·응답 모양과 프롬프트 규칙은 같고
-// 실행 엔진만 바뀐다. 되돌릴 수 있도록 Codex 다리(3110)는 남겨 두고 포트를 나눈다.
+// 실행 엔진만 바뀐다. Codex 다리(3110)는 더 띄우지 않지만, buildPrompt 의 원본이라 파일은 남긴다.
 //
 // Codex 와 다른 점 두 가지를 여기서 메운다.
 //  1) Codex 의 --output-schema 같은 강제 수단이 없다 → 응답을 이 파일에서 직접 검증한다.
 //     proposedActions 는 실제 ERP 를 바꾸는 변경안이라, 모양이 틀린 응답을 화면에 넘기면 안 된다.
-//  2) Codex 의 --sandbox read-only 대신 도구를 막는다. 파일을 읽어야 하므로 Read·Grep·Glob 은
-//     남기고 쓰기·실행·네트워크 도구를 모두 끈다.
+//  2) Codex 의 --sandbox read-only 대신 도구를 모두 끈다(--tools ""). 저장소 파일은 읽지 않는다.
+//     예전에는 저장소 루트에서 Read·Grep·Glob 을 켜고 돌아, 탭 권한과 상관없이 .env.local 의 비밀값과
+//     직원 명부까지 읽을 수 있었다. 이제 근거는 /api/assistant 가 권한 검사를 마친 뒤 넘기는 CONTEXT JSON 뿐이다.
 import { createServer } from "node:http";
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.XD_NODE_CLAUDE_ASSISTANT_PORT || 3130);
+// 저장소 경로는 시작할 때 스키마와 buildPrompt 를 읽는 데만 쓴다. Claude CLI 의 작업 폴더로는 쓰지 않는다.
 const PROJECT_PATH = resolve(process.env.XD_NODE_PROJECT_PATH || process.cwd());
 const SCHEMA_PATH = join(PROJECT_PATH, "scripts", "codex-assistant-response-schema.json");
 const CLAUDE_BIN = process.env.XD_NODE_CLAUDE_BIN || "claude";
 const MODEL = process.env.XD_NODE_CLAUDE_MODEL || "sonnet";
 const EFFORT = process.env.XD_NODE_CLAUDE_EFFORT || "medium";
-const ALLOWED_ORIGINS = new Set(["http://localhost:3000", "http://127.0.0.1:3000"]);
+// 정상 호출은 ERP 서버(/api/assistant)가 이 PC 안에서 하는 서버 대 서버 요청이라 Origin 이 없다.
+// Origin 이 붙은 요청은 브라우저가 직접 부른 것이므로 권한 검사를 건너뛰지 못하게 거부한다.
+const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
 const ALLOWED_MODULES = new Set(["hr", "compensation", "sales"]);
 const MAX_REQUEST_BYTES = 256 * 1024;
 const MAX_QUESTION_LENGTH = 2000;
 const MAX_CONTEXT_BYTES = 192 * 1024;
 const RUN_TIMEOUT_MS = 300_000;
 
-// 파일을 읽어 근거를 대야 하므로 Read·Grep·Glob 은 남긴다. 나머지는 모두 막는다.
-const DISABLED_TOOLS = ["Bash", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "Task", "TodoWrite"];
+// --tools "" 로 내장 도구를 모두 끈다. 아래 목록은 CLI 가 --tools 를 무시하는 경우를 위한 이중 장치다.
+const DISABLED_TOOLS = ["Bash", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "Task", "TodoWrite", "Read", "Grep", "Glob", "PowerShell"];
 
 let activeRequest = false;
-let schemaCache = null;
 
-function json(response, status, body, origin) {
-  response.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-    ...(origin && ALLOWED_ORIGINS.has(origin) ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {}),
-  });
+function json(response, status, body) {
+  response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   response.end(JSON.stringify(body));
 }
 
@@ -54,10 +54,13 @@ async function loadBuildPrompt() {
   return new Function(`${source.slice(start, end)}; return buildPrompt;`)();
 }
 
-async function loadSchema() {
-  if (!schemaCache) schemaCache = JSON.parse(await readFile(SCHEMA_PATH, "utf8"));
-  return schemaCache;
-}
+// 요청을 처리하는 동안에는 저장소 파일을 열지 않는다. 필요한 것은 시작할 때 한 번 메모리에 올린다.
+const [buildPrompt, schema, RUN_DIRECTORY] = await Promise.all([
+  loadBuildPrompt(),
+  readFile(SCHEMA_PATH, "utf8").then((text) => JSON.parse(text)),
+  // Claude CLI 는 이 빈 폴더에서 돈다. 저장소 안에서 돌면 CLAUDE.md·프로젝트 설정까지 딸려 온다.
+  mkdtemp(join(tmpdir(), "xdnode-assistant-")),
+]);
 
 /** 스키마 검사. 이 스키마는 형태가 단순해서 필요한 규칙만 직접 본다
  *  (type, enum, required, additionalProperties, items). 새 의존성을 들이지 않기 위함이다. */
@@ -115,12 +118,13 @@ function runClaude(systemPrompt, prompt) {
       "--effort", EFFORT,
       "--output-format", "json",
       "--strict-mcp-config",
+      "--tools", "",
       "--disallowed-tools", ...DISABLED_TOOLS,
       "--system-prompt", systemPrompt,
     ], {
-      // 프로젝트 안에서 돌려야 파일을 읽어 근거를 댈 수 있다(Codex 의 -C 와 같은 역할).
-      // shell 은 쓰지 않는다. Windows 에서 인자가 이스케이프 없이 이어 붙어 프롬프트가 잘린다.
-      cwd: PROJECT_PATH,
+      // shell 은 쓰지 않는다. Windows 에서 인자가 이스케이프 없이 이어 붙어 프롬프트가 잘리고,
+      // --tools 뒤의 빈 문자열 인자도 사라진다.
+      cwd: RUN_DIRECTORY,
       windowsHide: true,
     });
     let stdout = "";
@@ -143,25 +147,16 @@ function runClaude(systemPrompt, prompt) {
 }
 
 const server = createServer(async (request, response) => {
-  const origin = request.headers.origin;
-  if (request.method === "OPTIONS") {
-    if (!origin || !ALLOWED_ORIGINS.has(origin)) return json(response, 403, { error: "허용되지 않은 로컬 출처입니다." });
-    response.writeHead(204, {
-      "Access-Control-Allow-Origin": origin,
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type",
-      Vary: "Origin",
-    });
-    return response.end();
+  if (request.headers.origin !== undefined || !ALLOWED_HOSTS.has(String(request.headers.host ?? ""))) {
+    return json(response, 403, { error: "ERP 서버만 호출할 수 있는 로컬 다리입니다." });
   }
   if (request.method === "GET" && request.url === "/health") {
-    return json(response, 200, { status: "ok", engine: "claude", model: MODEL, effort: EFFORT, modules: [...ALLOWED_MODULES] }, origin);
+    return json(response, 200, { status: "ok", engine: "claude", model: MODEL, effort: EFFORT, modules: [...ALLOWED_MODULES] });
   }
   if (request.method !== "POST" || request.url !== "/assistant") {
-    return json(response, 404, { error: "지원하지 않는 경로입니다." }, origin);
+    return json(response, 404, { error: "지원하지 않는 경로입니다." });
   }
-  if (origin && !ALLOWED_ORIGINS.has(origin)) return json(response, 403, { error: "허용되지 않은 로컬 출처입니다." }, origin);
-  if (activeRequest) return json(response, 429, { error: "이미 처리 중인 요청이 있습니다. 끝난 뒤 다시 시도해 주세요." }, origin);
+  if (activeRequest) return json(response, 429, { error: "이미 처리 중인 요청이 있습니다. 끝난 뒤 다시 시도해 주세요." });
 
   let raw = "";
   let tooLarge = false;
@@ -169,21 +164,20 @@ const server = createServer(async (request, response) => {
     raw += chunk;
     if (raw.length > MAX_REQUEST_BYTES) { tooLarge = true; break; }
   }
-  if (tooLarge) return json(response, 413, { error: "요청이 너무 큽니다." }, origin);
+  if (tooLarge) return json(response, 413, { error: "요청이 너무 큽니다." });
 
   let payload;
-  try { payload = JSON.parse(raw); } catch { return json(response, 400, { error: "요청 본문을 읽지 못했습니다." }, origin); }
+  try { payload = JSON.parse(raw); } catch { return json(response, 400, { error: "요청 본문을 읽지 못했습니다." }); }
   const module = String(payload?.module ?? "").trim();
   const question = String(payload?.question ?? "").trim();
   const context = payload?.context ?? {};
-  if (!ALLOWED_MODULES.has(module)) return json(response, 400, { error: "허용되지 않은 업무 영역입니다." }, origin);
-  if (!question) return json(response, 400, { error: "질문을 입력해 주세요." }, origin);
-  if (question.length > MAX_QUESTION_LENGTH) return json(response, 413, { error: "질문이 너무 깁니다." }, origin);
-  if (JSON.stringify(context).length > MAX_CONTEXT_BYTES) return json(response, 413, { error: "첨부한 자료가 너무 큽니다." }, origin);
+  if (!ALLOWED_MODULES.has(module)) return json(response, 400, { error: "허용되지 않은 업무 영역입니다." });
+  if (!question) return json(response, 400, { error: "질문을 입력해 주세요." });
+  if (question.length > MAX_QUESTION_LENGTH) return json(response, 413, { error: "질문이 너무 깁니다." });
+  if (JSON.stringify(context).length > MAX_CONTEXT_BYTES) return json(response, 413, { error: "첨부한 자료가 너무 큽니다." });
 
   activeRequest = true;
   try {
-    const [buildPrompt, schema] = await Promise.all([loadBuildPrompt(), loadSchema()]);
     const prompt = buildPrompt(module, question, context);
     const systemPrompt = [
       "출력은 오직 JSON 하나만 반환하세요. 설명, 머리말, 코드펜스를 붙이지 마세요.",
@@ -194,19 +188,19 @@ const server = createServer(async (request, response) => {
     const result = await runClaude(systemPrompt, prompt);
     let parsed;
     try { parsed = JSON.parse(extractJson(result.text)); } catch {
-      return json(response, 502, { error: "Claude 응답을 JSON 으로 읽지 못했습니다." }, origin);
+      return json(response, 502, { error: "Claude 응답을 JSON 으로 읽지 못했습니다." });
     }
     // Codex 의 --output-schema 를 대신하는 검증. 변경안이 화면으로 넘어가기 전 마지막 관문이다.
     const errors = validate(parsed, schema);
     if (errors.length) {
       console.error(`[claude-assistant-bridge] 스키마 위반 ${errors.length}건: ${errors.slice(0, 3).join(" / ")}`);
-      return json(response, 502, { error: `응답 형식이 올바르지 않습니다. (${errors[0]})` }, origin);
+      return json(response, 502, { error: `응답 형식이 올바르지 않습니다. (${errors[0]})` });
     }
     console.log(`[claude-assistant-bridge] ok ${result.ms}ms cost=$${result.cost ?? "?"} actions=${parsed.proposedActions.length} questions=${parsed.interviewQuestions.length}`);
-    return json(response, 200, parsed, origin);
+    return json(response, 200, parsed);
   } catch (error) {
     console.error(`[claude-assistant-bridge] 실패: ${error instanceof Error ? error.message : error}`);
-    return json(response, 502, { error: error instanceof Error ? error.message : "어시스턴트 응답에 실패했습니다." }, origin);
+    return json(response, 502, { error: error instanceof Error ? error.message : "어시스턴트 응답에 실패했습니다." });
   } finally {
     activeRequest = false;
   }

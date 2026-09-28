@@ -109,7 +109,9 @@ test("retirement effectiveness and compensation confirmation are server-controll
   assert.match(compensation, /annualSalary: employee\.annual_salary/);
   assert.match(compensation, /\["CREATE", "LOAD_HR"\]\.includes\(action\)/);
   assert.match(compensation, /NULLIF\(replace\(join_date, '\.', '-'\), ''\) IS NOT NULL/);
-  assert.match(compensation, /BETWEEN \? AND \?/);
+  // 퇴직일은 인사기록 JSON 과 퇴직 요청 표 두 곳을 합쳐 판단한다(예전에는 JSON 만 봐서 퇴직자가 퇴사월 임금안에서 빠졌다).
+  assert.ok(compensation.includes('exitByEmployee.get(employee.employee_id) || ""'));
+  assert.ok(compensation.includes("if (exit) return exit >= start;"));
   assert.match(compensation, /COMPENSATION_HR_DRAFT_LOADED/);
   assert.match(calculator, /: "급여 작성"\}<\/button>/);
   assert.match(calculator, /compensationAction\("LOAD_HR"\)/);
@@ -310,7 +312,7 @@ test("finance forecast and account risk share explainable decision models with t
   ]);
   assert.match(page, /buildSalesForecast\(financeCurrentData\.salesDaily2026, financeCurrentInsights\.taxInvoicesAsOf\)/);
   assert.match(page, /buildAccountRiskModel\(financeCurrentData\.accountSummary/);
-  assert.match(page, /YEAR-END SCENARIOS/);
+  assert.match(page, /<h2>연말 매출 전망 · 기준<\/h2>/);
   assert.match(page, /위험 신호와 배점/);
   assert.doesNotMatch(page, /const elapsedDays2026/);
   assert.doesNotMatch(page, /const accountRiskScore/);
@@ -603,7 +605,10 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.doesNotMatch(workspace, /<ApplicantInterviewRecorder applicantId=/);
   assert.match(workspace, /className="applicant-interview-split"/);
   assert.match(workspace, /<span>면접 질문지<\/span>/);
-  assert.match(workspace, /AI 면접질문 생성/);
+  // 질문지는 세 단계다: 면접일 입력 시 기본 질문지 자동 작성, 심화 질문 생성, 역제안 질문 생성.
+  assert.match(workspace, /심화 질문 생성/);
+  assert.match(workspace, /역제안 질문 생성/);
+  assert.doesNotMatch(workspace, /AI 면접질문 생성/);
   assert.match(styles, /\.applicant-interview-split \{/);
   // 지원자가 다른 자리를 역으로 제안하면 질문 구성이 바뀐다(13개 안팎, 분류 2개 신설).
   assert.match(workspace, /counterProposal\?: string;/);
@@ -665,8 +670,8 @@ test("applicant popup owns screening and interview, and the list only reports st
   // 면접 전형 진행 표는 세 갈래를 한 표에 담되 손댈 일이 남은 순서로 세운다.
   assert.match(workspace, /AWAITING: "결과 입력 대기", SCHEDULED: "면접 예정", PASSED: "면접 합격"/);
   assert.match(workspace, /const interviewTrackOrder: Record<InterviewTrack, number> = \{ AWAITING: 0, SCHEDULED: 1, PASSED: 2 \};/);
-  assert.match(workspace, /if \(applicant\.stage === INTERVIEW_PASSED_STAGE\) return "PASSED";/);
-  assert.match(workspace, /\|\| applicant\.stage === INTERVIEW_PASSED_STAGE\)/);
+  assert.match(workspace, /if \(applicant\.stage === INTERVIEW_PASSED_STAGE \|\| applicant\.stage === OFFER_PREPARED_STAGE\) return "PASSED";/);
+  assert.match(workspace, /\|\| applicant\.stage === INTERVIEW_PASSED_STAGE \|\| applicant\.stage === OFFER_PREPARED_STAGE\)/);
   assert.match(styles, /\.interview-track\.awaiting \{/);
   assert.match(styles, /\.interview-track\.passed \{/);
   // 처우를 제안하면 합격 안내문이 그 값으로 자동 작성된다. 수습 안내는 선택이라 끄면 그 줄이 빠진다.
@@ -746,10 +751,22 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.match(styles, /\.offer-message-tokens \{/);
   assert.match(workspace, /<th className="applicant-status-column">종료 구분<\/th>/);
   assert.match(styles, /\.closed-applicant-panel \{/);
-  // 탈락자 표 위에 면접 합격자 표가 있고, 처우가 저장된 사람만 입사예정일 순으로 모인다.
-  assert.match(workspace, /className="panel table-panel passed-applicant-panel"/);
-  assert.match(workspace, /OFFER_STAGES\.includes\(applicant\.stage\) && applicant\.offer/);
+  // 면접 전형 진행 아래에 「면접 결과 입력」 표가 있고, 면접 시각이 지났는데 결과가 없는 사람만 담는다.
+  assert.match(workspace, /className="panel table-panel interview-result-panel"/);
+  assert.match(workspace, /<h2>면접 결과 입력<\/h2>/);
+  assert.match(workspace, /const awaiting = interviewRows\.filter\(\(row\) => row\.track === "AWAITING"\)\.map\(\(row\) => row\.applicant\);/);
+  // 그 사람들은 면접 전형 진행 표에서 빠진다 — 한 사람이 한 표에만 보인다.
+  assert.match(workspace, /const interviewing = interviewRows\.filter\(\(row\) => row\.track !== "AWAITING"\);/);
+  // 처우 제안 준비 단계도 면접이 끝난 사람이라 합격 트랙에 남아 어디에도 안 보이는 일이 없다.
+  assert.match(workspace, /applicant\.stage === INTERVIEW_PASSED_STAGE \|\| applicant\.stage === OFFER_PREPARED_STAGE\) return "PASSED";/);
+  assert.match(workspace, /className="interview-result-button" onClick=\{\(\) => onSelect\(applicant\.id\)\}>결과 입력 →<\/button>/);
+  assert.match(workspace, /<td colSpan=\{9\} className="empty-cell">결과를 입력할 면접이 없습니다\./);
+  // 입사 예정자는 처우 수락자만 입사예정일 순. 예전 「면접 결과」 표와 그 상태 배지는 없다.
+  assert.match(workspace, /OFFER_STAGES\.includes\(applicant\.stage\) && \["ACCEPTED", "ONBOARDED"\]\.includes\(applicant\.offer\?\.status \?\? ""\)/);
   assert.match(workspace, /<th>입사예정일<\/th>/);
+  assert.doesNotMatch(workspace, /passed-applicant-panel|passedStatusTone/);
+  assert.doesNotMatch(styles, /\.passed-status/);
+  assert.match(styles, /\.interview-result-panel \{/);
   // 면접 합격은 이제 실제 단계다. 처우를 제안하기 전에도 "면접 합격"으로 읽혀야 한다.
   assert.match(workspace, /const INTERVIEW_PASSED_STAGE = "면접 합격";/);
   // 처우까지 제안했으면 면접 절차가 끝난 것이라 "면접 종료"로 적는다.
@@ -759,18 +776,8 @@ test("applicant popup owns screening and interview, and the list only reports st
   // 타사 합격은 우리가 떨어뜨린 "탈락"과 구분해 채용단계에 따로 적는다.
   assert.match(workspace, /const OTHER_OFFER_STAGE = "타사 합격";/);
   assert.match(workspace, /OTHER_OFFER: OTHER_OFFER_STAGE/);
-  assert.match(styles, /\.passed-applicant-panel \{/);
-  // 면접 결과의 진행 상태는 값마다 색이 다르고, 같은 사람이 나오는 채용 종료 표와 색 어휘를 맞춘다.
-  assert.match(workspace, /function passedStatusTone\(stage: string\)/);
-  assert.match(workspace, /if \(stage === "채용 제안 거절"\) return "decline";/);
-  assert.match(workspace, /className=\{`passed-status \$\{passedStatusTone\(applicant\.stage\)\}`\}/);
-  assert.match(styles, /\.passed-status\.waiting \{/);
-  assert.match(styles, /\.passed-status\.join \{/);
-  assert.match(styles, /\.passed-status\.decline \{/);
-  assert.match(styles, /\.passed-status\.other \{/);
-  // 면접 결과 표에도 연락처가 있고, 채용 페이지의 모든 표가 같은 열 너비 규칙을 쓴다.
+  // 입사 예정자 표에도 연락처가 있고, 채용 페이지의 모든 표가 같은 열 너비 규칙을 쓴다.
   assert.match(workspace, /<th className="applicant-phone-cell">연락처<\/th><th className="applicant-to-column">채용요청·TO<\/th><th>제안 직무<\/th>/);
-  assert.match(workspace, /<td colSpan=\{10\} className="empty-cell">처우를 제안한 지원자가 없습니다\./);
   assert.match(styles, /\.recruitment-page \.table-panel \.data-table \.applicant-phone-cell \{ min-width: 132px; \}/);
   assert.match(styles, /\.recruitment-page \.table-panel \.data-table \.applicant-to-column \{ min-width: 200px; \}/);
   assert.match(styles, /\.recruitment-page \.table-panel \.data-table \.applicant-owner-column \{ min-width: 132px; \}/);
@@ -784,7 +791,7 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.match(recruitmentRoute, /const monthly = Math\.ceil\(annual \/ 12\);/);
   assert.match(recruitmentRoute, /const pay = onboardingPayBreakdown\(offer\.annual_salary\);/);
   assert.match(recruitmentRoute, /annual_salary, base_pay, meal_allowance, childcare_allowance, vehicle_allowance, first_term_pay_percent, updated_at\)/);
-  assert.match(recruitmentRoute, /ALTER TABLE hr_employee_records ADD COLUMN \$\{name\} \$\{definition\}/);
+  assert.match(recruitmentRoute, /await ensureHrEmployeeRecordsSchema\(db\)/);
 
   // 근로계약서: 회사 양식의 빈칸만 {{토큰}}으로 바꿔 두고, 인사기록카드 값으로 채워 브라우저에서 내려준다.
   const contract = await read("app/hr-employment-contract.ts");
@@ -861,7 +868,7 @@ test("applicant popup owns screening and interview, and the list only reports st
 
   // 3개월 첫 계약 만료 → 정규직 전환. 대시보드가 만료 30일 전부터 보여 주고, 전환을 기록하면 목록에서 빠진다.
   assert.match(employeeRecords, /regular_contract_date = excluded\.regular_contract_date,/);
-  assert.match(recruitmentRoute, /\["regular_contract_date", "TEXT NOT NULL DEFAULT \x27\x27"\]/);
+  assert.match(await read("app/hr-employee-schema.ts"), /\["regular_contract_date", "TEXT NOT NULL DEFAULT \x27\x27"\]/);
   assert.match(workspace, /async function markRegularContract\(employee: Employee, date: string, review: FirstTermReview\)/);
   // 전환이든 종료든 계약서 제2조의 기준(직무수행·근무태도·협업)으로 평가를 먼저 남긴다. 종료는 퇴직 절차로 바로 이어진다.
   assert.match(workspace, /async function endFirstTermContract\(employee: Employee, endDate: string, review: FirstTermReview\)/);
@@ -909,7 +916,7 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.match(workspace, /<CatalogManager title="직무 관리"/);
   // 인사기록카드·처우 확정·입사 정보 수정이 같은 목록을 쓴다. 정적 기준자료를 직접 읽는 select 는 남지 않는다.
   assert.doesNotMatch(workspace, /companyJobTitles\.filter/);
-  assert.match(workspace, /<LifecycleManagementView jobTitles=\{jobTitles\} ranks=\{ranks\} \/>/);
+  assert.match(workspace, /<LifecycleManagementView jobTitles=\{jobTitles\} ranks=\{ranks\} onSelectApplicant=\{setSelectedApplicantId\}/);
   // 인사문서는 재직자와 퇴사자를 나눠 본다.
   assert.match(workspace, /const scopedEmployees = employees\.filter\(\(employee\) => \(scope === "active"\) === isCurrentEmployee\(employee\)\);/);
   assert.match(workspace, /className="document-scope"/);
@@ -1164,9 +1171,8 @@ test("leave and attendance workflows persist real manual records and approval ta
   assert.match(api, /resource === "leaveRequest"/);
   assert.match(api, /createApprovalRequest/);
   assert.match(engine, /source_type, source_id/);
-  // 임금안 초안에만 쓰는 severanceToPayroll 은 정산 저장과 같은 write 권한이다. 승인 권한이 필요한
-  // 결재성 resource 와 섞이지 않도록 목록을 그대로 고정한다.
-  assert.match(api, /\["retirementChecklist", "retirementSettlement", "lifecycleTask", "severanceToPayroll"\]\.includes\(resource\) \? "write" : "approve"/);
+  // 체크리스트·입사 과제만 write. 정산 금액 확정과 임금안 반영(severanceToPayroll)은 돈이 움직이므로 approve 권한이다(2026-09-21 점검 후 상향).
+  assert.match(api, /\["retirementChecklist", "lifecycleTask"\]\.includes\(resource\) \? "write" : "approve"/);
   assert.match(api, /'RECORDED', 'MANUAL'/);
   assert.match(view, /자동연동 전까지 자료 출처는 수기 입력/);
   assert.match(view, /Math\.round\(Number\(leaveDraft\.units\) \* 100\)/);
@@ -1540,7 +1546,7 @@ test("management reports govern structured decisions and convert approved outcom
   assert.match(api, /decisionOutcomes/);
   assert.match(api, /미결정 안건을 모두 승인·보류·반려한 뒤 보고서를 개정/);
   assert.match(engine, /finance_management_decisions SET status = 'DRAFT'/);
-  assert.match(workspace, /DECISION REGISTER/);
+  assert.match(workspace, /<h2>경영 의사결정 안건<\/h2>/);
   assert.match(workspace, /후속조치 자동 생성/);
   assert.match(operations, /management-report-decisions/);
   assert.match(plan, /DRAFT → PENDING → APPROVED \| DEFERRED \| REJECTED/);
@@ -1588,9 +1594,11 @@ test("direct retirement approval activates a durable checklist and applies the d
     read("app/api/hr/employee-records/route.ts"), read("app/hr-workspace.tsx"),
   ]);
   assert.match(migration, /hr_retirement_requests/);
-  assert.match(api, /RETIREMENT_APPROVED/);
-  assert.match(api, /VALUES \(\?, \?, \?, \?, 'IN_PROGRESS'/);
-  assert.doesNotMatch(api, /requestType: "RETIREMENT"/);
+  // 퇴직 요청은 SUBMITTED 로 저장되고 결재선(HR_RETIREMENT)을 탄다. 요청자 본인만 결재선에 있으면 엔진이 자동 승인해 곧바로 IN_PROGRESS 가 된다.
+  assert.match(api, /RETIREMENT_APPROVED" : "RETIREMENT_SUBMITTED/);
+  assert.match(api, /VALUES \(\?, \?, \?, \?, 'SUBMITTED'/);
+  assert.match(api, /requestType: "RETIREMENT"/);
+  assert.match(api, /targetEntityType: "HR_RETIREMENT"/);
   assert.match(api, /resource === "retirementChecklist"/);
   assert.match(activator, /WHERE retirement_date <= \? AND \(status IN \('IN_PROGRESS', 'READY'\) OR \(status = 'EFFECTIVE'/);
   assert.match(activator, /"COMPLETED" : "EFFECTIVE"/);
@@ -1694,7 +1702,7 @@ test("financial alert outcomes are frozen into treasury, management reporting an
   assert.match(treasuryView, /snapshot\.alertActions \?\?/);
   assert.match(managementApi, /ALERT_ACTIONS_OPEN/);
   assert.match(managementApi, /ERP 재무 경보 조치원장/);
-  assert.match(managementView, /ALERT ACTION CONTROL/);
+  assert.match(managementView, /<h2>재무 경보 조치현황<\/h2>/);
   assert.match(managementView, /snapshot\.sections\.alertActions \?\?/);
   assert.match(closeApi, /FINANCE_ALERT_ACTIONS/);
   assert.match(closeApi, /highCriticalUnresolvedCount > 0 \? "FAIL"/);
@@ -1786,7 +1794,7 @@ test("recruitment requisitions reserve approved gaps and link applicants through
   assert.match(approval, /REQUISITION: "채용요청 승인"/);
   assert.match(approval, /targetEntityType === "HR_RECRUITMENT_REQUISITION"/);
   // A sole approver registering their own requisition finishes the whole flow in one step.
-  assert.match(approval, /AUTO_APPROVE_WHEN_SELF = new Set<string>\(\["hr:PAYROLL_RUN", "recruitment:REQUISITION"\]\)/);
+  assert.match(approval, /AUTO_APPROVE_WHEN_SELF = new Set<string>\(\["hr:PAYROLL_RUN", "hr:RETIREMENT", "recruitment:REQUISITION"\]\)/);
   assert.match(approval, /export async function willAutoApproveForSelf/);
   assert.match(api, /willAutoApproveForSelf\(db, authorization\.principal, requisitionApprovalInput\(created, fresh\)\)/);
   assert.match(api, /submitRequisition\(authorization\.principal, created, fresh, now\)/);
@@ -2134,7 +2142,9 @@ test("HR audio transcription separates consent, AI attempts and one-time human r
   assert.match(applicantApi, /지원자의 동의 확인/);
   assert.match(workspace, /실시간 전사 초안/);
   assert.match(workspace, /<AudioTranscriptionControl entityType="EMPLOYEE_INTERVIEW"/);
-  assert.match(workspace, /<AudioTranscriptionControl entityType="APPLICANT_INTERVIEW"/);
+  // 지원자 면접 녹음 화면(ApplicantInterviewRecorder)은 c3738bc 이후 어디에도 붙지 않은 죽은 코드라 2026-09-21 정리했다.
+  // 지원자 동의 확인은 API(app/api/hr/applicant-interview-recordings)에서 계속 강제한다 — 위 applicantApi 단정이 그 가드다.
+  assert.doesNotMatch(workspace, /function ApplicantInterviewRecorder\(/);
   assert.match(schema, /hrAudioTranscriptions/);
   assert.match(migration, /idx_hr_audio_transcription_entity_attempt/);
   assert.match(plan, /AI 원문은 수정하지 않고 사용자 검토본을 별도 필드/);
@@ -2478,11 +2488,13 @@ test("HR 감사 후속(B4·B2·D1·D2): 시연용 모듈 표 제거, 조직장 �
   assert.ok(source.includes("<input value={organizationLeaderName} disabled"));
   assert.ok(!api.includes("manager: row.manager") && !api.includes("manager = excluded.manager") && !api.includes('stringValue("manager")'));
   assert.ok(api.includes("record.department, \"\", record.type,"));
-  assert.ok(api.includes("manager TEXT NOT NULL"));
+  assert.match(api, /await ensureHrEmployeeRecordsSchema\(db\)/);
+  assert.ok((await read("app/hr-employee-schema.ts")).includes("manager TEXT NOT NULL"));
   // D1 — 처우 확정·거절, 입사 정보 수정 팝업도 접히는 제목줄·안쪽 왼편 스크롤바·공통 곡률을 따른다.
   assert.ok(source.includes('className={`employee-modal offer-response-modal${responseCondensed ? " condensed" : ""}`}'));
   assert.ok(source.includes('className={`employee-modal onboarding-edit-modal${condensed ? " condensed" : ""}`}'));
-  assert.match(source, /useEffect\(\(\) => \{ setResponseCondensed\(false\); \}, \[acceptModalOpen, declineModalOpen\]\)/);
+  assert.match(source, /setResponseCondensed\(false\); setAcceptModalOpen\(true\)/);
+  assert.match(source, /setResponseCondensed\(false\); setDeclineModalOpen\(true\)/);
   assert.match(css, /\.offer-response-modal,\s*\.onboarding-edit-modal \{ direction: rtl;/);
   assert.match(css, /\.onboarding-edit-modal\.condensed \.modal-header \{ min-height: 46px;/);
   assert.ok(!/\.offer-response-modal \{[^}]*border-radius: 9px/.test(css));
@@ -2525,4 +2537,215 @@ test("offer creation follows the linked requisition organization and counts onbo
   assert.match(workspace, /onSubmitOffer: \(applicantId: string, draft: RecruitmentOfferDraft\) => Promise<string \| null>/);
   assert.match(workspace, /if \(failure\) \{ setOfferError\(failure\); return; \}/);
   assert.match(workspace, /className="applicant-screening-hint offer-error" role="alert"/);
+});
+
+test("demo USB packager ships the app without secrets and with the files the dev server needs", async () => {
+  const packager = await read("scripts/Package-XDNodeDemo.ps1");
+  // 비밀 값(.env*)은 옮기지 않고 로컬 신원 두 줄만 새로 쓴다.
+  assert.match(packager, /"\.env\*"/);
+  assert.match(packager, /LOCAL_ERP_USER_EMAIL\|LOCAL_ERP_USER_NAME/);
+  // vite.config.ts 가 ./build/sites-vite-plugin 과 ./.openai/hosting.json 을 불러오므로 build 는 제외 목록에 없어야 한다.
+  assert.doesNotMatch(packager, /"dist", "build"/);
+  assert.match(packager, /sites-vite-plugin/);
+  // 260자를 넘는 경로에서는 workerd 가 DB 파일을 열지 못한다. 패키저가 미리 막는다.
+  assert.match(packager, /\$AppPath\.Length \+ 130\) -gt 250/);
+  // 동봉 Node 를 PATH 앞에 두고 기존 실행 스크립트를 그대로 부른다.
+  assert.match(packager, /runtime\\node;%PATH%/);
+  assert.match(packager, /Start-XDNodeERP\.ps1/);
+});
+
+test("no browser-side code calls the desktop-only Claude bridges directly", async () => {
+  // 브라우저가 127.0.0.1 다리를 직접 부르면 태블릿 등 다른 기기에서는 그 기기 자신을 가리켜 실패한다.
+  // AI 호출은 모두 서버 라우트(/api/assistant, /api/hr/resume-analysis)를 거친다.
+  const uiFiles = ["app/hr-workspace.tsx", "app/local-codex-assistant.tsx", "app/page.tsx", "app/compensation-calculator.tsx", "app/recruitment-requisition-view.tsx"];
+  for (const file of uiFiles) {
+    const source = await read(file);
+    assert.doesNotMatch(source, /127\.0\.0\.1|localhost:31[0-9]{2}/, `${file}: 로컬 다리를 직접 부른다`);
+    assert.doesNotMatch(source, /npm run assistant/, `${file}: 사용자에게 터미널 명령을 안내한다`);
+  }
+  const workspace = await read("app/hr-workspace.tsx");
+  assert.match(workspace, /fetch\("\/api\/assistant", \{/);
+});
+
+test("wage calculator can append new hires from HR records without rebuilding the roster", async () => {
+  const route = await read("app/api/hr/compensation/route.ts");
+  // GET ?include=hr 은 그 달의 HR 급여 대상만 돌려주고 임금안은 건드리지 않는다.
+  assert.match(route, /searchParams\.get\("include"\) === "hr"/);
+  assert.match(route, /hrEmployees: await hrPayrollSnapshots\(period\)/);
+  const calculator = await read("app/compensation-calculator.tsx");
+  assert.match(calculator, /HR에서 인원 추가/);
+  assert.match(calculator, /include=hr/);
+  // 이미 표에 있는 사람(사번 같거나 이름·입사일 같음)은 후보에서 빼고, 고른 사람은 기존 행 뒤에 붙인다.
+  assert.match(calculator, /function alreadyListed/);
+  assert.match(calculator, /\[\.\.\.current, \.\.\.picked/);
+  // 확정된 임금안에는 붙이지 않는다 — LOAD_HR 과 같은 규칙.
+  assert.match(calculator, /run\?\.status === "CONFIRMED"/);
+});
+
+test("wage table lets the meal allowance be typed for a month and reverted to automatic", async () => {
+  const calculator = await read("app/compensation-calculator.tsx");
+  // 자동 금액은 버튼이라 누르면 그 달 식대가 수기 입력으로 바뀐다. 시작값은 자동 계산값이다.
+  assert.match(calculator, /className="allowance-value" title="[^"]*" onClick=\{\(\) => \{ setMealEditingId\(employee\.id\); updateMonthly\(employee\.id, "meal", row\.meal\)/);
+  assert.match(calculator, /focusOnEdit=\{mealEditingId === employee\.id\}/);
+  const wonInput = await read("app/won-input.tsx");
+  assert.match(wonInput, /if \(focusOnEdit\) inputRef\.current\?\.focus\(\)/);
+  const calculatorCss = await read("app/compensation-calculator.css");
+  assert.match(calculatorCss, /\.allowance-cell input\.money-input \{ width: 92px/);
+  // 되돌리기는 0을 넣는 게 아니라 월별 값을 지운다.
+  assert.match(calculator, /function clearMonthly/);
+  assert.match(calculator, /className="allowance-auto"[^>]*onClick=\{\(\) => clearMonthly\(employee\.id, "meal"\)/);
+  const engine = await read("app/compensation-calculation.ts");
+  assert.match(engine, /monthly\.meal !== undefined \? monthly\.meal : allowance\(employee\.meal\)/);
+});
+
+test("연차관리 라우트는 권한·감사 가드를 거치고, 발생은 저장하지 않고 엔진이 계산하며 차감 제외 종류를 구분한다", async () => {
+  const route = await readFile("app/api/hr/leave/route.ts", "utf8");
+  const engine = await readFile("app/hr-leave-accrual.ts", "utf8");
+  assert.match(route, /authorizeErpRequest\(db, "hr", "read"\)/);
+  assert.match(route, /authorizeErpRequest\(db, "hr", "write"\)/);
+  for (const action of ["LEAVE_RECORDED", "LEAVE_GRANT_ADJUSTED", "LEAVE_SHEET_IMPORTED", "LEAVE_RECORD_DELETED"]) assert.ok(route.includes(action), action);
+  // 회사 결정: 법정 가산, 1년 소멸, 생일 반차·공가 미차감, 자동 부여(조정 표만 저장), HR 대리 입력(바로 APPROVED).
+  assert.ok(engine.includes("annualDays: 15, seniorityIncrement: true, maxAnnualDays: 25, expiryMonths: 12"));
+  assert.ok(engine.includes('BIRTHDAY_HALF: { label: "생일 반차", units: 0.5, deducts: false'));
+  assert.ok(route.includes("CREATE TABLE IF NOT EXISTS hr_leave_grant_adjustments"));
+  assert.ok(!route.includes("hr_leave_grants ("));
+  assert.ok(route.includes("VALUES (?, ?, ?, ?, ?, ?, ?, 'APPROVED', ?, ?, ?, ?, ?, ?, ?)"));
+  assert.ok(route.includes("ADD COLUMN deducts INTEGER NOT NULL DEFAULT 1"));
+  // 결재를 거친 신청은 연차관리에서 지우지 못한다.
+  assert.ok(route.includes("전자결재를 거친 휴가 신청은 결재에서 취소해 주세요."));
+});
+
+test("연차관리 화면은 사이드바·인사기록카드에 연결되고, 직원 카드 팝업은 공통 팝업 규칙을 따른다", async () => {
+  const workspace = await readFile("app/hr-workspace.tsx", "utf8");
+  const view = await readFile("app/hr-leave-view.tsx", "utf8");
+  const css = await readFile("public/hr-workspace.css", "utf8");
+  assert.ok(workspace.includes('{ id: "leave", label: "연차관리", icon: "연" }'));
+  assert.ok(workspace.includes('{active === "leave" && <LeaveManagementView onNotify={showToast} />}'));
+  assert.ok(workspace.includes("<LeaveLedgerPanel employeeId={employee.id} onNotify={onNotify} />"));
+  // 기록 추가는 HR 대리 입력이라 결재 없이 바로 저장되고, 촉진 안내문은 복사해서 하이웍스 메일로 보낸다.
+  assert.ok(view.includes('resource: "record", employeeId: ledger.employeeId'));
+  assert.ok(view.includes("navigator.clipboard.writeText(item.text)"));
+  assert.ok(view.includes('resource: "adjustment", employeeId: ledger.employeeId, grantKey: grant.key, status: "EXCLUDED"'));
+  assert.match(css, /\.leave-card-modal \{[^}]*direction: rtl;/);
+  assert.match(css, /\.leave-card-modal\.condensed \.modal-header \{ min-height: 46px;/);
+});
+
+test("퇴직 정산의 미사용 연차는 연차관리 엔진이 퇴직일 기준으로 계산해 미리 채운다", async () => {
+  const operations = await readFile("app/api/hr/operations/route.ts", "utf8");
+  const workspace = await readFile("app/hr-workspace.tsx", "utf8");
+  assert.ok(operations.includes("exitDate: retirementDate, today: retirementDate,"));
+  assert.ok(operations.includes("usedLeaveUnits: ledger.used, unusedLeaveDays: ledger.balance,"));
+  assert.ok(!operations.includes("leave_type IN ('ANNUAL', 'HALF_AM', 'HALF_PM')"));
+  assert.ok(workspace.includes("const suggestedDays = computed ? computed.unusedLeaveDays : 0;"));
+  assert.ok(workspace.includes("연차관리 잔여 {estimate.unusedLeaveDays}일 적용"));
+});
+
+test("대표이사는 연차 관리 대상에서 빠지고, 연차 촉진·초과 사용은 대시보드 대기함으로 간다", async () => {
+  const route = await readFile("app/api/hr/leave/route.ts", "utf8");
+  const workspace = await readFile("app/hr-workspace.tsx", "utf8");
+  assert.ok(route.includes('const LEAVE_EXEMPT_POSITIONS = ["대표", "대표이사"];'));
+  assert.ok(route.includes("result.results.filter((row) => !LEAVE_EXEMPT_POSITIONS.includes(row.position.trim()))"));
+  assert.ok(workspace.includes("leaveLedgers={leaveLedgers} roles={principalRoles}"));
+});
+
+test("임금계산 1단계 수정: 버전 가드, 퇴직일 두 출처, 음수 실지급 허용, 연봉 산식 고정, 올림 기본급", async () => {
+  const route = await readFile("app/api/hr/compensation/route.ts", "utf8");
+  const operations = await readFile("app/api/hr/operations/route.ts", "utf8");
+  const engine = await readFile("app/compensation-calculation.ts", "utf8");
+  // H1 — 라인 저장·삭제와 확정 시 급여기록 교체가 모두 임금안 버전 가드 아래 있다.
+  assert.ok(route.includes("SELECT ?, ?, ?, ?, ? WHERE ${draftGuard}"));
+  assert.ok(route.includes("FROM hr_payroll_records WHERE year_month = ? AND ${confirmedGuard}"));
+  assert.ok(route.includes("WHERE ${confirmedGuard}`)"));
+  // H3 — 퇴직 정산 반영은 DRAFT 일 때만, 버전을 올려 열려 있는 화면의 자동 저장을 막는다.
+  assert.ok(operations.includes("UPDATE hr_compensation_runs SET version = version + 1, gross_pay = ?, settings_json = ?, updated_at = ? WHERE period = ? AND status = 'DRAFT' AND version = ?"));
+  // H4 — 확정 INSERT 가 쓰는 열을 이 라우트도 보강한다.
+  assert.ok(route.includes("ADD COLUMN personal_expense INTEGER NOT NULL DEFAULT 0"));
+  // H6·H8 — 실지급만 음수 허용, 연봉이 있으면 항상 연봉 산식.
+  assert.ok(route.includes('money(row[field], field === "total")'));
+  assert.ok(route.includes("manualBasic: employee.annual_salary <= 0"));
+  // H7 — 만근 기본급은 계약서와 같은 올림.
+  assert.ok(engine.includes("Math.ceil(employee.annualSalary * segments[0].rate / 12) - allowanceMonthly"));
+});
+
+test("브라우저 기본 대화상자는 앱 내부 대화상자(app/erp-dialog.tsx)로 바뀌고, HR·임금계산 트리에 공급자가 있다", async () => {
+  const dialog = await readFile("app/erp-dialog.tsx", "utf8");
+  assert.ok(dialog.includes("export function ErpDialogProvider") && dialog.includes("export function useErpDialog"));
+  assert.ok(dialog.includes("minLength") && dialog.includes('event.key === "Escape"'));
+  for (const file of ["app/hr-workspace.tsx", "app/compensation-calculator.tsx", "app/recruitment-requisition-view.tsx", "app/hr-leave-view.tsx"]) {
+    const source = await readFile(file, "utf8");
+    assert.ok(!/window\.(confirm|alert|prompt)\(/.test(source), `${file} still uses a browser dialog`);
+  }
+  const hr = await readFile("app/hr-workspace.tsx", "utf8");
+  assert.ok(hr.includes("<ErpDialogProvider>") && hr.includes("requestPayrollStatusChange(dialog, "));
+  const wage = await readFile("app/compensation-calculator.tsx", "utf8");
+  assert.ok(wage.includes("<ErpDialogProvider><CompensationCalculatorBody"));
+  // 사유 입력은 5자 이상을 대화상자 단계에서 막는다 (채용요청 마감·취소·삭제).
+  const requisition = await readFile("app/recruitment-requisition-view.tsx", "utf8");
+  assert.ok(requisition.includes("minLength: 5, multiline: true"));
+  for (const css of ["public/hr-workspace.css", "app/globals.css"]) assert.ok((await readFile(css, "utf8")).includes(".erp-dialog-actions .erp-dialog-primary"));
+});
+
+test("hr_employee_records 정의는 app/hr-employee-schema.ts 한 곳뿐이고 HR 라우트 8곳이 그 헬퍼를 부른다", async () => {
+  const routes = ["employee-records", "operations", "compensation", "recruitment", "recruitment-requisitions", "performance", "training", "workforce-plans"];
+  for (const name of routes) {
+    const source = await readFile(`app/api/hr/${name}/route.ts`, "utf8");
+    assert.ok(source.includes("await ensureHrEmployeeRecordsSchema(db);"), `${name} does not use the shared schema`);
+    assert.ok(!source.includes("CREATE TABLE IF NOT EXISTS hr_employee_records"), `${name} still defines hr_employee_records`);
+    assert.ok(!source.includes("PRAGMA table_info(hr_employee_records)"), `${name} still alters hr_employee_records itself`);
+  }
+  const schema = await readFile("app/hr-employee-schema.ts", "utf8");
+  for (const column of ["annual_salary", "first_term_pay_percent", "regular_contract_date", "first_term_review_json"]) {
+    assert.ok(schema.includes(`${column} `) && schema.includes(`["${column}",`), `${column} missing from CREATE or ADDITIONS`);
+  }
+});
+
+test("합격 안내 메시지의 회신 기한은 입사예정일을 넘지 않도록 자동 조정된다", async () => {
+  const workspace = await readFile("app/hr-workspace.tsx", "utf8");
+  assert.ok(workspace.includes("function clampOfferReplyDue(replyDue: string, startDate: string"));
+  // 문구에 들어가는 값과 날짜 입력칸의 max 가 모두 같은 규칙(입사 전날)을 따른다.
+  assert.ok(workspace.includes("replyDue: clampOfferReplyDue(offerReplyDue, activeOffer.startDate)"));
+  assert.ok(workspace.includes("max={/^\\d{4}-\\d{2}-\\d{2}$/.test(activeOffer.startDate) ? shiftIsoDate(activeOffer.startDate, -1) : undefined}"));
+  assert.ok(workspace.includes("입사예정일에 맞춰"));
+  // 규칙 자체를 실행해 본다: 기본값이 입사일을 넘기면 입사 전날, 그 날이 지났으면 오늘.
+  const source = workspace.slice(workspace.indexOf("function shiftIsoDate"), workspace.indexOf("/** 합격 안내 메시지의 값들"));
+  const { clampOfferReplyDue } = new Function(`${source.replace(/: string|: number|, today = todayIsoDate\(\)/g, "").replace(/\(replyDue, startDate\)/, "(replyDue, startDate, today)")}; return { clampOfferReplyDue };`)();
+  assert.equal(clampOfferReplyDue("2026-10-05", "2026-10-01", "2026-09-22"), "2026-09-30");
+  assert.equal(clampOfferReplyDue("2026-09-25", "2026-10-01", "2026-09-22"), "2026-09-25");
+  assert.equal(clampOfferReplyDue("2026-10-05", "2026-09-22", "2026-09-22"), "2026-09-22");
+  assert.equal(clampOfferReplyDue("2026-10-05", "", "2026-09-22"), "2026-10-05");
+});
+
+test("입·퇴사 관리의 입사 예정자 이름을 누르면 지원자 관리와 같은 지원·면접 기록 팝업이 뜬다", async () => {
+  const workspace = await readFile("app/hr-workspace.tsx", "utf8");
+  const styles = await readFile("public/hr-workspace.css", "utf8");
+  // 팝업은 앱 최상위가 한 벌만 띄우고, 입·퇴사 화면은 지원자 ID 만 넘긴다.
+  assert.match(workspace, /<LifecycleManagementView jobTitles=\{jobTitles\} ranks=\{ranks\} onSelectApplicant=\{setSelectedApplicantId\} applicantPopupOpen=\{Boolean\(selectedApplicantId\)\} \/>/);
+  assert.match(workspace, /className="name-link lifecycle-applicant-link" title="지원·면접 기록 보기" onClick=\{\(\) => onSelectApplicant\(candidate\.applicantId\)\}/);
+  // 팝업을 닫으면 입·퇴사 표를, 입사 완료·취소·수정 뒤에는 앱의 지원자 목록을 다시 읽는다.
+  assert.match(workspace, /if \(applicantPopupWasOpen\.current && !applicantPopupOpen\) void load\(\);/);
+  assert.match(workspace, /window\.dispatchEvent\(new Event\("hr-recruitment-updated"\)\);\r?\n    await load\(\);\r?\n    return true;/);
+  assert.match(styles, /\.lifecycle-onboarding-table \.lifecycle-applicant-link \{/);
+});
+
+test("면접일이 확정되면 기본 질문지가 채워지고, 심화·역제안 질문은 각각의 버튼으로 덧붙인다", async () => {
+  const workspace = await readFile("app/hr-workspace.tsx", "utf8");
+  const bridge = await readFile("scripts/codex-assistant-bridge.mjs", "utf8");
+  const styles = await readFile("public/hr-workspace.css", "utf8");
+  // 1) 면접일을 입력하면 질문지가 비어 있을 때만 지원 포지션 기본 질문지를 채운다. 일정이 이미 잡힌 지원자는 팝업을 열 때 채운다.
+  assert.match(workspace, /import \{ buildDefaultInterviewQuestions \} from "\.\/hr-interview-question-templates";/);
+  assert.match(workspace, /onChange=\{\(event\) => changeInterviewDate\(event\.target\.value\)\}/);
+  assert.match(workspace, /const sheet = date && !schedule\.questions\?\.trim\(\) \? defaultQuestionsFor\(draft\.role \|\| applicant\.role, draft\.requisitionId\) : null;/);
+  assert.match(workspace, /&& \[SCREENING_PASSED_STAGE, "면접"\]\.includes\(applicant\.stage\)\);/);
+  // 2) 심화 질문은 지금까지의 질문지와 면접 메모를 넘기고, 구분선 아래에 덧붙인다.
+  assert.match(workspace, /onClick=\{\(\) => void generateInterviewQuestions\("DEEP_DIVE"\)\}/);
+  assert.match(workspace, /existingQuestions: \(schedule\.questions \?\? ""\)\.slice\(0, 6000\), interviewNotes/);
+  assert.match(workspace, /const DEEP_QUESTION_SEPARATOR = "--------------- 심화 면접 질문 ---------------";/);
+  // 3) 역제안 질문은 역제안 포지션을 적어야 켜지고, 그 포지션만 넘긴다.
+  assert.match(workspace, /disabled=\{questionStatus !== "idle" \|\| !applicant\.resumeText \|\| !schedule\.counterProposal\?\.trim\(\)\}/);
+  assert.match(workspace, /onClick=\{\(\) => void generateInterviewQuestions\("COUNTER"\)\}/);
+  assert.match(workspace, /\.\.\.\(mode === "COUNTER" && schedule\.counterProposal\?\.trim\(\) \? \{ counterProposalPosition:/);
+  // 어시스턴트는 questionMode 에 맞춰 질문 구성을 바꾼다.
+  assert.match(bridge, /interviewBrief\.questionMode 가 DEEP_DIVE 이면 기본 질문지 다음 단계의 심화 질문 요청입니다\./);
+  assert.match(bridge, /questionMode 가 COUNTER 이면 counterProposalPosition 에 대한 질문만/);
+  assert.match(styles, /\.applicant-question-buttons \{/);
 });

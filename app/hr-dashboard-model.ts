@@ -18,6 +18,7 @@ export type DashboardApplicant = {
 export type DashboardOrganization = { id: string; name: string };
 export type DashboardRequisition = { id: string; title: string; role: string; organizationId: string; requestedHeadcount: number; status: string };
 export type DashboardLifecycleTask = { id: string; employee_id: string; lifecycle_type?: string; task_group?: string; title: string; due_date: string; status: string };
+export type DashboardLeaveLedger = { employeeId: string; name: string; department: string; balance: number; promotions: { stage: "FIRST" | "SECOND"; label: string; remaining: number; expiresAt: string; daysLeft: number }[] };
 export type DashboardPayrollRun = { period: string; status: string; employee_count?: number; gross_pay?: number; net_pay?: number; approved_by?: string; reviewed_by?: string };
 
 export type DashboardInput = {
@@ -28,6 +29,8 @@ export type DashboardInput = {
   requisitions: DashboardRequisition[];
   lifecycleTasks: DashboardLifecycleTask[];
   payrollRuns: DashboardPayrollRun[];
+  /** 연차관리 요약(재직자만). 없으면 연차 항목을 대기함에 올리지 않는다. */
+  leaveLedgers?: DashboardLeaveLedger[];
   roles: string[];
   isCurrent: (employee: DashboardEmployee) => boolean;
   isRejectedStage: (stage: string) => boolean;
@@ -227,6 +230,24 @@ export function buildDashboardModel(input: DashboardInput) {
       title: `${applicant.name}님 면접 ${applicant.interview!.time || "시간 미정"}`, detail: `${applicant.role} · ${applicant.interview!.type || "유형 미정"}`,
       due: today, target: { view: "recruitment", applicantId: applicant.id },
     });
+  }
+  // 연차 — 2차 촉진(소멸 2개월 전)과 초과 사용은 주의, 1차 촉진은 참고. 목록은 재직자만 온다.
+  for (const ledger of input.leaveLedgers ?? []) {
+    for (const notice of ledger.promotions) {
+      inbox.push({
+        id: `leave-promotion:${ledger.employeeId}:${notice.expiresAt}`, kind: notice.stage === "SECOND" ? "연차 촉진 2차" : "연차 촉진 1차", priority: notice.stage === "SECOND" ? "warning" : "info",
+        title: `${ledger.name}님 ${notice.label} 잔여 ${notice.remaining}일 소멸 D-${notice.daysLeft}`,
+        detail: `${ledger.department} · 소멸일 ${notice.expiresAt} · ${notice.stage === "SECOND" ? "회사 지정 사용일 통보" : "사용 시기 지정 요청"} 안내문 발송`,
+        due: notice.expiresAt, target: { view: "leave" },
+      });
+    }
+    if (ledger.balance < 0) {
+      inbox.push({
+        id: `leave-overdraft:${ledger.employeeId}`, kind: "연차 초과 사용", priority: "warning",
+        title: `${ledger.name}님 연차 ${-ledger.balance}일 초과 사용`, detail: `${ledger.department} · 다음 발생분에서 차감되거나 무급 처리 필요`,
+        due: today, target: { view: "leave" },
+      });
+    }
   }
   inbox.sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] || a.due.localeCompare(b.due) || a.title.localeCompare(b.title));
 

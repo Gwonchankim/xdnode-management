@@ -226,7 +226,7 @@ export default function SalesWorkspace({ search, createRequestKey = 0 }: { searc
 
   return <div className="sales-workspace-layout">
     <aside className="sales-side-navigation" aria-label="영업 메뉴">
-      <div className="sales-side-brand"><span>영</span><div><strong>SALES WORKSPACE</strong><small>SALES &amp; CRM</small></div></div>
+      <div className="sales-side-brand"><span>영</span><div><strong>영업</strong></div></div>
       <nav>
         {salesNavigation.map((group) => (
           <div className="sales-side-group" key={group.title}>
@@ -264,13 +264,13 @@ export default function SalesWorkspace({ search, createRequestKey = 0 }: { searc
 
     <section className="sales-live-grid">
       <article className="panel sales-entry-panel">
-        <header><div><p>ACCOUNT</p><h2>거래처 등록</h2></div><span>{data?.accounts.length ?? 0}곳</span></header>
+        <header><div data-korean-heading><h2>거래처 등록</h2></div><span>{data?.accounts.length ?? 0}곳</span></header>
         <form onSubmit={(event) => void create(event, "account")}><label>거래처명<input required value={accountDraft.name} onChange={(event) => setAccountDraft({ ...accountDraft, name: event.target.value })} /></label><label>사업자번호<input value={accountDraft.businessNumber} onChange={(event) => setAccountDraft({ ...accountDraft, businessNumber: event.target.value })} /></label><label>업종<input value={accountDraft.industry} onChange={(event) => setAccountDraft({ ...accountDraft, industry: event.target.value })} /></label><button type="submit">+ 거래처 등록</button></form>
         <div className="sales-account-list">{(data?.accounts ?? []).map((item) => <div key={item.id}><p><strong>{item.name}</strong><small>{item.businessNumber || "사업자번호 미입력"}</small></p><span>{item.industry || "업종 미입력"}</span><em>{item.status === "ACTIVE" ? "활성" : "비활성"}</em><button type="button" onClick={() => setSelectedAccountId(item.id)} aria-label={`${item.name} 고객 360도 열기`}>360°</button></div>)}{!data?.accounts.length && <p>등록된 거래처가 없습니다.</p>}</div>
       </article>
 
       <article className="panel sales-entry-panel opportunity-entry" ref={opportunityPanelRef}>
-        <header><div><p>OPPORTUNITY</p><h2>영업 건 등록</h2></div><span>원가 포함</span></header>
+        <header><div data-korean-heading><h2>영업 건 등록</h2></div><span>원가 포함</span></header>
         <form onSubmit={(event) => void create(event, "opportunity")}>
           <label>거래처<select required value={opportunityDraft.accountId} onChange={(event) => setOpportunityDraft({ ...opportunityDraft, accountId: event.target.value })}><option value="">선택</option>{(data?.accounts ?? []).filter((item) => item.status === "ACTIVE").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
           <label>영업 건명<input ref={opportunityTitleRef} required value={opportunityDraft.title} onChange={(event) => setOpportunityDraft({ ...opportunityDraft, title: event.target.value })} /></label>
@@ -288,7 +288,7 @@ export default function SalesWorkspace({ search, createRequestKey = 0 }: { searc
     {selectedAccountId && <SalesAccount360View accountId={selectedAccountId} onClose={() => setSelectedAccountId("")} onChanged={load} />}
 
     <section className="panel sales-live-pipeline">
-      <header><div><p>PIPELINE</p><h2>실제 영업 파이프라인</h2></div><span>{opportunities.length}건</span></header>
+      <header><div data-korean-heading><h2>실제 영업 파이프라인</h2></div><span>{opportunities.length}건</span></header>
       <div className="sales-pipeline-row head"><span>거래처 / 영업 건</span><span>단계</span><span>예상 매출</span><span>예상 이익</span><span>확률</span><span>예정일</span><span>접점</span></div>
       {opportunities.map((item) => {
         const stageOptions = item.status === "OPEN" ? [item.stage, nextStage[item.stage], "LOST"].filter(Boolean) : [item.stage];
@@ -298,7 +298,7 @@ export default function SalesWorkspace({ search, createRequestKey = 0 }: { searc
     </section>
 
     {crm && <section className="panel sales-crm-detail">
-      <header><div><p>CRM LEDGER</p><h2>{crm.opportunity.accountName} · {crm.opportunity.title}</h2><span>{stageLabels[crm.opportunity.stage]} · 다음 행동 {crm.opportunity.nextAction || "미지정"}{crm.opportunity.nextActionDate ? ` (${crm.opportunity.nextActionDate})` : ""}</span></div><button type="button" onClick={() => { setCrm(null); setSelectedOpportunityId(""); }}>닫기</button></header>
+      <header><div data-korean-heading><h2>{crm.opportunity.accountName} · {crm.opportunity.title}</h2><span>{stageLabels[crm.opportunity.stage]} · 다음 행동 {crm.opportunity.nextAction || "미지정"}{crm.opportunity.nextActionDate ? ` (${crm.opportunity.nextActionDate})` : ""}</span></div><button type="button" onClick={() => { setCrm(null); setSelectedOpportunityId(""); }}>닫기</button></header>
       <div className="sales-crm-grid">
         <article>
           <h3>고객 담당자</h3>
@@ -319,7 +319,7 @@ export default function SalesWorkspace({ search, createRequestKey = 0 }: { searc
 
     {section === "catalog" && <>
     <section className="panel sales-catalog-panel">
-      <header><div><p>PRODUCT & SERVICE MASTER</p><h2>상품·서비스 기준정보</h2><span>영업 문서의 품목명·단위·기본단가를 통일합니다.</span></div><strong>{data?.catalog.length ?? 0}개</strong></header>
+      <header><div data-korean-heading><h2>상품·서비스 기준정보</h2><span>영업 문서의 품목명·단위·기본단가를 통일합니다.</span></div><strong>{data?.catalog.length ?? 0}개</strong></header>
       <form onSubmit={createCatalogItem}><label>품목 코드<input required value={catalogDraft.code} onChange={(event) => setCatalogDraft({ ...catalogDraft, code: event.target.value })} placeholder="예: SVC-AI-001" /></label><label>명칭<input required value={catalogDraft.name} onChange={(event) => setCatalogDraft({ ...catalogDraft, name: event.target.value })} /></label><label>유형<select value={catalogDraft.itemType} onChange={(event) => setCatalogDraft({ ...catalogDraft, itemType: event.target.value })}><option value="PRODUCT">상품</option><option value="SERVICE">서비스</option></select></label><label>단위<input required value={catalogDraft.unit} onChange={(event) => setCatalogDraft({ ...catalogDraft, unit: event.target.value })} /></label><label>기본단가<input required type="number" min="0" value={catalogDraft.defaultUnitPrice} onChange={(event) => setCatalogDraft({ ...catalogDraft, defaultUnitPrice: event.target.value })} /></label><button type="submit">+ 기준정보 등록</button></form>
       <div className="sales-catalog-list">{(data?.catalog ?? []).map((item) => <div className={item.status === "INACTIVE" ? "inactive" : ""} key={item.id}><b>{item.code}</b><strong>{item.name}</strong><span>{item.itemType === "PRODUCT" ? "상품" : "서비스"}</span><span>{item.unit}</span><em>{currency(item.defaultUnitPrice)}</em><button type="button" onClick={() => void toggleCatalogItem(item)}>{item.status === "ACTIVE" ? "비활성" : "활성"}</button></div>)}{!data?.catalog.length && <p>먼저 상품 또는 서비스를 등록한 뒤 영업 문서를 작성해 주세요.</p>}</div>
     </section>
@@ -333,7 +333,7 @@ export default function SalesWorkspace({ search, createRequestKey = 0 }: { searc
 
     {section === "documents" && <>
     <section className="panel sales-document-flow">
-      <header><div><p>QUOTE TO CASH</p><h2>견적·수주·납품·청구·수금</h2></div><span>{data?.documents.length ?? 0}개 문서</span></header>
+      <header><div data-korean-heading><h2>견적·수주·납품·청구·수금</h2></div><span>{data?.documents.length ?? 0}개 문서</span></header>
       <div className="sales-live-metrics"><article><small>확정 청구</small><strong>{currency(acceptedInvoiceTotal)}</strong><span>{invoices.length}건</span></article><article><small>확정 수금</small><strong>{currency(collectedTotal)}</strong><span>승인·완료 수금</span></article><article><small>현재 미수금</small><strong>{currency(Math.max(0, acceptedInvoiceTotal - collectedTotal))}</strong><span>청구 - 확정 수금</span></article><article><small>수금 예약</small><strong>{currency(invoices.reduce((sum, item) => sum + Math.max(0, item.reservedAmount - item.collectedAmount), 0))}</strong><span>작성·결재 중 수금</span></article></div>
       <form className="sales-document-form sales-document-line-form" onSubmit={createDocument}>
         <div className="sales-document-fields">

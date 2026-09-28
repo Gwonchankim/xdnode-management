@@ -147,7 +147,7 @@ export default function OperationsWorkbench({ onClose, onNavigate }: { onClose: 
       <button type="button" className="workbench-backdrop" aria-label="오늘 업무 닫기" onClick={onClose} />
       <section className="workbench-panel">
         <header className="workbench-header">
-          <div><p>MY OPERATIONS WORKBENCH</p><h2 id="workbench-title">오늘의 업무</h2><span>내게 배정된 실행 항목과 경영 안건을 한곳에서 확인합니다.</span></div>
+          <div data-korean-heading><h2 id="workbench-title">오늘의 업무</h2><span>내게 배정된 실행 항목과 경영 안건을 한곳에서 확인합니다.</span></div>
           <button type="button" className="workbench-close" aria-label="닫기" onClick={onClose}>×</button>
         </header>
 

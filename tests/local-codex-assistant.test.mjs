@@ -1,8 +1,39 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { compactLeaveContext, recentAssistantConversation } from "../app/hr-assistant-context.ts";
+import { validateRecruitmentInterview, formatRecruitmentQuestions } from "../app/assistant-recruitment.ts";
+
+test("recruitment interview validates real dates and paired times, and formats editable questions", () => {
+  assert.throws(() => validateRecruitmentInterview({ date: '2026-02-30', time: '10:00' }), /면접일/);
+  assert.throws(() => validateRecruitmentInterview({ date: '2026-10-01', time: '' }), /함께/);
+  assert.throws(() => validateRecruitmentInterview({ date: '2026-10-01', time: '24:00' }), /시작 시간/);
+  assert.throws(() => validateRecruitmentInterview({}, true), /질문지/);
+  const questions = formatRecruitmentQuestions([{ category: 'ROLE_SKILL', question: '서버 장애를 어떻게 진단합니까?', checkpoint: '진단 순서와 근거' }]);
+  assert.match(questions, /지원 직무 역량/);
+  assert.match(questions, /확인 포인트: 진단 순서와 근거/);
+  assert.equal(validateRecruitmentInterview({ questions }, true).date, '');
+});
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("assistant context bounds conversation and excludes ERP answers when data access is disabled", () => {
+  const history = Array.from({ length: 8 }, (_, i) => ({ question: `Question ${i}`, answer: "x".repeat(5000), includedServerData: i % 2 === 0 }));
+  const all = recentAssistantConversation(history, true);
+  assert.equal(all.length, 4);
+  assert.equal(all[0].question, "Question 4");
+  assert.equal(all[0].answer.length, 4000);
+  assert.deepEqual(recentAssistantConversation(history, false).map(entry => entry.question), ["Question 1", "Question 3", "Question 5", "Question 7"]);
+});
+
+test("assistant leave evidence retains source date and negative balance without sending usage reasons", () => {
+  const result = compactLeaveContext({ today: "2026-09-21", ledgers: [{ employeeId: "synthetic", name: "Test", department: "Test", status: "재직", granted: 3, used: 4, expired: 0, balance: -1, overdraft: 1, email: "omitted@example.test", usages: [{ reason: "private detail" }] }] });
+  assert.equal(result.asOf, "2026-09-21");
+  assert.equal(result.employees[0].balance, -1);
+  assert.equal(result.employees[0].overdraft, 1);
+  assert.equal("usages" in result.employees[0], false);
+  assert.equal("email" in result.employees[0], false);
+});
 
 test("local Codex assistant is mounted for HR, payroll and sales while its bridge stays read-only", async () => {
   const [page, component, bridge, claudeBridge, launcher, schema] = await Promise.all([
@@ -21,10 +52,10 @@ test("local Codex assistant is mounted for HR, payroll and sales while its bridg
   assert.doesNotMatch(component, /127\.0\.0\.1/);
   const assistantRoute = await read("app/api/assistant/route.ts");
   assert.match(assistantRoute, /CLAUDE_ASSISTANT_BRIDGE_URL\?\.trim\(\) \|\| "http:\/\/127\.0\.0\.1:3130"/);
-  // Codex 다리(3110)는 되돌릴 수 있도록 남겨 두고 포트만 나눴다.
+  // Codex 다리(3110)는 buildPrompt 원본으로만 남고, 어시스턴트는 Claude 다리(3130)가 맡는다.
   assert.match(claudeBridge, /const PORT = Number\(process\.env\.XD_NODE_CLAUDE_ASSISTANT_PORT \|\| 3130\)/);
   assert.match(claudeBridge, /const HOST = "127\.0\.0\.1"/);
-  // Codex 의 read-only 샌드박스 대신 쓰기·실행·네트워크 도구를 막는다.
+  // Codex 의 read-only 샌드박스 대신 도구를 모두 끈다(파일 읽기 포함은 tests/lan-exposure-guards.test.mjs).
   assert.match(claudeBridge, /const DISABLED_TOOLS = \["Bash", "Write", "Edit"/);
   assert.match(bridge, /const HOST = "127\.0\.0\.1"/);
   assert.match(bridge, /"--sandbox", "read-only"/);
@@ -62,8 +93,10 @@ test("local Codex assistant is mounted for HR, payroll and sales while its bridg
   assert.match(bridge, /영업·인센티브/);
   assert.match(component, /내용 확인 후 반영/);
   assert.doesNotMatch(bridge, /danger-full-access|--yolo|--full-auto/);
-  assert.match(launcher, /\$AssistantPort = 3110/);
-  assert.match(launcher, /assistant:bridge/);
+  // 시작 스크립트는 Codex 다리(3110)를 더 띄우지 않는다.
+  assert.doesNotMatch(launcher, /\$AssistantPort = 3110/);
+  assert.doesNotMatch(launcher, /npm\.cmd run assistant:bridge/);
+  assert.match(launcher, /npm\.cmd run assistant:claude/);
   assert.match(schema, /"answer"/);
   assert.match(schema, /"proposedActions"/);
   assert.match(schema, /"CREATE_RECRUITMENT_APPLICANT"/);

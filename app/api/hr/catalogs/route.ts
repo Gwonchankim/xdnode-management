@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
 import { companyJobTitles, companyRanks } from "../../../hr-company-data";
 
@@ -26,6 +27,7 @@ function kindOf(value: string | null): CatalogKind | null {
 }
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.prepare(`CREATE TABLE IF NOT EXISTS hr_catalog_items (
     kind TEXT NOT NULL,
     value TEXT NOT NULL,

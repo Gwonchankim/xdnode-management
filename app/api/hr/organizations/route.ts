@@ -40,6 +40,28 @@ export async function GET() {
   return Response.json({ organizations: result.results.map(toOrganization) });
 }
 
+/** 조직 신설. 기준자료(companyOrganizations)에 없는 조직은 이 표에만 있고, 화면은 GET 결과를 기준자료와 합쳐 보여 준다.
+ *  예전에는 화면 상태에만 추가돼 새로고침하면 사라졌다. */
+export async function POST(request: Request) {
+  await ensureSchema();
+  const authorization = await authorizeErpRequest(db, "hr", "write");
+  if (authorization.response) return authorization.response;
+  const body = await request.json() as { name?: unknown; description?: unknown };
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const description = typeof body.description === "string" ? body.description.trim() : "";
+  if (!name || name.length > 40) return Response.json({ error: "조직명을 1~40자로 입력해 주세요." }, { status: 400 });
+  if (companyOrganizations.some((organization) => organization.name === name)) return Response.json({ error: "이미 있는 조직명입니다." }, { status: 409 });
+  const duplicate = await db.prepare("SELECT organization_id FROM hr_organization_records WHERE name = ? LIMIT 1").bind(name).first<{ organization_id: string }>();
+  if (duplicate) return Response.json({ error: "이미 있는 조직명입니다." }, { status: 409 });
+  const organizationId = `org-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const updatedAt = Date.now();
+  await db.prepare("INSERT INTO hr_organization_records (organization_id, name, description, updated_at) VALUES (?, ?, ?, ?)")
+    .bind(organizationId, name, description || "조직 설명 미입력", updatedAt).run();
+  const after = toOrganization({ organization_id: organizationId, name, description: description || "조직 설명 미입력", updated_at: updatedAt });
+  await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "ORGANIZATION_CREATED", entityType: "organization", entityId: organizationId, before: null, after });
+  return Response.json({ organization: after }, { status: 201 });
+}
+
 export async function PUT(request: Request) {
   await ensureSchema();
   const authorization = await authorizeErpRequest(db, "hr", "write");
@@ -84,6 +106,9 @@ export async function PUT(request: Request) {
   if (previousName && previousName !== name) {
     statements.push(db.prepare(`UPDATE hr_employee_records SET department = ?, updated_at = ?
       WHERE department = ?`).bind(name, updatedAt, previousName));
+    // 부서명을 문자열로 들고 있는 파생 표도 같이 바꾼다. 안 바꾸면 급여·통계가 옛 이름과 새 이름으로 갈린다.
+    statements.push(db.prepare("UPDATE hr_payroll_records SET department = ? WHERE department = ?").bind(name, previousName));
+    statements.push(db.prepare("UPDATE hr_compensation_lines SET snapshot_json = json_set(snapshot_json, '$.department', ?), updated_at = ? WHERE json_valid(snapshot_json) = 1 AND json_extract(snapshot_json, '$.department') = ?").bind(name, updatedAt, previousName));
   }
   statements.push(prepareMasterImpactConsumption(db, impactAssessmentId, authorization.principal, "HR_ORGANIZATION", organizationId));
   await db.batch(statements);

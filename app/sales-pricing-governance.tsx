@@ -81,7 +81,7 @@ export default function SalesPricingGovernance({ refreshKey = 0 }: { refreshKey?
   const reviewsByDocument = useMemo(() => new Map((data?.reviews ?? []).map((review) => [review.documentId, review])), [data]);
 
   return <section className="panel sales-pricing-governance">
-    <header><div><p>PRICING CONTROL</p><h2>가격표·할인·마진 통제</h2><span>수치를 추정하지 않고 승인된 버전과 문서 스냅샷으로 견적부터 수주까지 통제합니다.</span></div>
+    <header><div data-korean-heading><h2>가격표·할인·마진 통제</h2><span>수치를 추정하지 않고 승인된 버전과 문서 스냅샷으로 견적부터 수주까지 통제합니다.</span></div>
       <strong className={data?.configurationReady ? "ready" : "missing"}>{data?.configurationReady ? "통제 기준 활성" : "가격표·정책 설정 필요"}</strong></header>
     {message && <div className="sales-pricing-message" role="status">{message}</div>}
     <div className="sales-pricing-active">

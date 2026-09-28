@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
 
 type LeaderRow = {
@@ -14,6 +15,7 @@ type HrBindings = {
 const db = (env as unknown as HrBindings).DB;
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.prepare(`CREATE TABLE IF NOT EXISTS hr_organization_leaders (
     organization_id TEXT PRIMARY KEY,
     leader_employee_id TEXT,

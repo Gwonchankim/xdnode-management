@@ -1,3 +1,5 @@
+import { hrTablesExist } from "./hr-optional-tables";
+
 type DuePersonnelAction = {
   id: string;
   employee_id: string;
@@ -9,6 +11,7 @@ type DuePersonnelAction = {
 };
 
 export async function applyDuePersonnelActions(db: D1Database, now = Date.now()) {
+  if (!await hrTablesExist(db, "hr_personnel_actions")) return 0;
   const koreaDate = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const due = await db.prepare(`SELECT id, employee_id, effective_date, action_type, before_json, after_json, reason
     FROM hr_personnel_actions WHERE status = 'APPROVED' AND effective_date <= ? ORDER BY effective_date, created_at`)

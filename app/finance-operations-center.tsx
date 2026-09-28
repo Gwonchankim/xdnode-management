@@ -193,7 +193,7 @@ export default function FinanceOperationsCenter({ onOpenBudget }: { onOpenBudget
 
   return <div className="finance-control-room">
     <section className="finance-control-hero">
-      <div><p>FINANCE OPERATIONS</p><h1>재무 운영센터</h1><span>예측·마감·예산·대사 상태를 한 화면에서 관리합니다.</span></div>
+      <div data-korean-heading><h1>재무 운영센터</h1><span>예측·마감·예산·대사 상태를 한 화면에서 관리합니다.</span></div>
       <div className="finance-control-source"><small>기준일</small><strong>{data?.asOf ?? financeCurrentData.asOf}</strong><em>Clobe 스냅샷</em></div>
     </section>
 
@@ -207,7 +207,7 @@ export default function FinanceOperationsCenter({ onOpenBudget }: { onOpenBudget
     </section>
 
     <section className="panel finance-control-panel expense-panel">
-      <header><div><p>EXPENSE & PAYMENT</p><h2>지출·지급 요청과 지급원장</h2></div><span>{data?.expenses.length ?? 0}건</span></header>
+      <header><div data-korean-heading><h2>지출·지급 요청과 지급원장</h2></div><span>{data?.expenses.length ?? 0}건</span></header>
       <form className="finance-control-form expense-form" onSubmit={createExpense}>
         <label>구분<select value={expenseDraft.requestKind} onChange={(event) => setExpenseDraft({ ...expenseDraft, requestKind: event.target.value })}><option value="EXPENSE">지출 결의</option><option value="PAYMENT">지급 요청</option></select></label>
         <label>제목<input required value={expenseDraft.title} onChange={(event) => setExpenseDraft({ ...expenseDraft, title: event.target.value })} /></label>
@@ -247,7 +247,7 @@ export default function FinanceOperationsCenter({ onOpenBudget }: { onOpenBudget
 
     <section className="finance-control-grid">
       <article className="panel finance-control-panel forecast-panel">
-        <header><div><p>13-WEEK CASH</p><h2>13주 자금예측</h2></div><span className={`source-state ${(data?.sourceStatus.forecast ?? "NOT_CONNECTED").toLowerCase()}`}>{statusLabel[data?.sourceStatus.forecast ?? "NOT_CONNECTED"]}</span></header>
+        <header><div data-korean-heading><h2>13주 자금예측</h2></div><span className={`source-state ${(data?.sourceStatus.forecast ?? "NOT_CONNECTED").toLowerCase()}`}>{statusLabel[data?.sourceStatus.forecast ?? "NOT_CONNECTED"]}</span></header>
         <form className="finance-control-form forecast-form" onSubmit={(event) => void createItem(event, "forecast")}>
           <label>예정일<input required type="date" value={forecastDraft.expectedDate} onChange={(event) => setForecastDraft({ ...forecastDraft, expectedDate: event.target.value })} /></label>
           <label>구분<select value={forecastDraft.direction} onChange={(event) => setForecastDraft({ ...forecastDraft, direction: event.target.value })}><option value="INFLOW">입금</option><option value="OUTFLOW">출금</option></select></label>
@@ -268,7 +268,7 @@ export default function FinanceOperationsCenter({ onOpenBudget }: { onOpenBudget
       </article>
 
       <article className="panel finance-control-panel close-panel">
-        <header><div><p>MONTH-END CLOSE</p><h2>월마감 체크리스트</h2></div><span>{data?.closeTasks[0]?.period ?? financeCurrentData.asOf.slice(0, 7)}</span></header>
+        <header><div data-korean-heading><h2>월마감 체크리스트</h2></div><span>{data?.closeTasks[0]?.period ?? financeCurrentData.asOf.slice(0, 7)}</span></header>
         <div className="finance-close-progress"><i><b style={{ width: `${data?.closeTasks.length ? closeCompleted / data.closeTasks.length * 100 : 0}%` }} /></i><strong>{data?.closeTasks.length ? Math.round(closeCompleted / data.closeTasks.length * 100) : 0}%</strong></div>
         <div className="finance-close-list">
           {(data?.closeTasks ?? []).map((item) => { const automated = ["BANK", "JOURNAL", "EVIDENCE", "PAYROLL"].includes(item.category); return <div key={item.id}><span>{["COMPLETED", "APPROVED"].includes(item.status) ? "✓" : "·"}</span><p><strong>{item.title}</strong><small>{item.category}{automated ? " · 자동 통제" : ""}</small></p><select disabled={automated} aria-label={`${item.title} 상태`} value={item.status === "APPROVED" ? "COMPLETED" : item.status} onChange={(event) => void updateStatus("close", item.id, event.target.value)}><option value="OPEN">미착수</option><option value="IN_PROGRESS">진행 중</option><option value="COMPLETED">완료</option></select></div>; })}
@@ -276,14 +276,14 @@ export default function FinanceOperationsCenter({ onOpenBudget }: { onOpenBudget
       </article>
 
       <article className="panel finance-control-panel budget-panel">
-        <header><div><p>BUDGET CONTROL</p><h2>예산·실적 관리</h2></div><span className="source-state automated">통합 관리</span></header>
+        <header><div data-korean-heading><h2>예산·실적 관리</h2></div><span className="source-state automated">통합 관리</span></header>
         <div className="reconciliation-readiness"><div><span>01</span><p><strong>계획 버전 승인</strong><small>연간 계획 전체를 하나의 버전으로 결재</small></p><em>전자결재</em></div><div><span>02</span><p><strong>실적 원천 자동 연결</strong><small>Clobe 매출·매입과 ERP 전기 분개</small></p><em>자동 계산</em></div><div><span>03</span><p><strong>차이 원인·조치</strong><small>담당자·기한·개정 사유까지 감사 추적</small></p><em>통제 원장</em></div></div>
         <p className="finance-control-note">기존 행 단위 예산 입력은 종료했습니다. 승인 예산과 실제값은 전용 화면에서 버전 단위로 관리합니다.</p>
         <button type="button" className="finance-control-primary" onClick={onOpenBudget}>예산·실적 관리 열기 →</button>
       </article>
 
       <article className="panel finance-control-panel reconciliation-panel">
-        <header><div><p>RECONCILIATION</p><h2>은행·분개 대사</h2></div><span className={`source-state ${(data?.sourceStatus.journalMatching ?? "NOT_CONNECTED").toLowerCase()}`}>{statusLabel[data?.sourceStatus.journalMatching ?? "NOT_CONNECTED"]}</span></header>
+        <header><div data-korean-heading><h2>은행·분개 대사</h2></div><span className={`source-state ${(data?.sourceStatus.journalMatching ?? "NOT_CONNECTED").toLowerCase()}`}>{statusLabel[data?.sourceStatus.journalMatching ?? "NOT_CONNECTED"]}</span></header>
         <div className="reconciliation-readiness">
           <div><span>01</span><p><strong>은행 거래 원문</strong><small>거래일·입출금액·적요·계좌 식별값 필요</small></p><em>{statusLabel[data?.sourceStatus.bankTransactionLines ?? "NOT_CONNECTED"]}</em></div>
           <div><span>02</span><p><strong>분개 라인 식별값</strong><small>전표번호·라인번호·계정코드 필요</small></p><em>{statusLabel[data?.sourceStatus.journalMatching ?? "NOT_CONNECTED"]}</em></div>

@@ -226,7 +226,7 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
   return (
     <div className="management-report-workspace">
       <section className="management-report-hero">
-        <div><p>MANAGEMENT REPORTING</p><h1>월간 경영보고</h1><span>숫자·원천·품질·후속조치·승인을 한 버전으로 동결합니다.</span></div>
+        <div data-korean-heading><h1>월간 경영보고</h1><span>숫자·원천·품질·후속조치·승인을 한 버전으로 동결합니다.</span></div>
         <div className="management-report-hero-actions">
           <label>보고월<select value={period} onChange={(event) => changePeriod(event.target.value)}>{(state?.periods ?? [period]).map((item) => <option key={item} value={item}>{item.replace("-", "년 ")}월</option>)}</select></label>
           <button type="button" onClick={() => window.print()}>인쇄</button>
@@ -244,7 +244,7 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
       </section>
 
       <section className="management-report-cover panel">
-        <div><p>XD NODE · MONTHLY MANAGEMENT REPORT</p><h2>2026년 {periodLabel(period)} 경영 현황</h2><span>기준일 {selected?.asOf ?? snapshot.asOf} · 생성 {new Date(snapshot.generatedAt).toLocaleString("ko-KR")}</span></div>
+        <div data-korean-heading><h2>2026년 {periodLabel(period)} 경영 현황</h2><span>기준일 {selected?.asOf ?? snapshot.asOf} · 생성 {new Date(snapshot.generatedAt).toLocaleString("ko-KR")}</span></div>
         <div><span className={`source-status ${selected?.status.toLowerCase() ?? "preview"}`}>{selected ? statusLabels[selected.status] : "미리보기"}</span><strong>{snapshot.quality.warningCount}개 품질경고</strong></div>
       </section>
 
@@ -260,7 +260,7 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
       </section>
 
       <section className={`panel management-statement-panel ${statement.status.toLowerCase()}`}>
-        <header><div><p>POSTED PROFIT &amp; LOSS</p><h2>전기 완료 손익과 비교</h2><span>{statement.from}–{statement.to} · 승인 개시잔액 + POSTED {statement.lineCount.toLocaleString("ko-KR")}행</span></div><button type="button" onClick={() => onNavigate("general-ledger")}>총계정원장 →</button></header>
+        <header><div data-korean-heading><h2>전기 완료 손익과 비교</h2><span>{statement.from}–{statement.to} · 승인 개시잔액 + POSTED {statement.lineCount.toLocaleString("ko-KR")}행</span></div><button type="button" onClick={() => onNavigate("general-ledger")}>총계정원장 →</button></header>
         {!statementConnected&&<p className="management-statement-legacy">이 저장본에는 전기 손익 비교가 포함되지 않았습니다. 승인본은 보존되며 새 버전부터 비교 원천이 동결됩니다.</p>}
         <div className="management-statement-summary"><article><small>매출·수익</small><strong>{statementConnected?won(statement.current.revenue):"미연결"}</strong></article><article><small>비용</small><strong>{statementConnected?won(statement.current.expenses):"미연결"}</strong></article><article className={statement.current.netIncome < 0 ? "loss" : "profit"}><small>순이익</small><strong>{statementConnected?won(statement.current.netIncome):"미연결"}</strong></article></div>
         <div className="management-statement-comparison"><div className="head"><span>지표</span><span>현재</span><span>직전 동일 일수<small>{statement.previous ? `${statement.previous.from}–${statement.previous.to}` : "비교 불가"}</small></span><span>2025 동일 완료월<small>{statement.priorYear ? `${statement.priorYear.from}–${statement.priorYear.to}` : "완료월 없음"}</small></span></div>{([['revenue','매출·수익'],['expenses','비용'],['netIncome','순이익']] as const).map(([key,label])=><div key={key}><strong>{label}</strong><span>{won(statement.current[key])}</span><span>{statement.previous?<>{won(statement.previous[key])}<small>{pct(statement.previous.delta[key])}</small></>:"—"}</span><span>{statement.priorYear?<>{won(statement.priorYear[key])}<small>{pct(statement.priorYear.delta[key])}</small></>:"—"}</span></div>)}</div>
@@ -269,17 +269,17 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
 
       <section className="management-report-grid">
         <article className="panel management-cash-panel">
-          <header><div><p>CASH TRACE</p><h2>월내 자금 잔액 추이</h2></div><span>{cash.trend.length}개 기준점</span></header>
+          <header><div data-korean-heading><h2>월내 자금 잔액 추이</h2></div><span>{cash.trend.length}개 기준점</span></header>
           {cash.trend.length ? <div className="management-cash-bars">{cash.trend.map((item) => <div key={item.date}><i style={{ height: `${Math.max(6, item.balance / maxCash * 100)}%` }} /><span>{item.date.slice(8)}</span><b>{Math.round(item.balance / 100_000_000)}억</b></div>)}</div> : <div className="management-report-empty">해당 월 자금 잔액 추이가 연결되지 않았습니다.</div>}
           <footer><span>원화 입출금 {won(cash.checkingBalanceKrw)}</span><span>외화 환산 {won(cash.fxBalanceKrw)}</span><span>대출 {won(cash.loanBalanceKrw)}</span></footer>
         </article>
         <article className="panel management-quality-panel">
-          <header><div><p>CONTROL &amp; QUALITY</p><h2>제출 전 확인사항</h2></div><span>{quality.warningCount}건</span></header>
+          <header><div data-korean-heading><h2>제출 전 확인사항</h2></div><span>{quality.warningCount}건</span></header>
           {quality.warnings.length ? <div>{quality.warnings.map((warning) => <button type="button" key={warning.code} onClick={() => onNavigate(warning.destination)}><em>{sectionLabels[warning.section] ?? warning.section}</em><p>{warning.message}</p><span>확인 →</span></button>)}</div> : <div className="management-report-empty">현재 연결 원천에서 추가 품질경고가 없습니다.</div>}
           <footer><span>최신 누적 분개 {quality.journal.lineCount.toLocaleString("ko-KR")}행</span><strong>차대변 차이 {won(quality.journal.differenceKrw)}</strong></footer>
         </article>
         <article className="panel management-alert-action-panel">
-          <header><div><p>ALERT ACTION CONTROL</p><h2>재무 경보 조치현황</h2></div><button type="button" onClick={() => onNavigate("risk-actions")}>조치센터 →</button></header>
+          <header><div data-korean-heading><h2>재무 경보 조치현황</h2></div><button type="button" onClick={() => onNavigate("risk-actions")}>조치센터 →</button></header>
           {!alertActionsConnected && <p className="alert-lineage-legacy">이 저장본은 재무 경보 연계 전에 생성되어 당시 상태를 확정할 수 없습니다. 새 버전부터 기준일 경보 상태가 함께 동결됩니다.</p>}
           <div className="management-alert-summary"><span>기준일 미해결 <strong>{alertActionsConnected ? alertActions.unresolvedCount : "-"}</strong></span><span>중요 <strong>{alertActionsConnected ? alertActions.highCriticalUnresolvedCount : "-"}</strong></span><span>종료 검토 <strong>{alertActionsConnected ? alertActions.reviewCount : "-"}</strong></span><span>기한 경과 <strong>{alertActionsConnected ? alertActions.overdueCount : "-"}</strong></span><span>종료 <strong>{alertActionsConnected ? alertActions.closedCount : "-"}</strong></span></div>
           <div className="management-alert-list">{alertActions.items.filter((item) => item.status !== "CLOSED").slice(0, 8).map((item) => <button type="button" key={item.id} onClick={() => onNavigate("risk-actions")}><em className={item.priority.toLowerCase()}>{item.priority}</em><p><strong>{item.title}</strong><small>{(companyEmployees.find((employee) => employee.id === item.ownerEmployeeId)?.name ?? item.ownerEmployeeId) || "담당자 미지정"} · {item.dueDate || "기한 미정"} · 증빙 {item.evidenceCount}건</small></p><span>{statusLabels[item.status] ?? item.status}</span></button>)}{alertActionsConnected && alertActions.unresolvedCount === 0 && <p className="management-report-empty">기준일 현재 미해결 재무 경보가 없습니다.</p>}</div>
@@ -287,13 +287,13 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
       </section>
 
       <section className="panel management-source-ledger">
-        <header><div><p>SOURCE LINEAGE</p><h2>보고 수치 원천 등록부</h2></div><span>제출 시 함께 동결</span></header>
+        <header><div data-korean-heading><h2>보고 수치 원천 등록부</h2></div><span>제출 시 함께 동결</span></header>
         <div className="management-source-row head"><span>원천</span><span>상태</span><span>기준일</span><span>보고 범위</span><span>추적</span></div>
         {snapshot.sources.map((source) => <div className="management-source-row" key={source.key}><strong>{source.label}</strong><em className={source.status.toLowerCase()}>{source.statusLabel}</em><span>{source.asOf || "미확인"}</span><span>{source.note}</span><button type="button" disabled={source.destination.startsWith("hr:")} onClick={() => onNavigate(source.destination)}>{source.destination.startsWith("hr:") ? "HR 급여관리" : "원천 보기 →"}</button></div>)}
       </section>
 
       <form className="panel management-narrative" onSubmit={saveDraft}>
-        <header><div><p>MANAGEMENT COMMENTARY</p><h2>경영진 보고 문안</h2></div><span>{editable ? "자동 분석 초안을 편집할 수 있습니다." : "제출된 문안은 읽기 전용입니다."}</span></header>
+        <header><div data-korean-heading><h2>경영진 보고 문안</h2></div><span>{editable ? "자동 분석 초안을 편집할 수 있습니다." : "제출된 문안은 읽기 전용입니다."}</span></header>
         <div>
           <label><span>핵심 성과</span><textarea value={draft.highlights} readOnly={!editable} onChange={(event) => setDraft((current) => ({ ...current, highlights: event.target.value }))} /></label>
           <label><span>위험 및 확인사항</span><textarea value={draft.risks} readOnly={!editable} onChange={(event) => setDraft((current) => ({ ...current, risks: event.target.value }))} /></label>
@@ -303,9 +303,9 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
       </form>
 
       {selected && <section className="panel management-decisions">
-        <header><div><p>DECISION REGISTER</p><h2>경영 의사결정 안건</h2></div><span>{state?.decisions.filter((item) => item.status === "PENDING").length ?? 0}건 결정 대기</span></header>
+        <header><div data-korean-heading><h2>경영 의사결정 안건</h2></div><span>{state?.decisions.filter((item) => item.status === "PENDING").length ?? 0}건 결정 대기</span></header>
         {assistantSource && <div className={`management-assistant-source ${assistantSource.evidenceStatus === "VERIFIED" ? "verified" : "review"}`}>
-          <span>AI ANALYSIS SOURCE</span><p><strong>{assistantSource.question}</strong><small>{assistantSource.evidenceLabel} · 기준일 {assistantSource.basisAsOf} · {assistantSource.createdByName}<br />답변 {assistantSource.answerHash.slice(0, 10)}… · 근거 {assistantSource.evidenceHash.slice(0, 10)}…</small></p>
+          <span>분석 근거</span><p><strong>{assistantSource.question}</strong><small>{assistantSource.evidenceLabel} · 기준일 {assistantSource.basisAsOf} · {assistantSource.createdByName}<br />답변 {assistantSource.answerHash.slice(0, 10)}… · 근거 {assistantSource.evidenceHash.slice(0, 10)}…</small></p>
           {editable ? <div>{assistantSource.evidenceStatus === "REVIEW_REQUIRED" && <label><input type="checkbox" checked={assistantReviewAcknowledged} onChange={(event) => setAssistantReviewAcknowledged(event.target.checked)} /> 근거 제한을 확인했습니다.</label>}<button type="button" disabled={busy} onClick={prepareAssistantDecision}>{assistantPrepared ? "안건 양식에 반영됨" : "안건 양식에 반영"}</button></div> : <em>작성 중인 보고서를 선택하거나 새 개정본을 만든 뒤 연결할 수 있습니다.</em>}
         </div>}
         <div className="management-decision-row head"><span>안건·유형</span><span>요청 내용</span><span>재무영향</span><span>책임자·기한</span><span>결과</span><span>처리</span></div>
@@ -332,7 +332,7 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
       </section>}
 
       {selected && <section className="panel management-actions">
-        <header><div><p>FOLLOW-UP ACTIONS</p><h2>경영회의 후속조치</h2></div><span>{state?.actions.filter((item) => item.status !== "DONE").length ?? 0}개 진행 중</span></header>
+        <header><div data-korean-heading><h2>경영회의 후속조치</h2></div><span>{state?.actions.filter((item) => item.status !== "DONE").length ?? 0}개 진행 중</span></header>
         <div className="management-action-row head"><span>구간</span><span>조치</span><span>담당자</span><span>기한</span><span>상태</span><span>메모</span></div>
         {(state?.actions ?? []).map((item) => <div className="management-action-row" key={item.id}><em>{sectionLabels[item.sourceSection] ?? item.sourceSection}{item.decisionId ? " · 안건" : ""}</em><strong>{item.title}</strong><span>{companyEmployees.find((employee) => employee.id === item.ownerEmployeeId)?.name ?? item.ownerEmployeeId}</span><time>{item.dueDate}</time><select value={item.status} disabled={busy || selected.status === "SUPERSEDED"} onChange={(event) => void run("UPDATE_ACTION", { reportId: selected.id, actionId: item.id, status: event.target.value })}>{(["OPEN", "IN_PROGRESS", "WAITING", "DONE"] as const).map((value) => <option key={value} value={value}>{statusLabels[value]}</option>)}</select><span>{item.memo || "-"}</span></div>)}
         {(state?.actions.length ?? 0) === 0 && <div className="management-report-empty">등록된 후속조치가 없습니다.</div>}
@@ -347,7 +347,7 @@ export default function ManagementReportWorkspace({ onNavigate, assistantSource,
       </section>}
 
       {selected && <section className="management-report-submit">
-        <div><p>APPROVAL GATE</p><h2>{selected.status === "DRAFT" ? "경영보고 결재 제출" : `현재 상태 · ${statusLabels[selected.status]}`}</h2><span>제출하면 수치·원천·문안은 변경되지 않습니다. 수정이 필요하면 승인본에서 새 버전을 만드세요.</span></div>
+        <div data-korean-heading><h2>{selected.status === "DRAFT" ? "경영보고 결재 제출" : `현재 상태 · ${statusLabels[selected.status]}`}</h2><span>제출하면 수치·원천·문안은 변경되지 않습니다. 수정이 필요하면 승인본에서 새 버전을 만드세요.</span></div>
         {selected.status === "DRAFT" && <div>
           {snapshot.quality.canSubmit === false && <p className="management-report-submit-blocked">마감 원장 변동을 해결하고 보고서 원천을 새로 반영해야 제출할 수 있습니다.</p>}
           {snapshot.quality.requiresAcknowledgement && <label><input type="checkbox" checked={qualityAcknowledged} onChange={(event) => setQualityAcknowledged(event.target.checked)} /> 품질경고 {snapshot.quality.warningCount}건과 원천 제한을 확인했습니다.</label>}

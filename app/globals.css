@@ -2672,3 +2672,65 @@ body .sales-pricing-setup label, body .sales-service-policy label { font-size: 1
 .local-codex-question-group ol{margin:0;padding-left:18px;display:grid;gap:8px}
 .local-codex-question-group li p{margin:0;color:#27272a;font-size:11.5px;line-height:1.6}
 .local-codex-question-group li small{display:block;margin-top:3px;color:#71717a;font-size:10px;line-height:1.5}
+
+@keyframes modalUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ---- 앱 내부 대화상자 (app/erp-dialog.tsx). 브라우저 confirm/alert/prompt 대체. 팝업 공식과 같은 곡률·3단 구성. ---- */
+.erp-dialog-backdrop { z-index: 90; }
+.erp-dialog { width: min(460px, 100%); overflow: hidden; border: 1px solid #ececee; border-radius: 26px; background: #fff; animation: modalUp .2s ease; }
+.erp-dialog-head { padding: 22px 24px 0; }
+.erp-dialog-kicker { margin: 0 0 4px; color: #82908d; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.erp-dialog.danger .erp-dialog-kicker { color: #ff5a00; }
+.erp-dialog-head h2 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.03em; color: #18181b; text-transform: none; }
+.erp-dialog-body { display: grid; gap: 12px; padding: 12px 24px 20px; }
+.erp-dialog-body p { margin: 0; color: #3f4a49; font-size: 13px; line-height: 1.65; white-space: pre-line; }
+.erp-dialog-body input, .erp-dialog-body textarea { width: 100%; height: auto; padding: 10px 12px; border: 1px solid #d4d4d8; border-radius: 12px; background: #f4f4f5; color: #18181b; font: inherit; font-size: 13px; outline: 0; }
+.erp-dialog-body textarea { resize: vertical; min-height: 72px; }
+.erp-dialog-body input:focus, .erp-dialog-body textarea:focus { border-color: #52525b; background: #fff; box-shadow: 0 0 0 3px #ececee; }
+.erp-dialog-hint { color: #82908d; font-size: 11px; }
+.erp-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; height: auto; padding: 14px 24px; border-top: 1px solid #ececee; background: #fafbfc; }
+.erp-dialog-actions button, .erp-dialog-actions > button:first-child { height: 38px; padding: 0 16px; border: 1px solid #dce1e9; border-radius: 10px; background: #fff; color: #667084; font-size: 12px; font-weight: 700; cursor: pointer; }
+.erp-dialog-actions .erp-dialog-primary { border-color: #18181b; background: #18181b; color: #fff; }
+.erp-dialog.danger .erp-dialog-actions .erp-dialog-primary { border-color: #e04e00; background: #ff5a00; }
+.erp-dialog-actions button:disabled { opacity: .45; cursor: not-allowed; }
+
+/* Single-language headings: align titles after removing English captions. */
+[data-korean-heading] { min-width: 0; }
+[data-korean-heading] > :is(h1, h2, h3, h4) { margin-block-start: 0; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; }
+
+.panel-header { min-height: 72px; padding: 18px 24px; }
+.erp-module-tab > span:last-child { min-width: 0; }
+.erp-module-tab strong { line-height: 1.3; }
+
+.hr-assistant-dialog { width: min(720px, calc(100vw - 32px)); }
+.hr-recruitment-helper, .hr-recruitment-review { display: grid; gap: 12px; min-width: 0; }
+.hr-recruitment-helper { margin: 16px 0; padding: 16px; background: #f3f6fa; border: 1px solid #e0e6ee; border-radius: 14px; }
+.hr-recruitment-helper p, .hr-recruitment-review p { margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.hr-recruitment-helper label, .hr-recruitment-review label { display: grid; gap: 6px; min-width: 0; font-size: 12px; }
+.hr-recruitment-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.hr-recruitment-fields .wide { grid-column: 1 / -1; }
+.hr-recruitment-helper :is(input, textarea, select), .hr-recruitment-review :is(input, textarea) { box-sizing: border-box; min-width: 0; width: 100%; padding: 10px; border: 1px solid #d6dce5; border-radius: 8px; background: #fff; color: #27272a; font: inherit; }
+.hr-recruitment-helper textarea { min-height: 100px; resize: vertical; }
+.hr-recruitment-review textarea { min-height: 220px; resize: vertical; line-height: 1.65; }
+.hr-recruitment-helper small, .hr-recruitment-review small { color: #667085; font-size: 11px; line-height: 1.6; }
+.hr-recruitment-helper > button { padding: 12px; border: 0; border-radius: 10px; background: #18181b; color: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.hr-recruitment-helper button:disabled { opacity: .5; cursor: wait; }
+.local-codex-actions article:has(.hr-recruitment-review) { display: grid; grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 520px) { .hr-recruitment-fields { grid-template-columns: 1fr; } }
+.hr-assistant-topics { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.hr-assistant-topics button, .hr-assistant-history button { padding: 8px 12px; border: 1px solid #dedee3; border-radius: 10px; color: #52525b; background: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.hr-assistant-topics button[aria-pressed="true"] { color: #fff; background: #18181b; border-color: #18181b; }
+.hr-assistant-history { margin: 14px 0; padding: 12px; border: 1px solid #ececef; border-radius: 12px; }
+.hr-assistant-history > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hr-assistant-history summary { padding: 10px 0; font-size: 13px; cursor: pointer; overflow-wrap: anywhere; }
+.hr-assistant-history p { font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+.hr-assistant-question { display: block; margin-bottom: 10px; font-size: 14px; overflow-wrap: anywhere; }
+.hr-assistant-sources { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.hr-assistant-sources span { padding: 5px 8px; border-radius: 7px; background: #eef3f6; color: #475569; font-size: 11px; overflow-wrap: anywhere; }
+.hr-assistant-progress { padding: 12px; border-radius: 10px; background: #eef3f6; color: #475569; font-size: 12px; line-height: 1.6; }
+.hr-retirement-pay-review dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.hr-retirement-pay-review dl > div { padding: 10px; border-radius: 8px; background: #f4f4f5; }
+.hr-retirement-pay-review dt { color: #71717a; font-size: 11px; }
+.hr-retirement-pay-review dd { margin: 5px 0 0; font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.hr-retirement-pay-review blockquote { margin: 10px 0; padding: 8px 12px; border-left: 3px solid #cbd5e1; color: #52525b; font-size: 12px; white-space: pre-wrap; }
+@media (max-width: 520px) { .hr-retirement-pay-review dl { grid-template-columns: 1fr; } }

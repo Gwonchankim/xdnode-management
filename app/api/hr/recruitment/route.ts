@@ -1,6 +1,8 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { validateRecruitmentInterview } from "../../../assistant-recruitment";
 
 type HrBindings = { DB: D1Database; HR_AUDIO: R2Bucket };
 const bindings = env as unknown as HrBindings;
@@ -25,6 +27,7 @@ type OfferRow = {
 };
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_recruiters (
       employee_id TEXT PRIMARY KEY, created_at INTEGER NOT NULL
@@ -49,17 +52,6 @@ async function ensureSchema() {
       cancellation_reason TEXT NOT NULL DEFAULT '', cancelled_by TEXT NOT NULL DEFAULT '', cancelled_at INTEGER,
       onboarded_by TEXT NOT NULL DEFAULT '', onboarded_at INTEGER,
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-      employee_id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT NOT NULL, email TEXT NOT NULL,
-      phone TEXT NOT NULL, address TEXT NOT NULL, department TEXT NOT NULL, manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL, join_date TEXT NOT NULL DEFAULT '', position TEXT NOT NULL,
-      job_title TEXT NOT NULL, status TEXT NOT NULL DEFAULT '재직', history_json TEXT NOT NULL DEFAULT '[]',
-      retirement_json TEXT,
-      annual_salary INTEGER NOT NULL DEFAULT 0, base_pay INTEGER NOT NULL DEFAULT 0,
-      meal_allowance INTEGER NOT NULL DEFAULT 0, childcare_allowance INTEGER NOT NULL DEFAULT 0,
-      vehicle_allowance INTEGER NOT NULL DEFAULT 0, first_term_pay_percent INTEGER NOT NULL DEFAULT 100, regular_contract_date TEXT NOT NULL DEFAULT '', first_term_review_json TEXT,
-      updated_at INTEGER NOT NULL
     )`),
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_organization_records (
       organization_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
@@ -108,17 +100,6 @@ async function ensureSchema() {
     ["first_term_pay_percent", "INTEGER NOT NULL DEFAULT 100"],
   ].filter(([name]) => !existing.has(name))) {
     await db.prepare(`ALTER TABLE hr_offer_requests ADD COLUMN ${name} ${definition}`).run();
-  }
-  // 처우 컬럼은 뒤에 붙은 것이라 예전에 만들어진 표에는 없다. 입사 전환이 여기에 연봉을 쓰므로
-  // 이 라우트에서도 있는지 확인한다 — 컬럼이 없으면 입사 완료 자체가 실패한다.
-  const employeeColumns = await db.prepare("PRAGMA table_info(hr_employee_records)").all<{ name: string }>();
-  const employeeColumnNames = new Set(employeeColumns.results.map((column) => column.name));
-  for (const [name, definition] of ([
-    ["annual_salary", "INTEGER NOT NULL DEFAULT 0"], ["base_pay", "INTEGER NOT NULL DEFAULT 0"],
-    ["meal_allowance", "INTEGER NOT NULL DEFAULT 0"], ["childcare_allowance", "INTEGER NOT NULL DEFAULT 0"],
-    ["vehicle_allowance", "INTEGER NOT NULL DEFAULT 0"], ["first_term_pay_percent", "INTEGER NOT NULL DEFAULT 100"], ["regular_contract_date", "TEXT NOT NULL DEFAULT ''"], ["first_term_review_json", "TEXT"],
-  ] as const).filter(([name]) => !employeeColumnNames.has(name))) {
-    await db.prepare(`ALTER TABLE hr_employee_records ADD COLUMN ${name} ${definition}`).run();
   }
   const applicantColumns = await db.prepare("PRAGMA table_info(hr_applicants)").all<{ name: string }>();
   if (!applicantColumns.results.some((column) => column.name === "requisition_id")) {
@@ -496,6 +477,12 @@ export async function PUT(request: Request) {
   const name = stringValue("name").trim();
   const email = stringValue("email").trim();
   if (!id || !name || !email) return Response.json({ error: "지원자 ID, 이름, 이메일이 필요합니다." }, { status: 400 });
+  const createOnly = body.createOnly === true;
+  if (createOnly) {
+    if (!stringValue("role").trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !stringValue("resumeText").trim()) return Response.json({ error: "지원 직무·이메일·이력서 내용을 확인해 주세요." }, { status: 400 });
+    try { if (body.recruitmentHelper === true || body.interview) body.interview = validateRecruitmentInterview(body.interview, body.recruitmentHelper === true); }
+    catch (error) { return Response.json({ error: error instanceof Error ? error.message : "면접 일정을 확인해 주세요." }, { status: 400 }); }
+  }
   const interview = body.interview && typeof body.interview === "object" ? JSON.stringify(body.interview) : null;
   const requisitionId = stringValue("requisitionId").trim();
   if (requisitionId) {
@@ -514,22 +501,31 @@ export async function PUT(request: Request) {
   const before = await db.prepare("SELECT * FROM hr_applicants WHERE id = ?").bind(id).first<ApplicantRow>();
   const latestOffer = await db.prepare("SELECT status FROM hr_offer_requests WHERE applicant_id = ? ORDER BY created_at DESC LIMIT 1")
     .bind(id).first<{ status: string }>();
-  const stage = offerStage(latestOffer?.status ?? "") ?? stringValue("stage");
-  await db.prepare(`INSERT INTO hr_applicants
+  // 오퍼가 수락·입사 완료면 그 상태가 단계를 지배한다. 그 밖(제안 준비·거절 등)은 화면이 보낸 단계를 그대로 둔다 —
+  // 예전에는 메모 저장만 해도 「타사 합격」이 「채용 제안 거절」로 되돌아갔다.
+  const forcedByOffer = ["ACCEPTED", "ONBOARDED"].includes(latestOffer?.status ?? "");
+  const stage = (forcedByOffer ? offerStage(latestOffer?.status ?? "") : "") || stringValue("stage") || offerStage(latestOffer?.status ?? "") || "";
+  const savedApplicant = await db.prepare(`INSERT INTO hr_applicants
     (id, name, role, applied, owner_id, stage, experience, email, phone, source, summary, career_summary, birth, address, resume_file_name,
       resume_text, checklist_json, screening_memos_json, interview_json, interview_memos_json, requisition_id, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET name=excluded.name, role=excluded.role, applied=excluded.applied,
+    SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    WHERE ? = 0 OR NOT EXISTS (
+      SELECT 1 FROM hr_applicants WHERE id = ? OR lower(trim(email)) = lower(trim(?))
+      OR (length(?) >= 8 AND replace(replace(replace(replace(replace(phone, '-', ''), ' ', ''), '(', ''), ')', ''), '+', '') = ?)
+    )
+    ON CONFLICT(id) ${createOnly ? "DO NOTHING" : `DO UPDATE SET name=excluded.name, role=excluded.role, applied=excluded.applied,
       owner_id=excluded.owner_id, stage=excluded.stage, experience=excluded.experience, email=excluded.email,
       phone=excluded.phone, source=excluded.source, summary=excluded.summary, career_summary=excluded.career_summary, birth=excluded.birth, address=excluded.address,
       resume_file_name=excluded.resume_file_name,
       resume_text=excluded.resume_text, checklist_json=excluded.checklist_json,
       screening_memos_json=excluded.screening_memos_json, interview_json=excluded.interview_json,
-      interview_memos_json=excluded.interview_memos_json, requisition_id=excluded.requisition_id, updated_at=excluded.updated_at`)
+      interview_memos_json=excluded.interview_memos_json, requisition_id=excluded.requisition_id, updated_at=excluded.updated_at`}`)
     .bind(id, name, stringValue("role"), stringValue("applied"), stringValue("ownerId"), stage,
       stringValue("experience"), email, stringValue("phone"), stringValue("source"), stringValue("summary"),
       stringValue("careerSummary"), stringValue("birth"), stringValue("address"), stringValue("resumeFileName"), stringValue("resumeText"), JSON.stringify(body.checklist ?? []),
-      JSON.stringify(body.screeningMemos ?? []), interview, JSON.stringify(body.interviewMemos ?? []), requisitionId, updatedAt).run();
+      JSON.stringify(body.screeningMemos ?? []), interview, JSON.stringify(body.interviewMemos ?? []), requisitionId, updatedAt,
+      createOnly ? 1 : 0, id, email, stringValue("phone").replace(/[^0-9]/g, ""), stringValue("phone").replace(/[^0-9]/g, "")).run();
+  if (createOnly && !savedApplicant.meta.changes) return Response.json({ error: "같은 이메일·연락처 또는 등록 ID의 지원자가 이미 있습니다. 지원자 관리에서 기존 기록을 확인해 주세요." }, { status: 409 });
   const after = await db.prepare("SELECT * FROM hr_applicants WHERE id = ?").bind(id).first<ApplicantRow>();
   await writeErpAudit(db, {
     principal: authorization.principal,
@@ -619,7 +615,7 @@ export async function DELETE(request: Request) {
   if (applicantId) {
     const applicant = await db.prepare("SELECT * FROM hr_applicants WHERE id = ?").bind(applicantId).first<ApplicantRow>();
     if (!applicant) return Response.json({ error: "삭제할 지원자를 찾을 수 없습니다." }, { status: 404 });
-    const acceptedOffer = await db.prepare("SELECT employee_id FROM hr_offer_requests WHERE applicant_id = ? AND status = 'ACCEPTED' LIMIT 1")
+    const acceptedOffer = await db.prepare("SELECT employee_id FROM hr_offer_requests WHERE applicant_id = ? AND status IN ('ACCEPTED', 'ONBOARDED') LIMIT 1")
       .bind(applicantId).first<{ employee_id: string }>();
     if (acceptedOffer) return Response.json({ error: `입사 전환된 지원자는 삭제할 수 없습니다. 인사기록카드(${acceptedOffer.employee_id})에서 생애주기를 관리해 주세요.` }, { status: 409 });
 

@@ -104,7 +104,7 @@ export default function ApprovalCenter({ openRequestKey = 0 }: { openRequestKey?
     {open && <>
       <button type="button" className="approval-backdrop" aria-label="전자결재 닫기" onClick={() => setOpen(false)} />
       <section className="approval-center" role="dialog" aria-modal="true" aria-label="전자결재 센터">
-        <header className="approval-center-header"><div><p>WORKFLOW CONTROL</p><h2>전자결재 센터</h2><span>기안·검토·승인·반려와 모든 의견을 한 이력으로 관리합니다.</span></div><div><button type="button" className="approval-create-button" onClick={() => setCreating((value) => !value)}>＋ 새 기안</button><button type="button" className="approval-close-button" aria-label="닫기" onClick={() => setOpen(false)}>×</button></div></header>
+        <header className="approval-center-header"><div data-korean-heading><h2>전자결재 센터</h2><span>기안·검토·승인·반려와 모든 의견을 한 이력으로 관리합니다.</span></div><div><button type="button" className="approval-create-button" onClick={() => setCreating((value) => !value)}>＋ 새 기안</button><button type="button" className="approval-close-button" aria-label="닫기" onClick={() => setOpen(false)}>×</button></div></header>
         {error && <div className="approval-error">{error}</div>}
         {creating && <form className="approval-create-form" onSubmit={create}>
           <label><span>업무 영역</span><select value={draft.module} onChange={(event) => { const selectedModule = event.target.value as ApprovalModule; setDraft({ ...draft, module: selectedModule, requestType: Object.keys(typeMap[selectedModule])[0] }); }}>{Object.entries(moduleLabels).filter(([value]) => value !== "settings").map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>

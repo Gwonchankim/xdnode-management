@@ -126,7 +126,7 @@ export default function BudgetActualWorkspace() {
 
   return <div className="budget-actual-workspace">
     <section className="budget-actual-hero">
-      <div><p>BUDGET VS ACTUAL</p><h1>예산·실적 관리</h1><span>승인 예산을 실제 원천과 연결하고 차이의 원인·조치·담당·기한까지 관리합니다.</span></div>
+      <div data-korean-heading><h1>예산·실적 관리</h1><span>승인 예산을 실제 원천과 연결하고 차이의 원인·조치·담당·기한까지 관리합니다.</span></div>
       <div className="budget-actual-controls">
         <label>예산연도<select value={year} onChange={(event) => { const next = Number(event.target.value); setYear(next); setPlanId(""); void load(next, ""); }}>{Array.from({ length: 5 }, (_, index) => currentYear + index).map((item) => <option key={item} value={item}>{item}년</option>)}</select></label>
         {selected && ["APPROVED","SUPERSEDED"].includes(selected.plan.status) && <button type="button" onClick={() => void createRevision()} disabled={working}>+ 개정본 만들기</button>}
@@ -138,7 +138,7 @@ export default function BudgetActualWorkspace() {
     {loading && <div className="budget-actual-loading">예산과 실적 원천을 대사하고 있습니다.</div>}
 
     {!loading && !selected && <section className="panel budget-empty-plan">
-      <div><p>START BUDGET PLAN</p><h2>{year}년 예산 계획 만들기</h2><span>실제 회사 예산값은 임의로 만들지 않습니다. 계획을 만든 뒤 월별 예산선을 등록해 주세요.</span></div>
+      <div data-korean-heading><h2>{year}년 예산 계획 만들기</h2><span>실제 회사 예산값은 임의로 만들지 않습니다. 계획을 만든 뒤 월별 예산선을 등록해 주세요.</span></div>
       <form onSubmit={(event) => void createPlan(event)}><label>계획명<input required value={planName} onChange={(event) => setPlanName(event.target.value)} /></label><button type="submit" disabled={working}>계획 생성</button></form>
     </section>}
 
@@ -162,7 +162,7 @@ export default function BudgetActualWorkspace() {
       <div className="budget-scope-notice"><span>i</span><p><strong>실적 연결 범위</strong>{data?.scopeNotice} 연결되지 않은 예산은 0원이 아니라 ‘매핑 필요’로 표시합니다.</p></div>
 
       {isDraft && <section className="panel budget-line-editor">
-        <header><div><p>MONTHLY BUDGET LINE</p><h2>월별 예산선 등록</h2><span>실적 원천과 한 번 연결하면 이후 스냅샷 갱신 시 자동 재계산됩니다.</span></div></header>
+        <header><div data-korean-heading><h2>월별 예산선 등록</h2><span>실적 원천과 한 번 연결하면 이후 스냅샷 갱신 시 자동 재계산됩니다.</span></div></header>
         <form onSubmit={(event) => void addLine(event)}>
           <label>월<select value={lineDraft.month} onChange={(event) => setLineDraft({ ...lineDraft, month: event.target.value })}>{Array.from({ length: 12 }, (_, index) => index + 1).map((month) => <option key={month} value={month}>{month}월</option>)}</select></label>
           <label>부서<input required value={lineDraft.department} onChange={(event) => setLineDraft({ ...lineDraft, department: event.target.value })} /></label>
@@ -177,7 +177,7 @@ export default function BudgetActualWorkspace() {
       </section>}
 
       <section className="panel budget-variance-table">
-        <header><div><p>VARIANCE CONTROL</p><h2>월별 예산·실적 차이</h2><span>경보는 수익 미달과 비용 초과를 서로 다르게 판정합니다.</span></div><span>{selected.lines.length}개 예산선</span></header>
+        <header><div data-korean-heading><h2>월별 예산·실적 차이</h2><span>경보는 수익 미달과 비용 초과를 서로 다르게 판정합니다.</span></div><span>{selected.lines.length}개 예산선</span></header>
         <div className="budget-variance-row head"><span>기간·부서</span><span>계정·원천</span><span>예산</span><span>비교 예산</span><span>실제</span><span>차이</span><span>상태</span><span>관리</span></div>
         {selected.lines.map((line) => <div className={`budget-variance-row ${line.flag.toLowerCase()}`} key={line.id}>
           <p><strong>{year}.{String(line.month).padStart(2, "0")}</strong><small>{line.department}{line.partial ? " · 부분월" : ""}</small></p>
@@ -191,7 +191,7 @@ export default function BudgetActualWorkspace() {
       </section>
 
       {selectedLine && <section className="panel budget-action-editor">
-        <header><div><p>VARIANCE ACTION</p><h2>{year}.{String(selectedLine.month).padStart(2, "0")} {selectedLine.accountName}</h2><span>{selectedLine.mappingNote} · 차이 {signedWon(selectedLine.varianceAmount)}</span></div><button type="button" onClick={() => setSelectedLineId("")}>닫기</button></header>
+        <header><div data-korean-heading><h2>{year}.{String(selectedLine.month).padStart(2, "0")} {selectedLine.accountName}</h2><span>{selectedLine.mappingNote} · 차이 {signedWon(selectedLine.varianceAmount)}</span></div><button type="button" onClick={() => setSelectedLineId("")}>닫기</button></header>
         <form onSubmit={(event) => void saveAction(event)}>
           <label>관리 상태<select value={actionDraft.status} onChange={(event) => setActionDraft({ ...actionDraft, status: event.target.value })}><option value="OPEN">원인 확인 중</option><option value="EXPLAINED">원인 기록 완료</option><option value="ACTIONED">조치 계획 등록</option></select></label>
           <label className="wide">차이 원인<textarea value={actionDraft.cause} onChange={(event) => setActionDraft({ ...actionDraft, cause: event.target.value })} placeholder="매출 이연, 일회성 구매, 단가 변동 등" /></label>

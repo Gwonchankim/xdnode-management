@@ -10,11 +10,16 @@ npm run dev            # vinext dev (local Cloudflare Worker + D1 simulation)
 npm run build           # vinext build
 npm run start           # vinext start (serve built output)
 npm run lint             # eslint . --ignore-pattern dist --ignore-pattern .next
-npm test                 # npm run build, then node --test over tests/*.test.mjs
+npm test                 # npm run build, then node --test over an explicit list of tests/*.test.mjs
 npm run db:generate      # drizzle-kit generate (writes drizzle/NNNN_*.sql from db/schema.ts)
+npm run assistant:claude # local Claude CLI bridge for the in-app AI assistant (127.0.0.1:3130)
+npm run resume:bridge    # local Claude CLI bridge for HR resume analysis (127.0.0.1:3120)
+npm run assistant:bridge # legacy Codex CLI assistant bridge (127.0.0.1:3110), kept for rollback
 ```
 
-There is no per-file test runner script; `tests/*.test.mjs` are plain Node `node --test` files, so a single file can be run directly, e.g. `node --test tests/erp-platform.test.mjs` (after `npm run build`, since several tests import from `.next`/build output indirectly via source reads — most only read source files as text, so a prior build is only strictly required for `tests/rendered-html.test.mjs`).
+`npm test` does **not** glob — it runs the test files listed by name in the `package.json` `test` script. A new `tests/*.test.mjs` file must be added to that list or `npm test` won't run it.
+
+Test files are plain `node --test` files, so run one directly, e.g. `node --test tests/erp-platform.test.mjs`. Most tests read source files as text and don't need a build. `tests/rendered-html.test.mjs` needs `npm run build` first. `tests/helpers/hr-api-harness.mjs` loads real route files through a TypeScript loader hook and runs them against an in-memory `node:sqlite` database standing in for D1. Use it for behavioral route tests (see `tests/hr-api-integration.test.mjs`).
 
 ## Stack
 
@@ -39,6 +44,8 @@ This is a single Korean-language ERP application ("XD NODE") for one company, no
 **Drizzle.** [db/schema.ts](db/schema.ts) and [db/index.ts](db/index.ts) exist (used by `npm run db:generate`) but are not imported anywhere under `app/` — nothing in the running app uses the Drizzle query builder or `getDb()`. Treat `db/schema.ts` as a migration-authoring surface only; actual reads/writes happen through raw SQL in route files as described above.
 
 **Data files.** [app/finance-current-data.ts](app/finance-current-data.ts) (~12k lines) and [app/hr-company-data.ts](app/hr-company-data.ts) embed real, dated business data (accounts, journal summaries, employee roster) for the company this ERP runs — not synthetic fixtures. `app/finance-historical-data.ts` / `finance-decision-model.ts` / `finance-time-series.ts` derive analytics from that data. Treat edits to these files as data-accuracy-sensitive, not just code changes.
+
+**Local AI bridges.** The Worker can't spawn processes, so AI features call small Node HTTP servers in `scripts/` that wrap the `claude` CLI and run on the desktop. [app/api/assistant/route.ts](app/api/assistant/route.ts) proxies to `CLAUDE_ASSISTANT_BRIDGE_URL`, which defaults to `http://127.0.0.1:3130` (`scripts/claude-assistant-bridge.mjs`). The browser never calls the bridge directly, so other devices on the network can still use the assistant. The bridge validates model output against `scripts/codex-assistant-response-schema.json`, because `proposedActions` are change proposals the UI can apply to real ERP records. [app/api/hr/resume-analysis/route.ts](app/api/hr/resume-analysis/route.ts) calls `CLAUDE_BRIDGE_URL`, which defaults to `:3120` (`scripts/claude-resume-bridge.mjs`, an OpenAI-compatible `/chat/completions` shim). The bridges bind to localhost, cap request size, and handle one request at a time.
 
 **Docs.** [docs/](docs/) contains one `*-plan.md` per feature area (finance, HR, sales, data-governance modules) describing intended behavior — check the relevant plan doc before changing a workspace's business rules.
 

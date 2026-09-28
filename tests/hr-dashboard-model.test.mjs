@@ -149,3 +149,14 @@ test("정규직 전환 예정은 재직자 전원이 대상이고, 만료 60일�
   assert.deepEqual(model.missingRegularRecords.map((item) => item.employee.id), ["old"]);
   assert.equal(model.metrics.find((metric) => metric.label === "정규직 전환 예정").value, 2);
 });
+
+test("연차 촉진 2차와 초과 사용은 주의로, 1차 촉진은 참고로 처리 대기함에 오른다", () => {
+  const model = build({ leaveLedgers: [
+    { employeeId: "a", name: "가", department: "구매팀", balance: 3, promotions: [{ stage: "SECOND", label: "11개월차 월차", remaining: 0.25, expiresAt: "2026-09-22", daysLeft: 1 }] },
+    { employeeId: "b", name: "나", department: "AI사업팀", balance: -1.25, promotions: [{ stage: "FIRST", label: "2주년 연차", remaining: 14, expiresAt: "2027-01-15", daysLeft: 116 }] },
+  ] });
+  // 초과 사용은 마감이 오늘이라 같은 주의 급에서 소멸 예정(9/22)보다 앞선다.
+  assert.deepEqual(model.inbox.map((item) => `${item.priority}:${item.kind}`), ["warning:연차 초과 사용", "warning:연차 촉진 2차", "info:연차 촉진 1차"]);
+  assert.equal(model.inbox[0].title, "나님 연차 1.25일 초과 사용");
+  assert.equal(model.inbox[0].target.view, "leave");
+});

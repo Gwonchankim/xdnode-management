@@ -33,11 +33,7 @@ type ResumeAnalysis = {
   warnings: string[];
 };
 
-type CloudflareEnvelope = {
-  success?: boolean;
-  errors?: Array<{ message?: string }>;
-  result?: unknown;
-};
+
 
 // 구조화 출력 스키마. 이걸 붙이지 않으면 모델이 키 이름을 스스로 정한다 — qwen3 는
 // {"이름": …, "희망직무": …} 처럼 한글 키를 돌려주고, 그러면 parsed.name / parsed.role 이

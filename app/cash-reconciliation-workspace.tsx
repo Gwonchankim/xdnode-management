@@ -176,7 +176,7 @@ export default function CashReconciliationWorkspace() {
 
   return <div className="cash-reconciliation-workspace">
     <section className="cash-reconciliation-hero">
-      <div><p>CASH RECONCILIATION</p><h1>자금 대사</h1><span>Clobe 은행 거래를 지급·수금 원장과 연결하고 미처리 사유를 추적합니다.</span></div>
+      <div data-korean-heading><h1>자금 대사</h1><span>Clobe 은행 거래를 지급·수금 원장과 연결하고 미처리 사유를 추적합니다.</span></div>
       <div><small>원천 범위</small><strong>{data?.coverage.startDate}–{data?.coverage.endDate}</strong><em>{data?.coverage.deduplicated ? "거래 ID 중복 제거" : "원문 기준"}</em></div>
     </section>
 
@@ -190,7 +190,7 @@ export default function CashReconciliationWorkspace() {
     </section>
 
     <section className="panel payable-control-panel">
-      <header><div><p>SUBSIDIARY ↔ LEDGER TIE-OUT</p><h3>은행계정조정표(보통예금 잔액 대사)</h3></div><span>{tieOut ? `${tieOut.period} · 원장 기준일 ${tieOut.as_of}` : "아직 계산되지 않음"}</span></header>
+      <header><div data-korean-heading><h3>은행계정조정표(보통예금 잔액 대사)</h3></div><span>{tieOut ? `${tieOut.period} · 원장 기준일 ${tieOut.as_of}` : "아직 계산되지 않음"}</span></header>
       {tieOutMessage && <div className="finance-control-message" role="status">{tieOutMessage}</div>}
       <div className="payable-plan-editor">
         <p>이카운트 IMPORT 원장과의 대사 · 자동 계산</p>
@@ -223,7 +223,7 @@ export default function CashReconciliationWorkspace() {
 
     <section className="panel cash-reconciliation-ledger">
       <header>
-        <div><p>MATCH CONTROL</p><h2>은행 거래 대사 원장</h2><span>후보는 자동 제시하되 확정은 사용자가 수행합니다.</span></div>
+        <div data-korean-heading><h2>은행 거래 대사 원장</h2><span>후보는 자동 제시하되 확정은 사용자가 수행합니다.</span></div>
         <label><span>검색</span><input value={query} placeholder="적요·거래처·계정·계좌" onChange={(event) => setQuery(event.target.value)} /></label>
       </header>
       <div className="cash-reconciliation-filters" aria-label="대사 상태 필터">

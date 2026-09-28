@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ensureHrCompensationRunSchema } from "../../../hr-compensation-schema";
 import { companyEmployees } from "../../../hr-company-data";
 import { payrollSeedRecords } from "../../../payroll-seed-data";
 import { createApprovalRequest } from "../../../approval-engine";
@@ -61,6 +62,7 @@ const employeeByName = new Map(companyEmployees.map((employee) => [employee.name
 const employeeById = new Map(companyEmployees.map((employee) => [employee.id, employee]));
 
 async function ensureSchema() {
+  await ensureHrCompensationRunSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_payroll_records (
       id TEXT PRIMARY KEY,
@@ -321,6 +323,10 @@ export async function POST(request: Request) {
       detail[name] = (detail[name] ?? 0) + amount;
     }
   }
+  // 빈 문자열은 Number("") === 0 이라 조용히 0 원이 됐다. 항목이 없으면 총액은 반드시 숫자로 와야 한다.
+  if (!detailInput && (body.deductions === undefined || body.deductions === null || String(body.deductions).trim() === "")) {
+    return Response.json({ error: "공제액을 숫자로 입력해 주세요." }, { status: 400 });
+  }
   const deductions = detailInput ? Object.values(detail).reduce((sum, value) => sum + value, 0) : Math.round(Number(body.deductions));
   if (!Number.isFinite(deductions)) {
     return Response.json({ error: "공제액을 숫자로 입력해 주세요." }, { status: 400 });
@@ -495,14 +501,19 @@ export async function PUT(request: Request) {
     if (financeBefore) await writeErpAudit(db, { principal: approvalAuthorization.principal, module: "finance", action: "PAYROLL_PAYMENT_CANCELLED", entityType: "financeExpense", entityId: payrollExpenseId, before: financeBefore, after: { ...financeBefore, status: "CANCELLED" }, reason: reopenedReason });
     return Response.json({ item: after });
   }
-  await db.prepare(`UPDATE hr_payroll_runs SET status = ?, prepared_by = CASE WHEN ? IN ('REVIEW','APPROVED','LOCKED') THEN ? ELSE prepared_by END,
+  // 검토 요청 상태에서 작성 중으로 되돌릴 때도 사유를 남긴다. 결재 근거가 바뀌는 일이라 승인·마감 되돌리기와 같은 기록이 필요하다.
+  const revertReason = typeof body.reopenedReason === "string" ? body.reopenedReason.trim() : "";
+  if (status === "DRAFT" && currentStatus === "REVIEW" && !revertReason) return Response.json({ error: "검토 요청을 되돌리려면 사유가 필요합니다." }, { status: 400 });
+  const transition = await db.prepare(`UPDATE hr_payroll_runs SET status = ?, prepared_by = CASE WHEN ? IN ('REVIEW','APPROVED','LOCKED') THEN ? ELSE prepared_by END,
     reviewed_by = CASE WHEN ? IN ('APPROVED','LOCKED') THEN ? ELSE reviewed_by END,
     approved_by = CASE WHEN ? IN ('APPROVED','LOCKED') THEN ? ELSE '' END,
     locked_at = CASE WHEN ? = 'LOCKED' THEN ? ELSE NULL END,
-    reopened_reason = CASE WHEN ? = 'DRAFT' THEN ? ELSE reopened_reason END, updated_at = ? WHERE period = ?`)
+    reopened_reason = CASE WHEN ? = 'DRAFT' THEN ? ELSE reopened_reason END, updated_at = ? WHERE period = ? AND status = ?`)
     .bind(status, status, authorization.principal.employeeId, status, authorization.principal.employeeId,
       status, authorization.principal.employeeId, status, now, status,
-      typeof body.reopenedReason === "string" ? body.reopenedReason.trim() : "", now, period).run();
+      revertReason, now, period, currentStatus).run();
+  // 전이 검사와 UPDATE 사이에 다른 사람이 상태를 바꿨으면 한 행도 안 바뀐다.
+  if ((transition.meta.changes ?? 0) < 1) return Response.json({ error: "급여월 상태가 그 사이 바뀌었습니다. 새로고침 후 다시 시도해 주세요." }, { status: 409 });
   const after = await db.prepare("SELECT * FROM hr_payroll_runs WHERE period = ?").bind(period).first<Record<string, unknown>>();
   await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "PAYROLL_RUN_STATUS_UPDATED", entityType: "payrollRun", entityId: period, before, after, reason: typeof body.reopenedReason === "string" ? body.reopenedReason : "" });
   return Response.json({ item: after });

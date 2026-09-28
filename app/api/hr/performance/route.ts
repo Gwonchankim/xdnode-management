@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 import { createApprovalRequest } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
@@ -38,6 +39,7 @@ const ratingValues = new Set(["S", "A", "B", "C", "D"]);
 const privileged = (principal: ErpPrincipal) => principal.roles.includes("SUPER_ADMIN") || principal.roles.includes("HR_ADMIN");
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_performance_cycles (
       id TEXT PRIMARY KEY NOT NULL, name TEXT NOT NULL, period TEXT NOT NULL, description TEXT NOT NULL DEFAULT '',
@@ -75,12 +77,6 @@ async function ensureSchema() {
       submitted_at INTEGER NOT NULL, resolved_by TEXT NOT NULL DEFAULT '', resolved_at INTEGER,
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_hr_performance_appeal_participant_status ON hr_performance_appeals(participant_id, status)"),
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-      employee_id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT NOT NULL, email TEXT NOT NULL,
-      phone TEXT NOT NULL, address TEXT NOT NULL, department TEXT NOT NULL, manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL, join_date TEXT NOT NULL DEFAULT '', position TEXT NOT NULL,
-      job_title TEXT NOT NULL, status TEXT NOT NULL DEFAULT '재직', history_json TEXT NOT NULL DEFAULT '[]',
-      retirement_json TEXT, updated_at INTEGER NOT NULL)`),
     db.prepare("CREATE TABLE IF NOT EXISTS hr_organization_records (organization_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, updated_at INTEGER NOT NULL)"),
     db.prepare("CREATE TABLE IF NOT EXISTS hr_organization_leaders (organization_id TEXT PRIMARY KEY, leader_employee_id TEXT, updated_at INTEGER NOT NULL)"),
   ]);

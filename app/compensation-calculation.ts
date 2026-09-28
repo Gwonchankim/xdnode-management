@@ -2,11 +2,15 @@ export type CompensationRounding = "round" | "up" | "down";
 
 export type CompensationMonthlyPay = {
   basic?: number;
+  // 그 달만 직접 적은 식대. 없으면 기준액을 근무일로 일할 계산한다. 중도 입사·휴직 달의 실비 정산처럼
+  // 자동 계산과 다른 금액을 줘야 할 때 쓴다.
+  meal?: number;
   incentive?: number;
   bonus?: number;
   extra?: number;
   research?: number;
   severance?: number;
+  retirementPaySource?: string;
   // 미사용 연차를 정산해 주는 달에만 쓴다. 지급 항목이라 지급총액에 더해진다.
   annualLeave?: number;
   // 업무에 개인 비용을 쓴 사람에게 되돌려 주는 금액. 실비라 일할계산하지 않고 적은 금액 그대로
@@ -115,7 +119,9 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
   }
   else if (days && employee.annualSalary > 0) {
     basic = days === totalDays && segments.length === 1
-      ? Math.max(0, roundPay(employee.annualSalary / 12 * segments[0].rate - allowanceMonthly, rounding))
+      // 회사 규칙: 기본급 = ceil(연봉×지급률/12) − 식대 − 육아 − 자가운전. 근로계약서(hr-employment-contract.ts)와 같은 식이라
+      // 단수 처리 설정과 무관하게 항상 올림한다. 설정값은 일할 구간에만 쓴다.
+      ? Math.max(0, Math.ceil(employee.annualSalary * segments[0].rate / 12) - allowanceMonthly)
       : segments.reduce((sum, segment) => sum + Math.max(0, roundPay((employee.annualSalary * segment.rate - allowanceMonthly * 12) / 365 * segment.days, rounding)), 0);
   }
   const allowance = (value: number) => !value || !days ? 0 : days === totalDays ? value : Math.floor(value * 12 / 365 * days);
@@ -127,7 +133,8 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
   const annualLeave = columns.annualLeave ? monthly.annualLeave ?? 0 : 0;
   // 실비 정산이라 근무일수로 나누지 않는다. 15일 일해도 쓴 금액은 그대로 돌려준다.
   const personalExpense = columns.personalExpense ? monthly.personalExpense ?? 0 : 0;
-  const meal = allowance(employee.meal);
+  // 식대는 기본이 일할 계산이지만, 그 달에 직접 적은 값이 있으면 그 값을 그대로 쓴다.
+  const meal = monthly.meal !== undefined ? monthly.meal : allowance(employee.meal);
   const car = allowance(employee.car);
   const child = allowance(employee.child);
   return {

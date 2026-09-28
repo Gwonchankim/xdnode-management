@@ -92,7 +92,7 @@ export default function DataGovernanceCenter({ onClose, initialView = "trust" }:
     <button className="data-governance-backdrop" type="button" aria-label="데이터 통제 센터 닫기" onClick={onClose} />
     <aside className="data-governance-center" role="dialog" aria-modal="true" aria-label="데이터 신뢰성 통제 센터">
       <header className="data-governance-header">
-        <div><p>DATA CONTROL CENTER</p><h2>데이터 통제 센터</h2><span>신뢰성·복구, 원천 연동·대사, 기준정보 영향과 감사·변경이력을 관리자 권한으로 관리합니다.</span></div>
+        <div data-korean-heading><h2>데이터 통제 센터</h2><span>신뢰성·복구, 원천 연동·대사, 기준정보 영향과 감사·변경이력을 관리자 권한으로 관리합니다.</span></div>
         <button type="button" aria-label="닫기" onClick={onClose}>×</button>
       </header>
       <nav className="data-governance-tabs" aria-label="데이터 통제 영역"><button type="button" className={view === "trust" ? "active" : ""} onClick={() => setView("trust")}>신뢰성·복구</button><button type="button" className={view === "integration" ? "active" : ""} onClick={() => setView("integration")}>연동·대사</button><button type="button" className={view === "impact" ? "active" : ""} onClick={() => setView("impact")}>기준정보 영향</button><button type="button" className={view === "audit" ? "active" : ""} onClick={() => setView("audit")}>감사·변경이력</button></nav>
@@ -109,7 +109,7 @@ export default function DataGovernanceCenter({ onClose, initialView = "trust" }:
         </section>
 
         <section className="data-governance-section">
-          <header><div><p>INTEGRITY CHECK</p><h3>운영 무결성 점검</h3></div><button disabled={Boolean(busy)} type="button" onClick={() => void mutate("RUN_CHECKS", {}, "운영 데이터 점검 결과를 저장했습니다.")}>{busy === "RUN_CHECKS" ? "점검 중…" : "지금 점검"}</button></header>
+          <header><div data-korean-heading><h3>운영 무결성 점검</h3></div><button disabled={Boolean(busy)} type="button" onClick={() => void mutate("RUN_CHECKS", {}, "운영 데이터 점검 결과를 저장했습니다.")}>{busy === "RUN_CHECKS" ? "점검 중…" : "지금 점검"}</button></header>
           <div className="data-governance-checks">
             {data.latestRun?.checks.map((check) => <article key={check.code} className={check.status.toLowerCase()}><em>{statusLabel[check.status]}</em><div><strong>{check.title}</strong><small>{check.category}</small><p>{check.detail}</p></div></article>)}
             {!data.latestRun && <div className="data-governance-empty">첫 점검을 실행하면 권한·감사·연동·재무·파일·복구 상태가 표시됩니다.</div>}
@@ -117,7 +117,7 @@ export default function DataGovernanceCenter({ onClose, initialView = "trust" }:
         </section>
 
         <section className="data-governance-section">
-          <header><div><p>LOGICAL SNAPSHOT</p><h3>D1 논리 스냅샷</h3><span>실데이터 자동복구 없이 생성·해시검증·복구 모의훈련을 순서대로 수행합니다.</span></div><button disabled={Boolean(busy)} type="button" onClick={() => void mutate("CREATE_SNAPSHOT", {}, "D1 논리 스냅샷을 생성했습니다. 이어서 검증해 주세요.")}>{busy === "CREATE_SNAPSHOT" ? "생성 중…" : "새 스냅샷 생성"}</button></header>
+          <header><div data-korean-heading><h3>D1 논리 스냅샷</h3><span>실데이터 자동복구 없이 생성·해시검증·복구 모의훈련을 순서대로 수행합니다.</span></div><button disabled={Boolean(busy)} type="button" onClick={() => void mutate("CREATE_SNAPSHOT", {}, "D1 논리 스냅샷을 생성했습니다. 이어서 검증해 주세요.")}>{busy === "CREATE_SNAPSHOT" ? "생성 중…" : "새 스냅샷 생성"}</button></header>
           <div className="data-governance-ledger">
             {data.snapshots.map((snapshot) => <article key={snapshot.id}>
               <div><strong>{snapshot.fileName || `스냅샷 ${snapshot.id.slice(0, 8)}`}</strong><small>{formatDate(snapshot.createdAt)} · {snapshot.tableCount}개 테이블 · {snapshot.rowCount.toLocaleString("ko-KR")}행 · {formatBytes(snapshot.byteSize)}</small><code>SHA-256 {snapshot.sha256 ? snapshot.sha256.slice(0, 16) + "…" : "생성되지 않음"}</code></div>
@@ -135,7 +135,7 @@ export default function DataGovernanceCenter({ onClose, initialView = "trust" }:
         </section>
 
         <section className="data-governance-section">
-          <header><div><p>RECOVERY REHEARSAL</p><h3>복구 모의훈련 이력</h3></div></header>
+          <header><div data-korean-heading><h3>복구 모의훈련 이력</h3></div></header>
           <div className="data-governance-compact-ledger">
             {data.rehearsals.map((rehearsal) => <div key={rehearsal.id}><em className={rehearsal.status.toLowerCase()}>{statusLabel[rehearsal.status] ?? rehearsal.status}</em><p><strong>스냅샷 {rehearsal.snapshotId.slice(0, 8)}</strong><small>{formatDate(rehearsal.performedAt)} · 운영 데이터 쓰기 0건 · 실패 {rehearsal.failureCount}건</small></p></div>)}
             {!data.rehearsals.length && <div className="data-governance-empty">스냅샷 검증 후 복구 모의훈련을 실행해 주세요.</div>}
@@ -143,7 +143,7 @@ export default function DataGovernanceCenter({ onClose, initialView = "trust" }:
         </section>
 
         <section className="data-governance-section">
-          <header><div><p>AUDIT EXPORT</p><h3>감사기록 내보내기</h3><span>원문 변경 전후 값은 제외하고 누가·언제·무엇을 했는지 CSV로 생성합니다.</span></div></header>
+          <header><div data-korean-heading><h3>감사기록 내보내기</h3><span>원문 변경 전후 값은 제외하고 누가·언제·무엇을 했는지 CSV로 생성합니다.</span></div></header>
           <form className="data-governance-export" onSubmit={(event) => { event.preventDefault(); void mutate("CREATE_AUDIT_EXPORT", { dateFrom, dateTo, module: auditModule }, "감사기록 CSV를 생성했습니다."); }}>
             <label>시작일<input type="date" required value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} /></label>
             <label>종료일<input type="date" required value={dateTo} onChange={(event) => setDateTo(event.target.value)} /></label>
@@ -157,7 +157,7 @@ export default function DataGovernanceCenter({ onClose, initialView = "trust" }:
         </section>
 
         <section className="data-governance-section">
-          <header><div><p>RETENTION POLICY</p><h3>보존정책</h3><span>기간을 확정해도 자동 삭제하지 않으며, 만료 자료는 별도 검토 대상으로만 분류됩니다.</span></div></header>
+          <header><div data-korean-heading><h3>보존정책</h3><span>기간을 확정해도 자동 삭제하지 않으며, 만료 자료는 별도 검토 대상으로만 분류됩니다.</span></div></header>
           <div className="data-governance-policies">
             {data.policies.map((policy) => {
               const draft = policyDrafts[policy.id] ?? { retentionDays: policy.retentionDays, active: policy.active };

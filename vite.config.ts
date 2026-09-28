@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import vinext from "vinext";
 import { defineConfig, loadEnv } from "vite";
 import hostingConfig from "./.openai/hosting.json";
@@ -11,7 +12,20 @@ const { d1, r2 } = hostingConfig;
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 
+// dev 서버가 파일로 내주면 안 되는 경로. 앞의 네 개는 Vite 기본값이라 목록을 덮어써도 빠지지 않게 다시 적는다.
+// .wrangler 에는 실제 D1(sqlite)·R2 파일이, 나머지에는 빌드 산출물·스냅샷·로그가 있다.
+// 폴더 패턴은 프로젝트 루트에 묶는다. "**/dist/**" 처럼 두면 node_modules/*/dist 까지 막혀 dev 서버가 자기 모듈을 못 읽는다.
+const PROJECT_ROOT = fileURLToPath(new URL(".", import.meta.url)).replace(/\\/g, "/").replace(/\/$/, "");
+const DEV_FS_DENY = [
+  ".env", ".env.*", "*.{crt,pem}", "**/.git/**",
+  `${PROJECT_ROOT}/.wrangler/**`, `${PROJECT_ROOT}/dist/**`, `${PROJECT_ROOT}/deliverables/**`, `${PROJECT_ROOT}/.vinext/**`,
+  "**/*.tar.gz",
+];
+
 export default defineConfig(async ({ command, mode }) => {
+  // Miniflare 로컬 explorer(/cdn-cgi/explorer)는 기본으로 켜져 있고, D1 에 임의 SQL 을 실행하는 API 를 연다.
+  // 이 앱은 쓰지 않으므로 끈다. 상위 셸에서 "true" 가 넘어와도 다시 켜지지 않도록 ??= 가 아니라 대입한다.
+  process.env.X_LOCAL_EXPLORER = "false";
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.
   process.env.WRANGLER_WRITE_LOGS ??= "false";
@@ -28,9 +42,7 @@ export default defineConfig(async ({ command, mode }) => {
       // 값이 없으면 http://127.0.0.1:3120 을 쓴다.
       "CLAUDE_BRIDGE_URL",
       // HR·임금계산·영업 AI 어시스턴트 다리(scripts/claude-assistant-bridge.mjs). 값이 없으면 http://127.0.0.1:3130 을 쓴다.
-      "CLAUDE_ASSISTANT_BRIDGE_URL",
-      // 영업 구글 시트 동기화용 OAuth 자격증명과 대상 스프레드시트 ID.
-      "GOOGLE_OAUTH_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_SECRET", "GOOGLE_OAUTH_REFRESH_TOKEN", "GOOGLE_SALES_SHEET_ID"]
+      "CLAUDE_ASSISTANT_BRIDGE_URL"]
       .map((key) => [key, fileEnv[key]] as const)
       .filter((entry): entry is readonly [string, string] => Boolean(entry[1])),
   );
@@ -61,9 +73,10 @@ export default defineConfig(async ({ command, mode }) => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      fs: { deny: DEV_FS_DENY },
+      ...(isCodexSeatbeltSandbox ? { watch: { useFsEvents: false, usePolling: true } } : {}),
+    },
     plugins: [
       vinext(),
       sites(),

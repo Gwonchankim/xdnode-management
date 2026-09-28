@@ -50,3 +50,23 @@
 
 /* 첫 계약 지급률. 수습 개월 옆에 비율을 붙여 90% 고정이 아님을 보이게 한다. */
 .probation-rate { margin-left: 4px; color: #6b7280; font-size: 10px; font-weight: 700; }
+
+/* HR에서 인원 추가: 표에 없는 급여 대상만 골라 붙이는 선택창. */
+.hr-picker { width: min(640px, 100%); }
+.hr-picker-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 50vh; overflow-y: auto; }
+.hr-picker-list label { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 13px; cursor: pointer; }
+.hr-picker-list label:hover { background: #f9fafb; }
+.hr-picker-list span { color: #6b7280; font-size: 12px; white-space: nowrap; }
+.hr-picker .modal-actions button[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* 식대 셀: 자동 계산 금액은 버튼처럼 눌러 직접 입력으로 바꾼다. 수기 상태에서는 입력칸과 「자동」 되돌리기 버튼이 보인다. */
+.allowance-cell .allowance-value { border: 0; background: transparent; padding: 0 2px; font: inherit; font-weight: 700; color: inherit; cursor: text; border-bottom: 1px dashed transparent; }
+.allowance-cell .allowance-value:hover, .allowance-cell .allowance-value:focus-visible { border-bottom-color: #6b7280; outline: none; }
+.allowance-cell.manual { gap: 4px; }
+/* .allowance-cell input 은 지급 체크박스용(13px)이라, 수기 식대 입력칸에는 폭·높이를 다시 준다. 이게 없으면 입력칸이 13px 로 그려져 보이지 않는다. */
+.allowance-cell input.money-input { width: 92px; min-width: 72px; height: auto; flex: 1 1 auto; }
+.allowance-cell .allowance-auto { border: 1px solid #d1d5db; border-radius: 6px; background: #f9fafb; padding: 1px 6px; font-size: 10px; font-weight: 700; color: #374151; cursor: pointer; white-space: nowrap; }
+.allowance-cell .allowance-auto:hover { background: #eef2ff; border-color: #6366f1; color: #3730a3; }
+
+/* Korean-only card headings. */
+.wage-setup-card > header, .wage-table-panel > header { min-height: 64px; }

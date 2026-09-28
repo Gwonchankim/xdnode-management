@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { createApprovalRequest } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
@@ -18,6 +19,7 @@ type OrganizationSnapshot = { id: string; name: string; description: string; ori
 type EmployeeSnapshot = { id: string; department: string; status: string; joinDate: string };
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_workforce_plans (
       id TEXT PRIMARY KEY NOT NULL, period TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1,
@@ -34,12 +36,6 @@ async function ensureSchema() {
       note TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
     db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_hr_workforce_plan_line_org
       ON hr_workforce_plan_lines(plan_id, organization_id)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-      employee_id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT NOT NULL, email TEXT NOT NULL,
-      phone TEXT NOT NULL, address TEXT NOT NULL, department TEXT NOT NULL, manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL, join_date TEXT NOT NULL DEFAULT '', position TEXT NOT NULL,
-      job_title TEXT NOT NULL, status TEXT NOT NULL DEFAULT '재직', history_json TEXT NOT NULL DEFAULT '[]',
-      retirement_json TEXT, updated_at INTEGER NOT NULL)`),
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_organization_records (
       organization_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
   ]);

@@ -181,7 +181,7 @@ export default function ReceivablesWorkspace() {
 
   return <div className="receivables-workspace">
     <div className="finance-subpage-heading receivable-heading">
-      <div><p>INVOICE COLLECTION CONTROL</p><h2>청구서별 채권·회수 관리</h2><span>승인된 청구서와 확정 수금을 연결해 미수잔액, 약속, 분쟁, 후속 조치를 관리합니다.</span></div>
+      <div data-korean-heading><h2>청구서별 채권·회수 관리</h2><span>승인된 청구서와 확정 수금을 연결해 미수잔액, 약속, 분쟁, 후속 조치를 관리합니다.</span></div>
       <span className="finance-data-badge">{data.asOf || "최신"} 기준</span>
     </div>
     <section className="kpi-grid receivable-kpis">
@@ -191,13 +191,13 @@ export default function ReceivablesWorkspace() {
       <article><span>관리정보 보완</span><strong>{data.summary.missingDueCount + data.summary.unassignedCount}건</strong><small>만기일 {data.summary.missingDueCount} · 담당자 {data.summary.unassignedCount}</small></article>
     </section>
     <section className="panel receivable-aging-panel">
-      <div className="receivable-section-head"><div><p>AGING ANALYSIS</p><h3>연체 구간별 미수잔액</h3></div><small>청구서 만기일 기준 · 미수잔액만 집계</small></div>
+      <div className="receivable-section-head"><div data-korean-heading><h3>연체 구간별 미수잔액</h3></div><small>청구서 만기일 기준 · 미수잔액만 집계</small></div>
       <div className="receivable-aging-grid">{(Object.keys(agingLabels) as AgingBucket[]).map((bucket) => <button type="button" key={bucket} onClick={() => setFilter(bucket === "MISSING_DUE" ? "MISSING_DUE" : bucket === "CURRENT" ? "OPEN" : "OVERDUE")}>
         <span>{agingLabels[bucket]}</span><strong>{formatCompact(data.summary.aging[bucket]?.amount ?? 0)}</strong><small>{data.summary.aging[bucket]?.count ?? 0}건</small><i style={{ width: `${((data.summary.aging[bucket]?.amount ?? 0) / maxAgingAmount) * 100}%` }} />
       </button>)}</div>
     </section>
     <section className="panel receivable-aging-panel receivable-tie-out-panel">
-      <div className="receivable-section-head"><div><p>SUBSIDIARY ↔ LEDGER TIE-OUT</p><h3>매출채권 보조부 ↔ 원장 대사</h3></div><small>{tieOut ? `${tieOut.period} · 원장 기준일 ${tieOut.as_of}` : "아직 계산되지 않음"}</small></div>
+      <div className="receivable-section-head"><div data-korean-heading><h3>매출채권 보조부 ↔ 원장 대사</h3></div><small>{tieOut ? `${tieOut.period} · 원장 기준일 ${tieOut.as_of}` : "아직 계산되지 않음"}</small></div>
       {tieOutMessage && <div className="finance-inline-message">{tieOutMessage}</div>}
       <div className="receivable-source-card">
         <span>이카운트 import 원장과의 대사 · 자동 계산</span>
@@ -228,7 +228,7 @@ export default function ReceivablesWorkspace() {
     {message && <div className="finance-inline-message">{message}</div>}
     <section className="content-grid receivable-control-grid">
       <article className="panel receivable-list-panel">
-        <div className="receivable-section-head"><div><p>COLLECTION QUEUE</p><h3>청구서 목록</h3></div><small>{loading ? "불러오는 중" : `${filtered.length}건`}</small></div>
+        <div className="receivable-section-head"><div data-korean-heading><h3>청구서 목록</h3></div><small>{loading ? "불러오는 중" : `${filtered.length}건`}</small></div>
         <div className="receivable-invoice-list">
           {filtered.map((invoice) => <button type="button" key={invoice.id} className={selectedId === invoice.id ? "active" : ""} onClick={() => chooseInvoice(invoice)}>
             <span className={`receivable-status ${invoice.collectionStatus.toLowerCase()}`}>{statusLabels[invoice.collectionStatus]}</span>
@@ -242,7 +242,7 @@ export default function ReceivablesWorkspace() {
         {draft ? <>
           <div className="receivable-source-card"><span>회계·영업 원천값 · 읽기 전용</span><h3>{draft.accountName}</h3><p>{draft.documentNumber} · {draft.opportunityTitle}</p><dl><div><dt>청구액</dt><dd>{formatWon(draft.amount)}</dd></div><div><dt>확정 수금</dt><dd>{formatWon(draft.collectedAmount)}</dd></div><div><dt>등록 대기</dt><dd>{formatWon(draft.reservedAmount)}</dd></div><div><dt>현재 미수</dt><dd>{formatWon(draft.outstandingAmount)}</dd></div></dl></div>
           {draft.collectionStatus !== "CLOSED" ? <form className="receivable-case-form" onSubmit={saveCase}>
-            <div className="receivable-section-head"><div><p>COLLECTION PLAN</p><h3>회수 실행계획</h3></div></div>
+            <div className="receivable-section-head"><div data-korean-heading><h3>회수 실행계획</h3></div></div>
             <div className="receivable-form-grid"><label>회수 상태<select value={draft.collectionStatus} onChange={(event) => setDraft({ ...draft, collectionStatus: event.target.value as CollectionStatus })}>{(["OPEN", "IN_PROGRESS", "PROMISED", "PARTIAL", "DISPUTED", "HOLD"] as CollectionStatus[]).map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label><label>담당자<select value={draft.ownerEmployeeId} onChange={(event) => setDraft({ ...draft, ownerEmployeeId: event.target.value })}><option value="">미지정</option>{companyEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label></div>
             <div className="receivable-form-grid"><label>입금 약속일<input type="date" value={draft.promisedDate} onChange={(event) => setDraft({ ...draft, promisedDate: event.target.value })} /></label><label>입금 약속금액<input type="number" min="0" max={draft.outstandingAmount} value={draft.promisedAmount} onChange={(event) => setDraft({ ...draft, promisedAmount: Number(event.target.value) })} /></label></div>
             <div className="receivable-form-grid"><label>다음 조치<input value={draft.nextAction} maxLength={500} placeholder="예: 입금증 재확인 요청" onChange={(event) => setDraft({ ...draft, nextAction: event.target.value })} /></label><label>다음 조치일<input type="date" value={draft.nextActionDate} onChange={(event) => setDraft({ ...draft, nextActionDate: event.target.value })} /></label></div>
@@ -250,7 +250,7 @@ export default function ReceivablesWorkspace() {
             <label>관리 메모<textarea rows={3} value={draft.memo} onChange={(event) => setDraft({ ...draft, memo: event.target.value })} /></label>
             <button type="submit" className="receivable-save-button" disabled={saving}>{saving ? "저장 중…" : "회수계획 저장"}</button>
           </form> : <div className="receivable-closed-message">확정 수금으로 전액 회수된 청구서입니다. 상태는 자동으로 종료됩니다.</div>}
-          <form className="receivable-note-form" onSubmit={addNote}><div className="receivable-section-head"><div><p>CONTACT HISTORY</p><h3>접촉·특이사항 기록</h3></div></div><div><select value={noteType} onChange={(event) => setNoteType(event.target.value)}>{Object.entries(noteLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><input value={noteContent} maxLength={2000} onChange={(event) => setNoteContent(event.target.value)} placeholder="통화·메일·약속·분쟁 내용을 남기세요." /><button type="submit" disabled={saving || !noteContent.trim()}>추가</button></div></form>
+          <form className="receivable-note-form" onSubmit={addNote}><div className="receivable-section-head"><div data-korean-heading><h3>접촉·특이사항 기록</h3></div></div><div><select value={noteType} onChange={(event) => setNoteType(event.target.value)}>{Object.entries(noteLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><input value={noteContent} maxLength={2000} onChange={(event) => setNoteContent(event.target.value)} placeholder="통화·메일·약속·분쟁 내용을 남기세요." /><button type="submit" disabled={saving || !noteContent.trim()}>추가</button></div></form>
           <div className="receivable-note-list">{invoiceNotes.map((note) => <article key={note.id}><span>{noteLabels[note.noteType] ?? note.noteType}</span><p>{note.content}</p><small>{employeeName(note.createdBy)} · {new Date(note.createdAt).toLocaleString("ko-KR")}</small></article>)}{invoiceNotes.length === 0 && <p className="finance-empty">아직 접촉기록이 없습니다.</p>}</div>
         </> : <div className="receivable-empty-editor"><span>₩</span><strong>관리할 청구서를 선택하세요.</strong><p>원천 청구액은 고정하고 회수 실행정보와 접촉이력을 기록합니다.</p></div>}
       </article>

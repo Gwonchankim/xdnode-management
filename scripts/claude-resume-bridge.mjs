@@ -19,10 +19,14 @@ const RUN_TIMEOUT_MS = 300_000;
 
 // CLI 는 프로젝트 폴더에서 돌면 CLAUDE.md·MCP 설정까지 시스템 프롬프트에 싣는다. 이력서에서
 // 항목만 뽑는 일에는 쓸모가 없고 매번 캐시 생성 토큰만 늘어나므로, 도구와 MCP 를 끄고 돌린다.
+// --tools "" 로 내장 도구를 모두 끄고, 아래 목록은 CLI 가 --tools 를 무시하는 경우를 위한 이중 장치다.
 const DISABLED_TOOLS = [
   "Bash", "Read", "Write", "Edit", "Glob", "Grep",
-  "WebFetch", "WebSearch", "Task", "TodoWrite", "NotebookEdit",
+  "WebFetch", "WebSearch", "Task", "TodoWrite", "NotebookEdit", "PowerShell",
 ];
+// 정상 호출은 ERP 서버(/api/hr/resume-analysis)가 이 PC 안에서 하는 서버 대 서버 요청이라 Origin 이 없다.
+// Origin 이 붙은 요청은 브라우저가 직접 부른 것이므로 권한 검사를 건너뛰지 못하게 거부한다.
+const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
 
 let busy = false;
 
@@ -68,6 +72,7 @@ function runClaude(systemPrompt, userPrompt) {
       "--effort", EFFORT,
       "--output-format", "json",
       "--strict-mcp-config",
+      "--tools", "",
       "--disallowed-tools", ...DISABLED_TOOLS,
       "--system-prompt", systemPrompt,
     ];
@@ -99,6 +104,10 @@ function runClaude(systemPrompt, userPrompt) {
 }
 
 const server = createServer(async (request, response) => {
+  if (request.headers.origin !== undefined || !ALLOWED_HOSTS.has(String(request.headers.host ?? ""))) {
+    json(response, 403, { error: { message: "ERP 서버만 호출할 수 있는 로컬 다리입니다." } });
+    return;
+  }
   if (request.method === "GET" && request.url === "/health") {
     json(response, 200, { ok: true, model: MODEL, effort: EFFORT });
     return;

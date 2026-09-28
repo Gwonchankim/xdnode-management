@@ -103,7 +103,7 @@ export default function FixedAssetsWorkspace() {
 
   if (loading && !data) return <section className="panel fixed-assets-loading">자산대장과 감가상각 전표를 확인하고 있습니다…</section>;
   return <div className="fixed-assets-workspace">
-    <section className="fixed-assets-hero"><div><p>FIXED ASSET CONTROL</p><h1>고정자산·감가상각</h1><span>취득 근거부터 위치·책임자, 정액법 상각, 전표와 처분 이력까지 연결합니다.</span></div><label>상각월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label></section>
+    <section className="fixed-assets-hero"><div data-korean-heading><h1>고정자산·감가상각</h1><span>취득 근거부터 위치·책임자, 정액법 상각, 전표와 처분 이력까지 연결합니다.</span></div><label>상각월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label></section>
     <div className="fixed-assets-guidance"><strong>자동 자산화 금지</strong><span>구매 품목은 후보일 뿐이며 담당자가 직접 자산 여부와 내용연수·계정과목을 확정합니다.</span><em>정액법 · 월할(사용개시월 포함)</em></div>
     {message && <div className="fixed-assets-message" role="status">{message}</div>}
     <section className="fixed-assets-metrics">
@@ -114,7 +114,7 @@ export default function FixedAssetsWorkspace() {
     </section>
 
     <section className="fixed-assets-grid">
-      <article className="panel fixed-assets-form"><header><div><p>ASSET REGISTER</p><h2>자산 등록</h2></div><span>DRAFT → 증빙 → ACTIVE</span></header>
+      <article className="panel fixed-assets-form"><header><div data-korean-heading><h2>자산 등록</h2></div><span>DRAFT → 증빙 → ACTIVE</span></header>
         <form onSubmit={createAsset}>
           <label>자산코드<input required value={draft.assetCode} onChange={(event) => setDraft({ ...draft, assetCode: event.target.value })} placeholder="FA-2026-001" /></label>
           <label>자산명<input required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
@@ -138,12 +138,12 @@ export default function FixedAssetsWorkspace() {
         </form>
       </article>
 
-      <article className="panel fixed-assets-candidates"><header><div><p>PURCHASE CANDIDATES</p><h2>구매 입고 후보</h2></div><span>{data?.candidates.length ?? 0}건</span></header>
+      <article className="panel fixed-assets-candidates"><header><div data-korean-heading><h2>구매 입고 후보</h2></div><span>{data?.candidates.length ?? 0}건</span></header>
         <div>{data?.candidates.map((candidate) => <button type="button" key={candidate.id} onClick={() => selectCandidate(candidate)}><span>입고</span><p><strong>{candidate.item_name}</strong><small>{candidate.order_number} · {candidate.vendor_name} · {(candidate.accepted_quantity_milli / 1000).toLocaleString("ko-KR")}개</small></p><em>{won(candidate.accepted_amount)}</em></button>)}{!data?.candidates.length && <p className="fixed-assets-empty">미등록 입고 후보가 없습니다. 품목명만으로 자산을 추정하지 않습니다.</p>}</div>
       </article>
     </section>
 
-    <section className="panel fixed-assets-ledger"><header><div><p>ASSET LEDGER</p><h2>자산대장</h2></div><span>{data?.assets.length ?? 0}개</span></header>
+    <section className="panel fixed-assets-ledger"><header><div data-korean-heading><h2>자산대장</h2></div><span>{data?.assets.length ?? 0}개</span></header>
       <div className="fixed-assets-row head"><span>자산</span><span>취득·사용개시</span><span>원가·장부가</span><span>상각 조건</span><span>위치·책임자</span><span>상태·증빙</span><span>관리</span></div>
       {data?.assets.map((asset) => <div className={`fixed-assets-row ${asset.status.toLowerCase()}`} key={asset.id}>
         <p><strong>{asset.asset_code} · {asset.name}</strong><small>{categoryLabel[asset.category] ?? asset.category} · {asset.source_reference || asset.source_type}</small></p>
@@ -154,7 +154,7 @@ export default function FixedAssetsWorkspace() {
       </div>)}{!data?.assets.length && <p className="fixed-assets-empty">등록된 자산이 없습니다. 과거 자료를 임의로 자산대장에 만들지 않았습니다.</p>}
     </section>
 
-    <section className="panel fixed-assets-depreciation"><header><div><p>MONTHLY DEPRECIATION</p><h2>{period} 감가상각</h2><span>정액법 · 원 단위 균등배분 · 사용개시월부터 월할</span></div><button type="button" disabled={working || data?.locked} onClick={() => void mutate({ resource: "depreciation", action: "GENERATE", period }, "월 감가상각 계획을 생성했습니다.")}>상각계획 생성</button></header>
+    <section className="panel fixed-assets-depreciation"><header><div data-korean-heading><h2>{period} 감가상각</h2><span>정액법 · 원 단위 균등배분 · 사용개시월부터 월할</span></div><button type="button" disabled={working || data?.locked} onClick={() => void mutate({ resource: "depreciation", action: "GENERATE", period }, "월 감가상각 계획을 생성했습니다.")}>상각계획 생성</button></header>
       <div className="fixed-assets-dep-row head"><span>자산</span><span>기초 누계</span><span>당월 상각</span><span>기말 누계</span><span>기말 장부가</span><span>상태</span><span>처리</span></div>
       {data?.schedules.map((schedule) => <div className="fixed-assets-dep-row" key={schedule.id}><p><strong>{schedule.asset_code}</strong><small>{schedule.asset_name}</small></p><span>{won(schedule.opening_accumulated)}</span><span>{won(schedule.depreciation_amount)}</span><span>{won(schedule.closing_accumulated)}</span><span>{won(schedule.closing_book_value)}</span><em>{statusLabel[schedule.status] ?? schedule.status}</em><div>{schedule.status === "PLANNED" && <button type="button" disabled={working || data.locked} onClick={() => void mutate({ resource: "depreciation", action: "CREATE_JOURNAL", scheduleId: schedule.id }, "감가상각 전표 초안을 만들었습니다.")}>전표 초안</button>}{schedule.status === "DRAFTED" && <button type="button" disabled={working || data.locked} onClick={() => void mutate({ resource: "depreciation", action: "POST_JOURNAL", scheduleId: schedule.id }, "감가상각 전표를 승인 전기했습니다.")}>승인 전기</button>}{schedule.status === "POSTED" && <span>전표 {schedule.journal_entry_id.slice(0, 8)}</span>}</div></div>)}
       {!data?.schedules.length && <p className="fixed-assets-empty">이 월의 상각계획이 없습니다. 활성 자산을 확인한 뒤 계획을 생성해 주세요.</p>}

@@ -1,19 +1,23 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { companyEmployees, companyJobTitles, companyOrganizations, companyRanks } from "./hr-company-data";
 import WorkforcePlanningView from "./workforce-planning-view";
 import RecruitmentRequisitionView from "./recruitment-requisition-view";
+import { ErpDialogProvider, useErpDialog, type ErpDialogApi } from "./erp-dialog";
 import PerformanceManagementView from "./performance-management-view";
 import TrainingManagementView from "./training-management-view";
 import HrAnalyticsView from "./hr-analytics-view";
 import AudioTranscriptionControl from "./audio-transcription-control";
 import MasterImpactDialog from "./master-impact-dialog";
 import WonInput from "./won-input";
+import { HrModalBackdrop, InterviewAudio, useKoreanToday } from "./hr-ui";
 import { addMonths, buildEmploymentContract, contractFileName, contractKindLabels, contractPay, contractTokens, defaultContractOptions, downloadBlob, FIXED_TERM_MONTHS, fixedTermEndDate, type ContractKind, type ContractOptions } from "./hr-employment-contract";
-import { buildDashboardModel, koreanWon, type DashboardLifecycleTask, type DashboardPayrollRun, type InboxPriority } from "./hr-dashboard-model";
+import { buildDashboardModel, koreanWon, type DashboardLeaveLedger, type DashboardLifecycleTask, type DashboardPayrollRun, type InboxPriority } from "./hr-dashboard-model";
 import { CompositionBar, FillMeter, HorizontalBars, MonthlyFlowChart, PayrollStepper } from "./hr-dashboard-charts";
+import LeaveManagementView, { LeaveLedgerPanel } from "./hr-leave-view";
+import { buildDefaultInterviewQuestions } from "./hr-interview-question-templates";
 
 export default function HRWorkspace({ requestedView = "dashboard", navigationRequestKey = 0 }: { requestedView?: string; navigationRequestKey?: number }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -28,8 +32,12 @@ export default function HRWorkspace({ requestedView = "dashboard", navigationReq
     <div className="peopleflow-host" ref={hostRef}>
       {root ? createPortal(
         <>
+          {/* Shadow DOM needs its own stylesheet; a document-level CSS import cannot style it. */}
+          {/* eslint-disable-next-line @next/next/no-css-tags */}
           <link rel="stylesheet" href="/hr-workspace.css" />
-          <XdnodeHrApp requestedView={requestedView} navigationRequestKey={navigationRequestKey} />
+          <ErpDialogProvider>
+            <XdnodeHrApp requestedView={requestedView} navigationRequestKey={navigationRequestKey} />
+          </ErpDialogProvider>
         </>,
         root,
       ) : (
@@ -113,6 +121,7 @@ const navGroups: { title: string; items: NavItem[]; collapsed?: boolean }[] = [
       { id: "payroll", label: "급여관리", icon: "급" },
       { id: "documents", label: "인사문서", icon: "문" },
       { id: "onboarding", label: "입·퇴사 관리", icon: "입" },
+      { id: "leave", label: "연차관리", icon: "연" },
     ],
   },
   {
@@ -210,16 +219,6 @@ type EmployeeInterviewRecord = {
   memo: string;
   audioFileName: string | null;
   audioUrl: string | null;
-  consentConfirmed: boolean;
-  createdAt: number;
-};
-
-type ApplicantInterviewRecording = {
-  id: string;
-  applicantId: string;
-  recordedAt: string;
-  audioFileName: string;
-  audioUrl: string;
   consentConfirmed: boolean;
   createdAt: number;
 };
@@ -400,13 +399,6 @@ function closedReasonOf(applicant: Applicant) {
 /** 면접 결과 표의 진행 상태 색. 같은 사람이 아래 "채용 종료" 표에도 나오므로
  *  그쪽 종료 구분과 같은 색을 쓴다 — 한 사람이 표마다 다른 색이면 헷갈린다.
  *  아직 답을 기다리는 "채용 제안 준비"만 손댈 일이 남았다는 뜻으로 따로 둔다. */
-function passedStatusTone(stage: string) {
-  if (stage === "입사 예정" || stage === "입사 완료") return "join";
-  if (stage === "채용 제안 거절") return "decline";
-  if (stage === OTHER_OFFER_STAGE) return "other";
-  return "waiting";
-}
-
 type RecruitStage = "PENDING" | "INTERVIEW_PENDING" | "INTERVIEW_SCHEDULED" | "REJECTED" | "INTERVIEW" | "OTHER_OFFER";
 
 /** 채용단계 열. 탈락한 사람은 사유와 무관하게 "탈락" 하나로 묶는다 — 어디서 떨어졌는지는
@@ -480,6 +472,8 @@ const interviewQuestionOrder = ["RESUME_CHECK", "ROLE_SKILL", "COUNTER_ROLE_SKIL
  *  면접관이 어느 자리에 대한 질문인지 헷갈린다. */
 const COUNTER_QUESTION_CATEGORIES = ["COUNTER_ROLE_SKILL", "COUNTER_FIT"];
 const COUNTER_QUESTION_SEPARATOR = "--------------- 역제안 포지션용 질문 ---------------";
+/** 기본 질문지 아래에 AI 심화 질문을 덧붙일 때 넣는 구분선. */
+const DEEP_QUESTION_SEPARATOR = "--------------- 심화 면접 질문 ---------------";
 
 function formatInterviewQuestions(items: InterviewQuestionItem[]) {
   let counterStarted = false;
@@ -643,6 +637,23 @@ function renderTemplate(body: string, tokens: Record<string, string>) {
 const firstTermNotice = (percent: string) =>
   `* 첫 계약: 입사일부터 ${FIXED_TERM_MONTHS}개월간 기간제 근로계약이며, 해당 기간에는 기준 연봉의 ${percent || "[XX]"}%가 지급됩니다. 근무평가 후 기간의 정함이 없는 계약으로의 전환 여부를 결정합니다.`;
 
+/** YYYY-MM-DD 문자열에 일수를 더한다. 시간대에 흔들리지 않게 UTC 로 계산한다. */
+function shiftIsoDate(value: string, days: number) {
+  const [year, month, day] = value.split("-").map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  return shifted.toISOString().slice(0, 10);
+}
+const todayIsoDate = () => { const now = new Date(); return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`; };
+
+/** 회신 기한은 입사예정일보다 늦을 수 없다. 기본값(오늘+7일)이 입사일을 넘기면 입사 전날로 당기고,
+ *  그 날이 이미 지났으면 오늘(입사일이 오늘이면 입사일)로 둔다. 사용자가 고른 값도 같은 규칙으로 맞춘다. */
+function clampOfferReplyDue(replyDue: string, startDate: string, today = todayIsoDate()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return replyDue;
+  const latest = shiftIsoDate(startDate, -1);
+  const chosen = replyDue && replyDue < latest ? replyDue : latest;
+  return chosen < today ? (today < startDate ? today : startDate) : chosen;
+}
+
 /** 합격 안내 메시지의 값들. 회신 기한과 첫 계약 안내 포함 여부만 화면에서 고르고 나머지는 제안 내용에서 온다. */
 function offerMessageTokens(applicant: Applicant, offer: RecruitmentOffer, options: {
   replyDue: string;
@@ -757,7 +768,7 @@ function counterProposalTone(schedule: InterviewSchedule, now: Date) {
 }
 
 function interviewTrackOf(applicant: Applicant, now: string): InterviewTrack {
-  if (applicant.stage === INTERVIEW_PASSED_STAGE) return "PASSED";
+  if (applicant.stage === INTERVIEW_PASSED_STAGE || applicant.stage === OFFER_PREPARED_STAGE) return "PASSED";
   const schedule = applicant.interview;
   // 시각을 안 적었으면 그날이 다 가야 지난 것으로 본다.
   const when = `${schedule?.date || "9999-99-99"} ${schedule?.time || "23:59"}`;
@@ -859,16 +870,23 @@ function StatusPill({ value }: { value: string }) {
 }
 
 function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: string; navigationRequestKey: number }) {
+  const dialog = useErpDialog();
   const [active, setActive] = useState(requestedView);
   // 사이드바의 「준비 중」 그룹 펼침 여부.
   const [deferredOpen, setDeferredOpen] = useState(false);
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false);
   const [applicantModalOpen, setApplicantModalOpen] = useState(false);
   const [toast, setToast] = useState("");
+  const showToast = useCallback((message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(""), 2800);
+  }, []);
 
-  useEffect(() => {
+  const [previousNavigation, setPreviousNavigation] = useState({ requestedView, navigationRequestKey });
+  if (previousNavigation.requestedView !== requestedView || previousNavigation.navigationRequestKey !== navigationRequestKey) {
+    setPreviousNavigation({ requestedView, navigationRequestKey });
     setActive(requestedView);
-  }, [requestedView, navigationRequestKey]);
+  }
   const [query, setQuery] = useState("");
   const [employees, setEmployees] = useState(initialEmployees);
   const [organizations, setOrganizations] = useState(initialOrganizations);
@@ -881,6 +899,17 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   const [lifecycleTasks, setLifecycleTasks] = useState<DashboardLifecycleTask[]>([]);
   const [payrollRuns, setPayrollRuns] = useState<DashboardPayrollRun[]>([]);
   const [principalRoles, setPrincipalRoles] = useState<string[]>([]);
+  // 연차관리 요약(촉진 대상·초과 사용). 대시보드 대기함에만 쓴다.
+  const [leaveLedgers, setLeaveLedgers] = useState<DashboardLeaveLedger[]>([]);
+  useEffect(() => {
+    // 대시보드에 들어올 때만 읽는다. 다른 화면에서는 쓰지 않으므로 화면을 옮길 때마다 부르지 않는다.
+    if (active !== "dashboard") return;
+    let cancelled = false;
+    fetch("/api/hr/leave").then((response) => response.ok ? response.json() as Promise<{ ledgers?: (DashboardLeaveLedger & { status: string; exitDate: string })[] }> : null)
+      .then((payload) => { if (!cancelled && payload?.ledgers) setLeaveLedgers(payload.ledgers.filter((item) => item.status.trim() !== "퇴직" && !item.exitDate)); })
+      .catch(() => { /* 연차 요약을 못 읽어도 대시보드는 뜬다. */ });
+    return () => { cancelled = true; };
+  }, [active]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [selectedPayrollMonth, setSelectedPayrollMonth] = useState<string | null>(null);
   const [selectedApplicantId, setSelectedApplicantId] = useState<string | null>(null);
@@ -890,8 +919,6 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   const [retirementPrefill, setRetirementPrefill] = useState<{ date: string; reason: string } | null>(null);
   const [resumeStatus, setResumeStatus] = useState<"idle" | "analyzing" | "done" | "error">("idle");
   const [resumeMessage, setResumeMessage] = useState("");
-  // 어떤 제공자가 지금 화면의 값을 만들었는지, 그리고 로컬 AI 재분석 버튼을 띄울 수 있는지.
-  const [resumeProvider, setResumeProvider] = useState("");
   // 분석에 쓴 원본 파일. 지원자 행이 만들어진 뒤에야 문서로 올릴 수 있어 여기 들고 있는다.
   const [resumeOriginal, setResumeOriginal] = useState<File | null>(null);
   const [applicantDraft, setApplicantDraft] = useState({ name: "", role: "", email: "", phone: "", birth: "", address: "", experience: "", source: "직접 등록", summary: "", careerSummary: "", resumeFileName: "", resumeText: "", requisitionId: "" });
@@ -935,14 +962,17 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       const leaderByOrganization = new Map((leaders ?? []).map((leader) => [leader.organizationId, leader.leaderEmployeeId]));
       const recordByOrganization = new Map((organizationRecords ?? []).map((record) => [record.organizationId, record]));
       const renamedDepartmentByOriginalName = new Map(initialOrganizations.map((organization) => [organization.name, recordByOrganization.get(organization.id)?.name ?? organization.name]));
-      setOrganizations((items) => items.map((organization) => {
+      // 조직관리에서 신설한 조직은 기준자료에 없고 서버 표에만 있다. 기준 조직 뒤에 붙인다.
+      const extraOrganizations: Organization[] = (organizationRecords ?? []).filter((record) => !initialOrganizations.some((organization) => organization.id === record.organizationId))
+        .map((record) => ({ id: record.organizationId, name: record.name, description: record.description, leaderEmployeeId: leaderByOrganization.get(record.organizationId) ?? null }));
+      setOrganizations((items) => [...items.map((organization) => {
         const saved = recordByOrganization.get(organization.id);
         return {
           ...organization,
           ...(saved ? { name: saved.name, description: saved.description } : {}),
           leaderEmployeeId: leaderByOrganization.has(organization.id) ? leaderByOrganization.get(organization.id) ?? null : organization.leaderEmployeeId,
         };
-      }));
+      }), ...extraOrganizations.filter((extra) => !items.some((item) => item.id === extra.id))]);
       const persistedLeaderIds = new Set((leaders ?? []).map((leader) => leader.leaderEmployeeId).filter((id): id is string => Boolean(id)));
       const recordByEmployee = new Map((employeeRecords ?? []).map((record) => [record.employeeId, record]));
       const activeRetirementByEmployee = new Map((retirementRequests ?? []).filter((request) => ["SUBMITTED", "IN_PROGRESS", "READY", "EFFECTIVE", "COMPLETED"].includes(request.status)).map((request) => [request.employee_id, request]));
@@ -991,11 +1021,11 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       if (!leaders || !employeeRecords || !organizationRecords || !retirementRequests) showToast("일부 저장 정보를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.");
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/hr/recruitment")
+    const reloadRecruitment = () => { void fetch("/api/hr/recruitment", { cache: "no-store" })
       .then(async (response) => {
         const data = await response.json() as { applicants?: Applicant[]; recruiterIds?: string[]; requisitions?: RecruitmentRequisitionOption[]; error?: string };
         if (!response.ok) throw new Error(data.error || "채용 정보를 불러오지 못했습니다.");
@@ -1008,9 +1038,11 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
         setRecruiterIds(data.recruiterIds?.length ? data.recruiterIds : ["gc.kim"]);
         setRequisitions(data.requisitions ?? []);
       })
-      .catch((error: Error) => { if (!cancelled) showToast(error.message); });
-    return () => { cancelled = true; };
-  }, []);
+      .catch((error: Error) => { if (!cancelled) showToast(error.message); }); };
+    reloadRecruitment();
+    window.addEventListener("hr-recruitment-updated", reloadRecruitment);
+    return () => { cancelled = true; window.removeEventListener("hr-recruitment-updated", reloadRecruitment); };
+  }, [showToast]);
 
   // 채용요청 목록은 앱을 켤 때 한 번만 읽어서, 채용요청을 새로 만들어도 지원자 등록 화면의
   // 선택지에 나타나지 않았다. 채용 관련 화면에 들어올 때마다 다시 읽는다.
@@ -1034,10 +1066,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   const selectedEmployee = employees.find((employee) => employee.id === selectedEmployeeId) ?? null;
   const selectedApplicant = applicants.find((applicant) => applicant.id === selectedApplicantId) ?? null;
   const recruiters = employees.filter((employee) => recruiterIds.includes(employee.id) && isCurrentEmployee(employee));
-  function showToast(message: string) {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2800);
-  }
+
 
   function navigate(id: string) {
     setActive(id);
@@ -1237,14 +1266,21 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
     }
   }
 
-  function addOrganization(name: string, description: string) {
+  async function addOrganization(name: string, description: string) {
     const trimmed = name.trim();
     if (!trimmed || organizations.some((organization) => organization.name === trimmed)) {
       showToast("새 조직명을 확인해 주세요.");
       return;
     }
-    setOrganizations((value) => [...value, { id: `org-${Date.now()}`, name: trimmed, leaderEmployeeId: null, description: description.trim() || "조직 설명 미입력" }]);
-    showToast(`${trimmed} 조직을 추가했습니다.`);
+    // 서버에 먼저 저장하고 응답의 조직을 목록에 붙인다. 예전에는 화면 상태만 바꿔 새로고침하면 사라졌다.
+    try {
+      const response = await fetch("/api/hr/organizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed, description: description.trim() }) });
+      const payload = await response.json() as { organization?: { organizationId: string; name: string; description: string }; error?: string };
+      if (!response.ok || !payload.organization) throw new Error(payload.error || "조직을 저장하지 못했습니다.");
+      const created = payload.organization;
+      setOrganizations((value) => [...value, { id: created.organizationId, name: created.name, leaderEmployeeId: null, description: created.description }]);
+      showToast(`${trimmed} 조직을 추가했습니다.`);
+    } catch (error) { showToast(error instanceof Error ? error.message : "조직을 저장하지 못했습니다."); }
   }
 
   async function updateOrganization(organizationId: string, name: string, description: string, impactAssessmentId: string) {
@@ -1506,7 +1542,6 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       resumeText: data.resumeText || resumeText,
     }));
     setResumeStatus("done");
-    setResumeProvider(data.provider ?? "");
     const providerNote = "Claude";
     setResumeMessage(`${providerNote} 분석을 완료했습니다. 기본 항목 ${detectedCount}개를 찾았습니다.${analysis.warnings.length ? ` 확인 필요 ${analysis.warnings.length}건이 있습니다.` : " 찾지 못한 값은 임의로 채우지 않았습니다."}`);
   }
@@ -1570,7 +1605,6 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       summary: analysis.summary || current.summary,
       careerSummary: formatCareerHistory(analysis.careerHistory ?? []) || current.careerSummary,
     }));
-    setResumeProvider("claude");
     setResumeStatus("done");
     setResumeMessage(`재분석을 완료했습니다. 기본 항목 ${detectedCount}개를 찾았습니다.${analysis.warnings.length ? ` 확인 필요 ${analysis.warnings.length}건이 있습니다.` : ""}`);
   }
@@ -1608,9 +1642,8 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
     setApplicants((value) => [applicant, ...value]);
     setApplicantModalOpen(false);
     setResumeStatus("idle");
-    setResumeProvider("");
     setResumeOriginal(null);
-    setApplicantDraft({ name: "", role: "", email: "", phone: "", experience: "", source: "직접 등록", summary: "", careerSummary: "", resumeFileName: "", resumeText: "", requisitionId: "" });
+    setApplicantDraft({ name: "", role: "", email: "", phone: "", birth: "", address: "", experience: "", source: "직접 등록", summary: "", careerSummary: "", resumeFileName: "", resumeText: "", requisitionId: "" });
     setResumeMessage("");
     showToast("지원자가 지원 현황에 등록되었습니다.");
   }
@@ -1732,7 +1765,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   async function deleteApplicant(applicantId: string) {
     const applicant = applicants.find((item) => item.id === applicantId);
     if (!applicant) return;
-    const confirmed = window.confirm(`${applicant.name} 지원자의 기본정보, 이력서, 메모, 면접 일정과 녹음 파일을 모두 삭제합니다.\n삭제한 정보는 복구할 수 없습니다. 계속할까요?`);
+    const confirmed = await dialog.confirm(`${applicant.name} 지원자의 기본정보, 이력서, 메모, 면접 일정과 녹음 파일을 모두 삭제합니다.\n삭제한 정보는 복구할 수 없습니다. 계속할까요?`, { title: "지원자 삭제", confirmLabel: "삭제", danger: true });
     if (!confirmed) return;
     try {
       const response = await fetch("/api/hr/recruitment", {
@@ -1760,7 +1793,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div className="brand"><div className="brand-mark">HR</div><div><strong>XDNODE HR</strong><span>PEOPLE OPERATIONS</span></div></div>
+        <div className="brand"><div className="brand-mark">HR</div><div><strong>인사관리</strong></div></div>
         <nav className="main-nav" aria-label="주요 메뉴">
           {navGroups.map((group) => {
             // 접힌 그룹은 토글로만 펼친다. 다른 화면의 링크(정원 관리 → 등)로 그 안의 메뉴에 들어오면 그 동안은 펼쳐 둔다.
@@ -1780,27 +1813,29 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       </aside>
 
       <main className="main-content">
-        {active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} roles={principalRoles} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
+        {active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} leaveLedgers={leaveLedgers} roles={principalRoles} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
         {active === "schedule" && <TimeAndLeaveView employees={employees} onNotify={showToast} />}
         {active === "documents" && <EmployeeDocumentView employees={employees} onNotify={showToast} />}
-        {active === "employees" && <><EmployeeDirectory employees={employees} organizations={organizations} query={query} onSelect={setSelectedEmployeeId} onAdd={() => setEmployeeModalOpen(true)} />{selectedEmployee && <EmployeeDetail employee={selectedEmployee} employees={employees} organizations={organizations} ranks={ranks} jobTitles={jobTitles} onBack={() => setSelectedEmployeeId(null)} onUpdate={updateEmployee} onPersonnelAction={() => setPersonnelAction("인사 발령")} onRetirement={() => setRetirementOpen(true)} />}</>}
-        {active === "organization" && <OrganizationManagement organizations={organizations} employees={employees} ranks={ranks} jobTitles={jobTitles} onLeaderChange={updateOrganizationLeader} onAddOrganization={addOrganization} onUpdateOrganization={updateOrganization} onAddRank={addRank} onRemoveRank={removeRank} onAddJobTitle={addJobTitle} onRemoveJobTitle={removeJobTitle} />}
+        {active === "employees" && <EmployeeDirectory employees={employees} organizations={organizations} query={query} onSelect={setSelectedEmployeeId} onAdd={() => setEmployeeModalOpen(true)} />}
+        {active === "organization" && <OrganizationManagement onSelectEmployee={setSelectedEmployeeId} organizations={organizations} employees={employees} ranks={ranks} jobTitles={jobTitles} onLeaderChange={updateOrganizationLeader} onAddOrganization={addOrganization} onUpdateOrganization={updateOrganization} onAddRank={addRank} onRemoveRank={removeRank} onAddJobTitle={addJobTitle} onRemoveJobTitle={removeJobTitle} />}
         {active === "payroll" && (selectedPayrollMonth ? <PayrollMonthDetail month={selectedPayrollMonth} onBack={() => setSelectedPayrollMonth(null)} /> : <PayrollOverview onSelectMonth={setSelectedPayrollMonth} />)}
         {active === "requisitions" && <RecruitmentRequisitionView onNotify={showToast} />}
         {active === "recruitment" && <RecruitmentView applicants={applicants} recruiters={recruiters} requisitions={requisitions} query={query} onAdd={() => setApplicantModalOpen(true)} onSelect={setSelectedApplicantId} onOwnerChange={assignRecruiter} onDelete={deleteApplicant} onRequisitionChange={(applicant, requisitionId) => updateApplicantDetail({ ...applicant, requisitionId })} />}
         {active === "recruiters" && <RecruiterManagement employees={employees} recruiterIds={recruiterIds} onAdd={addRecruiter} onRemove={removeRecruiter} />}
-        {active === "onboarding" && <LifecycleManagementView jobTitles={jobTitles} ranks={ranks} />}
+        {active === "onboarding" && <LifecycleManagementView jobTitles={jobTitles} ranks={ranks} onSelectApplicant={setSelectedApplicantId} applicantPopupOpen={Boolean(selectedApplicantId)} />}
+        {active === "leave" && <LeaveManagementView onNotify={showToast} />}
         {active === "workforce" && <WorkforcePlanningView onNotify={showToast} />}
         {active === "performance" && <PerformanceManagementView onNotify={showToast} />}
         {active === "training" && <TrainingManagementView onNotify={showToast} />}
         {active === "reports" && <HrAnalyticsView onNotify={showToast} />}
-        {active === "settings" && <SettingsView employees={employees} onSave={() => showToast("환경설정을 저장했습니다.")} onNotify={showToast} />}
+        {active === "settings" && <SettingsView employees={employees} onNotify={showToast} />}
+        {selectedEmployee && <EmployeeDetail key={selectedEmployee.id} employee={selectedEmployee} employees={employees} organizations={organizations} ranks={ranks} jobTitles={jobTitles} onBack={() => setSelectedEmployeeId(null)} onUpdate={updateEmployee} onPersonnelAction={() => setPersonnelAction("인사 발령")} onRetirement={() => setRetirementOpen(true)} onNotify={showToast} />}
       </main>
 
-      {employeeModalOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setEmployeeModalOpen(false)}><form className="employee-modal" onSubmit={saveEmployee} onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><p>NEW EMPLOYEE</p><h2>직원 등록</h2></div><button type="button" onClick={() => setEmployeeModalOpen(false)}>×</button></div><div className="form-grid"><label><span>이름 *</span><input required name="name" placeholder="홍길동" /></label><label><span>사번 *</span><input required name="employeeId" placeholder="사번 또는 계정 ID" /></label><label><span>이메일 *</span><input required name="email" type="email" placeholder="name@company.com" /></label><label><span>연락처</span><input name="phone" placeholder="010-0000-0000" /></label><label><span>소속 조직 *</span><select required name="department" defaultValue=""><option value="" disabled>조직 선택</option>{organizations.map((organization) => <option key={organization.id}>{organization.name}</option>)}</select></label><label><span>고용형태 *</span><select required name="type"><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label><label><span>입사일 *</span><input required name="joinDate" type="date" /></label><label><span>직위</span><select name="position">{ranks.map((rank) => <option key={rank}>{rank}</option>)}</select></label><label><span>직무</span><select name="jobTitle">{jobTitles.filter((title) => title !== "조직장").map((title) => <option key={title}>{title}</option>)}</select></label></div><label className="form-note"><span>메모</span><textarea placeholder="입사 준비에 필요한 참고사항을 입력하세요."></textarea></label><div className="modal-actions"><button type="button" onClick={() => setEmployeeModalOpen(false)}>취소</button><button type="submit" className="primary-button">직원 등록</button></div></form></div>}
+      {employeeModalOpen && <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={() => setEmployeeModalOpen(false)}><form className="employee-modal" onSubmit={saveEmployee} ><div className="modal-header"><div data-korean-heading><h2>직원 등록</h2></div><button type="button" onClick={() => setEmployeeModalOpen(false)}>×</button></div><div className="form-grid"><label><span>이름 *</span><input required name="name" placeholder="홍길동" /></label><label><span>사번 *</span><input required name="employeeId" placeholder="사번 또는 계정 ID" /></label><label><span>이메일 *</span><input required name="email" type="email" placeholder="name@company.com" /></label><label><span>연락처</span><input name="phone" placeholder="010-0000-0000" /></label><label><span>소속 조직 *</span><select required name="department" defaultValue=""><option value="" disabled>조직 선택</option>{organizations.map((organization) => <option key={organization.id}>{organization.name}</option>)}</select></label><label><span>고용형태 *</span><select required name="type"><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label><label><span>입사일 *</span><input required name="joinDate" type="date" /></label><label><span>직위</span><select name="position">{ranks.map((rank) => <option key={rank}>{rank}</option>)}</select></label><label><span>직무</span><select name="jobTitle">{jobTitles.filter((title) => title !== "조직장").map((title) => <option key={title}>{title}</option>)}</select></label></div><label className="form-note"><span>메모</span><textarea placeholder="입사 준비에 필요한 참고사항을 입력하세요."></textarea></label><div className="modal-actions"><button type="button" onClick={() => setEmployeeModalOpen(false)}>취소</button><button type="submit" className="primary-button">직원 등록</button></div></form></HrModalBackdrop>}
 
-      {applicantModalOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setApplicantModalOpen(false)}><form className="employee-modal applicant-modal" onSubmit={saveApplicant} onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-header"><div><p>NEW APPLICANT</p><h2>지원자 등록</h2></div><button type="button" onClick={() => setApplicantModalOpen(false)}>×</button></div>
+      {applicantModalOpen && <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={() => setApplicantModalOpen(false)}><form className="employee-modal applicant-modal" onSubmit={saveApplicant} >
+        <div className="modal-header"><div data-korean-heading><h2>지원자 등록</h2></div><button type="button" onClick={() => setApplicantModalOpen(false)}>×</button></div>
         <div className={`resume-drop ${resumeStatus}`}><label><input type="file" accept=".pdf,.docx,.txt" onChange={(event) => parseResume(event.target.files?.[0])} /><span className="resume-icon">AI</span><div><strong>{resumeStatus === "analyzing" ? "원본 이력서를 AI가 분석하고 있어요" : resumeStatus === "done" ? "이력서 분석 완료" : resumeStatus === "error" ? "이력서 분석 실패" : "원본 이력서를 AI가 바로 분석합니다"}</strong><small>{resumeMessage || "PDF, DOCX, TXT · 파일은 이 브라우저에서 텍스트만 뽑아 보냅니다."}</small></div><em>{resumeStatus === "analyzing" ? "분석 중…" : resumeStatus === "done" || resumeStatus === "error" ? "다시 선택" : "파일 선택"}</em></label>{resumeStatus !== "analyzing" && applicantDraft.resumeText
           ? <div className="resume-rerun"><div><strong>결과가 정확하지 않나요?</strong><small>같은 이력서를 Claude가 한 번 더 분석합니다. 파일을 다시 고를 필요는 없고 1~3분 걸립니다.</small></div><button type="button" onClick={reanalyzeResume}>다시 분석</button></div>
           : null}</div>
@@ -1821,7 +1856,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
         <label className="form-note"><span>경력</span><textarea value={applicantDraft.careerSummary} onChange={(event) => setApplicantDraft({ ...applicantDraft, careerSummary: event.target.value })} placeholder="이력서를 올리면 근무처와 수행 업무가 자동으로 채워집니다." /></label>
         <label className="form-note"><span>이력서 요약</span><textarea value={applicantDraft.summary} onChange={(event) => setApplicantDraft({ ...applicantDraft, summary: event.target.value })} placeholder="주요 경력과 역량을 입력하세요." /></label>
         <div className="modal-actions"><button type="button" onClick={() => setApplicantModalOpen(false)}>취소</button><button type="submit" className="primary-button">지원자 등록</button></div>
-      </form></div>}
+      </form></HrModalBackdrop>}
 
       {selectedApplicant && <ApplicantDetail applicant={selectedApplicant} recruiters={recruiters} requisitions={requisitions} organizations={organizations} jobTitles={jobTitles} ranks={ranks} onClose={() => setSelectedApplicantId(null)} onSave={updateApplicantDetail} onDecideScreening={decideScreening} onSaveMemo={addInterviewMemo} onSubmitOffer={submitRecruitmentOffer} onRejectInterview={rejectAfterInterview} onRespondOffer={respondRecruitmentOffer} />}
       {personnelAction && selectedEmployee && <PersonnelActionModal employee={selectedEmployee} ranks={ranks} organizations={organizations} onClose={() => setPersonnelAction(null)} onSubmit={savePersonnelAction} />}
@@ -1837,7 +1872,8 @@ function EmployeeDirectory({ employees, organizations, query, onSelect, onAdd }:
   const [exporting, setExporting] = useState(false);
   const currentEmployees = employees.filter(isCurrentEmployee);
   const visibleEmployees = query ? currentEmployees.filter((employee) => Object.values(employee).some((value) => typeof value === "string" && value.toLowerCase().includes(query.toLowerCase()))) : currentEmployees;
-  const hiresThisMonth = currentEmployees.filter((employee) => employee.joinDate.startsWith("2026.08")).length;
+  const thisMonthPrefix = useKoreanToday().slice(0, 7).replace("-", ".");
+  const hiresThisMonth = currentEmployees.filter((employee) => employee.joinDate.startsWith(thisMonthPrefix)).length;
   const incompleteProfiles = currentEmployees.filter((employee) => [employee.email, employee.phone, employee.birth, employee.address].some((value) => !value || value === "미입력")).length;
   const toggle = (department: string) => setExpanded((value) => value.includes(department) ? value.filter((item) => item !== department) : [...value, department]);
 
@@ -1876,9 +1912,9 @@ function EmployeeDirectory({ employees, organizations, query, onSelect, onAdd }:
   }
 
   return <div className="page-wrap module-page">
-    <section className="module-hero"><div><p className="eyebrow">PEOPLE DIRECTORY</p><h1>인사기록카드</h1><p>전체 구성원을 부서별로 확인하고 개인 인사기록을 관리합니다.</p></div><div className="employee-directory-actions"><button type="button" className="outline-button" disabled={exporting} onClick={downloadEmployeeWorkbook}>{exporting ? "엑셀 생성 중…" : "엑셀로 다운 받기"}</button><button type="button" className="primary-button" onClick={onAdd}>+ 직원 등록</button></div></section>
+    <section className="module-hero"><div data-korean-heading><h1>인사기록카드</h1><p>전체 구성원을 부서별로 확인하고 개인 인사기록을 관리합니다.</p></div><div className="employee-directory-actions"><button type="button" className="outline-button" disabled={exporting} onClick={downloadEmployeeWorkbook}>{exporting ? "엑셀 생성 중…" : "엑셀로 다운 받기"}</button><button type="button" className="primary-button" onClick={onAdd}>+ 직원 등록</button></div></section>
     <section className="metric-grid module-metrics">
-      {[{ label: "전체 재직자", value: `${currentEmployees.length}명`, note: "하이웍스 원본 기준" }, { label: "조직", value: `${organizations.length}개`, note: "소속 미지정 포함", tone: "blue" }, { label: "이번 달 입사", value: `${hiresThisMonth}명`, note: "2026년 8월 입사", tone: "green" }, { label: "정보 확인 필요", value: `${incompleteProfiles}명`, note: "필수항목 미입력", tone: "red" }].map((metric) => <div className="compact-metric" key={metric.label}><span className={`metric-accent ${metric.tone ?? "navy"}`}></span><p>{metric.label}</p><h2>{metric.value}</h2><small>{metric.note}</small></div>)}
+      {[{ label: "전체 재직자", value: `${currentEmployees.length}명`, note: "하이웍스 원본 기준" }, { label: "조직", value: `${organizations.length}개`, note: "소속 미지정 포함", tone: "blue" }, { label: "이번 달 입사", value: `${hiresThisMonth}명`, note: `${thisMonthPrefix} 입사`, tone: "green" }, { label: "정보 확인 필요", value: `${incompleteProfiles}명`, note: "필수항목 미입력", tone: "red" }].map((metric) => <div className="compact-metric" key={metric.label}><span className={`metric-accent ${metric.tone ?? "navy"}`}></span><p>{metric.label}</p><h2>{metric.value}</h2><small>{metric.note}</small></div>)}
     </section>
     <div className="directory-toolbar"><div><h2>전체 현황</h2><span>총 {currentEmployees.length}명 · 부서별 접기/펼치기</span></div><div><button type="button" onClick={() => setExpanded(departments)}>모두 펼치기</button><button type="button" onClick={() => setExpanded([])}>모두 접기</button></div></div>
     <div className="department-list">
@@ -1904,12 +1940,12 @@ function EmployeeDirectory({ employees, organizations, query, onSelect, onAdd }:
   </div>;
 }
 
-function OrganizationManagement({ organizations, employees, ranks, jobTitles, onLeaderChange, onAddOrganization, onUpdateOrganization, onAddRank, onRemoveRank, onAddJobTitle, onRemoveJobTitle }: { organizations: Organization[]; employees: Employee[]; ranks: string[]; jobTitles: string[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onAddOrganization: (name: string, description: string) => void; onUpdateOrganization: (organizationId: string, name: string, description: string, impactAssessmentId: string) => Promise<boolean>; onAddRank: (value: string) => void; onRemoveRank: (value: string) => void; onAddJobTitle: (value: string) => void; onRemoveJobTitle: (value: string) => void }) {
+function OrganizationManagement({ onSelectEmployee, organizations, employees, ranks, jobTitles, onLeaderChange, onAddOrganization, onUpdateOrganization, onAddRank, onRemoveRank, onAddJobTitle, onRemoveJobTitle }: { onSelectEmployee: (id: string) => void; organizations: Organization[]; employees: Employee[]; ranks: string[]; jobTitles: string[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onAddOrganization: (name: string, description: string) => void; onUpdateOrganization: (organizationId: string, name: string, description: string, impactAssessmentId: string) => Promise<boolean>; onAddRank: (value: string) => void; onRemoveRank: (value: string) => void; onAddJobTitle: (value: string) => void; onRemoveJobTitle: (value: string) => void }) {
   const [newOrganization, setNewOrganization] = useState({ name: "", description: "" });
   const [newRank, setNewRank] = useState("");
   const [newJobTitle, setNewJobTitle] = useState("");
   return <div className="page-wrap module-page organization-page">
-    <section className="module-hero"><div><p className="eyebrow">ORGANIZATION MANAGEMENT</p><h1>조직관리</h1><p>조직 구성과 조직장, 직위 및 직무 기준을 한 곳에서 관리합니다.</p></div></section>
+    <section className="module-hero"><div data-korean-heading><h1>조직관리</h1><p>조직 구성과 조직장, 직위 및 직무 기준을 한 곳에서 관리합니다.</p></div></section>
     <section className="metric-grid module-metrics">{[
       { label: "운영 조직", value: `${organizations.length}개`, note: "인사기록과 연동" },
       { label: "조직장 지정", value: `${organizations.filter((organization) => organization.leaderEmployeeId).length}명`, note: `미지정 ${organizations.filter((organization) => !organization.leaderEmployeeId).length}개`, tone: "blue" },
@@ -1921,7 +1957,7 @@ function OrganizationManagement({ organizations, employees, ranks, jobTitles, on
         <div className="table-toolbar"><div><h2>회사 조직 구성</h2><span>조직장을 지정하면 인사기록카드에 즉시 반영됩니다.</span></div></div>
         <div className="organization-list">{organizations.map((organization) => {
           const members = employees.filter((employee) => isCurrentEmployee(employee) && employee.department === organization.name);
-          return <OrganizationCard key={organization.id} organization={organization} members={members} onLeaderChange={onLeaderChange} onUpdate={onUpdateOrganization} />;
+          return <OrganizationCard onSelectEmployee={onSelectEmployee} key={organization.id} organization={organization} members={members} onLeaderChange={onLeaderChange} onUpdate={onUpdateOrganization} />;
         })}</div>
         <form className="organization-add-form" onSubmit={(event) => { event.preventDefault(); onAddOrganization(newOrganization.name, newOrganization.description); setNewOrganization({ name: "", description: "" }); }}><div><label><span>새 조직명</span><input required value={newOrganization.name} onChange={(event) => setNewOrganization({ ...newOrganization, name: event.target.value })} placeholder="예: 사업전략팀" /></label><label><span>조직 설명</span><input value={newOrganization.description} onChange={(event) => setNewOrganization({ ...newOrganization, description: event.target.value })} placeholder="조직의 주요 역할" /></label></div><button type="submit" className="primary-button">+ 조직 추가</button></form>
       </section>
@@ -1933,7 +1969,7 @@ function OrganizationManagement({ organizations, employees, ranks, jobTitles, on
   </div>;
 }
 
-function OrganizationCard({ organization, members, onLeaderChange, onUpdate }: { organization: Organization; members: Employee[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onUpdate: (organizationId: string, name: string, description: string, impactAssessmentId: string) => Promise<boolean> }) {
+function OrganizationCard({ onSelectEmployee, organization, members, onLeaderChange, onUpdate }: { onSelectEmployee: (id: string) => void; organization: Organization; members: Employee[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onUpdate: (organizationId: string, name: string, description: string, impactAssessmentId: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ name: organization.name, description: organization.description });
   const [impactOpen, setImpactOpen] = useState(false);
@@ -1951,7 +1987,7 @@ function OrganizationCard({ organization, members, onLeaderChange, onUpdate }: {
   }
 
   return <article className={`organization-card ${editing ? "editing" : ""}`}>
-    {editing ? <form className="organization-edit-form" onSubmit={saveEdit}><div className="organization-edit-heading"><strong>조직 정보 수정</strong><span>조직명 변경 시 소속 인사기록에도 함께 반영됩니다.</span></div><label><span>조직명</span><input required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label><span>조직 설명</span><textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label><div className="organization-edit-actions"><button type="button" onClick={cancelEdit}>취소</button><button type="submit">영향 확인 후 저장</button></div></form> : <><div className="organization-card-heading"><span>{organization.name.slice(0, 1)}</span><div><h3>{organization.name}</h3><p>{organization.description}</p></div><em>{members.length}명</em><button type="button" className="organization-edit-button" onClick={() => setEditing(true)}>조직 수정</button></div><label><span>조직장</span><select value={organization.leaderEmployeeId ?? ""} onChange={(event) => onLeaderChange(organization.id, event.target.value)}><option value="">미지정</option>{members.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.position}</option>)}</select></label><div className="organization-members"><div className="organization-members-heading"><strong>소속 조직원</strong><span>{members.length}명</span></div>{members.length > 0 ? <div className={`organization-member-list columns-${memberColumns}`}>{sortedMembers.map((employee) => <div className={`organization-member ${employee.id === organization.leaderEmployeeId ? "leader" : ""}`} key={employee.id}><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.position} · {employee.id === organization.leaderEmployeeId ? "조직장" : employee.jobTitle ?? "팀원"}</small></div></div>)}</div> : <p className="organization-empty-members">소속 조직원이 없습니다.</p>}</div></>}
+    {editing ? <form className="organization-edit-form" onSubmit={saveEdit}><div className="organization-edit-heading"><strong>조직 정보 수정</strong><span>조직명 변경 시 소속 인사기록에도 함께 반영됩니다.</span></div><label><span>조직명</span><input required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label><span>조직 설명</span><textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label><div className="organization-edit-actions"><button type="button" onClick={cancelEdit}>취소</button><button type="submit">영향 확인 후 저장</button></div></form> : <><div className="organization-card-heading"><span>{organization.name.slice(0, 1)}</span><div><h3>{organization.name}</h3><p>{organization.description}</p></div><em>{members.length}명</em><button type="button" className="organization-edit-button" onClick={() => setEditing(true)}>조직 수정</button></div><label><span>조직장</span><select value={organization.leaderEmployeeId ?? ""} onChange={(event) => onLeaderChange(organization.id, event.target.value)}><option value="">미지정</option>{members.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.position}</option>)}</select></label><div className="organization-members"><div className="organization-members-heading"><strong>소속 조직원</strong><span>{members.length}명</span></div>{members.length > 0 ? <div className={`organization-member-list columns-${memberColumns}`}>{sortedMembers.map((employee) => <button type="button" onClick={() => onSelectEmployee(employee.id)} aria-haspopup="dialog" className={`organization-member ${employee.id === organization.leaderEmployeeId ? "leader" : ""}`} key={employee.id}><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.position} · {employee.id === organization.leaderEmployeeId ? "조직장" : employee.jobTitle ?? "팀원"}</small></div></button>)}</div> : <p className="organization-empty-members">소속 조직원이 없습니다.</p>}</div></>}
     {impactOpen && <MasterImpactDialog entityType="HR_ORGANIZATION" entityId={organization.id} action="UPDATE" onClose={() => setImpactOpen(false)} onProceed={async (assessmentId) => { const saved = await onUpdate(organization.id, draft.name, draft.description, assessmentId); if (saved) setEditing(false); return saved; }} />}
   </article>;
 }
@@ -1960,7 +1996,7 @@ function CatalogManager({ title, description, items, value, onValue, onAdd, onRe
   return <section className="panel catalog-panel"><div><h2>{title}</h2><p>{description}</p></div><div className="catalog-list">{items.map((item, index) => <div key={item}><span>{index + 1}</span><strong>{item}</strong><button type="button" onClick={() => onRemove(item)} aria-label={`${item} 삭제`}>×</button></div>)}</div><form onSubmit={(event) => { event.preventDefault(); onAdd(); }}><input value={value} onChange={(event) => onValue(event.target.value)} placeholder={placeholder} /><button type="submit">추가</button></form></section>;
 }
 
-function EmployeeDetail({ employee, employees, organizations, ranks, jobTitles, onBack, onUpdate, onPersonnelAction, onRetirement }: { employee: Employee; employees: Employee[]; organizations: Organization[]; ranks: string[]; jobTitles: string[]; onBack: () => void; onUpdate: (id: string, patch: Partial<Employee>) => void; onPersonnelAction: () => void; onRetirement: () => void }) {
+function EmployeeDetail({ employee, employees, organizations, ranks, jobTitles, onBack, onUpdate, onPersonnelAction, onRetirement, onNotify }: { employee: Employee; employees: Employee[]; organizations: Organization[]; ranks: string[]; jobTitles: string[]; onBack: () => void; onUpdate: (id: string, patch: Partial<Employee>) => void; onPersonnelAction: () => void; onRetirement: () => void; onNotify: (message: string) => void }) {
   const [selectedDepartment, setSelectedDepartment] = useState(employee.department);
   const [selectedJobTitle, setSelectedJobTitle] = useState(employee.jobTitle ?? "팀원");
   // 내려가면 제목줄을 절반 높이로 접는다. 지원자·급여·퇴직 팝업과 같은 방식이다.
@@ -1996,10 +2032,10 @@ function EmployeeDetail({ employee, employees, organizations, ranks, jobTitles, 
   }
   // 목록을 대체하던 전체 페이지에서 겹쳐 뜨는 팝업으로 바꿨다. 배경을 눌러도 닫히고,
   // 곡률과 왼쪽 스크롤바는 지원자 팝업과 같은 규칙을 공유한다(public/hr-workspace.css).
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onBack(); }}>
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onBack(); }}>
     <div
       className={`employee-detail-modal detail-page${condensed ? " condensed" : ""}`}
-      onMouseDown={(event) => event.stopPropagation()}
+
       onScroll={(event) => {
         const top = event.currentTarget.scrollTop;
         setCondensed((current) => nextCondensed(current, top));
@@ -2007,13 +2043,14 @@ function EmployeeDetail({ employee, employees, organizations, ranks, jobTitles, 
     >
     {/* 제목줄이 접히면 이름이 적힌 검은 배너가 위로 밀려 올라가 누구의 기록인지 보이지 않는다.
         그래서 접힌 동안에는 제목 옆에 이름을 붙여 둔다. */}
-    <div className="modal-header"><div><p>EMPLOYEE RECORD</p><h2>인사기록 확인 및 수정{condensed ? ` - ${employee.name}` : ""}</h2></div><button type="button" onClick={onBack} aria-label="닫기">×</button></div>
+    <div className="modal-header"><div data-korean-heading><h2>인사기록 확인 및 수정{condensed ? ` - ${employee.name}` : ""}</h2></div><button type="button" onClick={onBack} aria-label="닫기">×</button></div>
     <section className="profile-hero panel"><div className="profile-avatar">{employee.name.slice(0, 1)}</div><div className="profile-copy"><p>{employee.id}</p><h1>{employee.name}</h1><div><span>{employee.department}</span><b>·</b><span>{employee.position}</span><b>·</b><StatusPill value={employee.status} /></div></div><div className="profile-actions personnel-actions-stack"><button type="button" className="promote" onClick={onPersonnelAction}>인사 발령</button><button type="button" className="retirement-action" onClick={onRetirement}>퇴직</button></div></section>
     <div className="detail-grid">
-      <form className="panel detail-card" onSubmit={submit}><div className="detail-card-heading"><div><p className="eyebrow">BASIC INFORMATION</p><h2>기본정보·급여 기준</h2></div><div className="detail-card-actions"><button type="button" className="outline-button" onClick={() => { setContractOptions(defaultContractOptions(employee)); setContractNotice(""); setContractOpen(true); }}>근로계약서 다운로드</button><button type="submit" className="primary-button">변경사항 저장</button></div></div><div className="detail-form"><label><span>이름</span><input required name="name" defaultValue={employee.name} /></label><label><span>생년월일</span><input name="birth" type="date" defaultValue={employee.birth === "미입력" ? "" : employee.birth.replaceAll(".", "-")} /></label><label><span>이메일</span><input name="email" defaultValue={employee.email} /></label><label><span>연락처</span><input name="phone" defaultValue={employee.phone} /></label><label className="wide"><span>주소</span><input name="address" defaultValue={employee.address} /></label><label><span>고용형태</span><select name="type" defaultValue={employee.type}><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label><label><span>소속 조직</span><select value={selectedDepartment} onChange={(event) => setSelectedDepartment(event.target.value)}>{organizations.map((organization) => <option key={organization.id}>{organization.name}</option>)}</select></label><label><span>조직장</span><input value={organizationLeaderName} disabled placeholder={isOrganizationLeader ? "본인이 조직장인 경우 공란" : "조직장 미지정"} /></label><label><span>직위</span><select name="position" defaultValue={employee.position}>{ranks.map((rank) => <option key={rank}>{rank}</option>)}</select></label><label><span>직무</span><select name="jobTitle" value={isOrganizationLeader ? "조직장" : selectedJobTitle} disabled={isOrganizationLeader} onChange={(event) => setSelectedJobTitle(event.target.value)}>{jobTitles.map((title) => <option key={title}>{title}</option>)}</select></label><label><span>입사일</span><input value={employee.joinDate} disabled /></label><label><span>연봉 · 1원 단위</span><WonInput name="annualSalary" ariaLabel="연봉" defaultValue={employee.annualSalary ?? 0} /></label><label><span>기본급 · 1원 단위</span><WonInput name="basePay" ariaLabel="기본급" defaultValue={employee.basePay ?? 0} /></label><label><span>식대 · 1원 단위</span><WonInput name="mealAllowance" ariaLabel="식대" defaultValue={employee.mealAllowance ?? 0} /></label><label><span>육아수당 · 1원 단위</span><WonInput name="childcareAllowance" ariaLabel="육아수당" defaultValue={employee.childcareAllowance ?? 0} /></label><label><span>자가운전수당 · 1원 단위</span><WonInput name="vehicleAllowance" ariaLabel="자가운전수당" defaultValue={employee.vehicleAllowance ?? 0} /></label><label><span>첫 계약 지급률(%)</span><input name="firstTermPayPercent" type="number" min="1" max="100" step="1" defaultValue={employee.firstTermPayPercent ?? 100} /></label></div></form>
-      <aside className="panel detail-card history-card"><div className="detail-card-heading"><div><p className="eyebrow">HR HISTORY</p><h2>인사이력</h2></div><span>{employee.history.length}건</span></div><div className="history-list">{employee.history.map((item, index) => <div className="history-item" key={`${item.date}-${index}`}><span></span><div><strong>{item.type}</strong><p>{item.detail}</p><small>{item.date}</small></div></div>)}</div></aside>
+      <form className="panel detail-card" onSubmit={submit}><div className="detail-card-heading"><div data-korean-heading><h2>기본정보·급여 기준</h2></div><div className="detail-card-actions"><button type="button" className="outline-button" onClick={() => { setContractOptions(defaultContractOptions(employee)); setContractNotice(""); setContractOpen(true); }}>근로계약서 다운로드</button><button type="submit" className="primary-button">변경사항 저장</button></div></div><div className="detail-form"><label><span>이름</span><input required name="name" defaultValue={employee.name} /></label><label><span>생년월일</span><input name="birth" type="date" defaultValue={employee.birth === "미입력" ? "" : employee.birth.replaceAll(".", "-")} /></label><label><span>이메일</span><input name="email" defaultValue={employee.email} /></label><label><span>연락처</span><input name="phone" defaultValue={employee.phone} /></label><label className="wide"><span>주소</span><input name="address" defaultValue={employee.address} /></label><label><span>고용형태</span><select name="type" defaultValue={employee.type}><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label><label><span>소속 조직</span><select value={selectedDepartment} onChange={(event) => setSelectedDepartment(event.target.value)}>{organizations.map((organization) => <option key={organization.id}>{organization.name}</option>)}</select></label><label><span>조직장</span><input value={organizationLeaderName} disabled placeholder={isOrganizationLeader ? "본인이 조직장인 경우 공란" : "조직장 미지정"} /></label><label><span>직위</span><select name="position" defaultValue={employee.position}>{ranks.map((rank) => <option key={rank}>{rank}</option>)}</select></label><label><span>직무</span><select name="jobTitle" value={isOrganizationLeader ? "조직장" : selectedJobTitle} disabled={isOrganizationLeader} onChange={(event) => setSelectedJobTitle(event.target.value)}>{jobTitles.map((title) => <option key={title}>{title}</option>)}</select></label><label><span>입사일</span><input value={employee.joinDate} disabled /></label><label htmlFor={`employee-${employee.id}-annualSalary`}><span>연봉 · 1원 단위</span><WonInput id={`employee-${employee.id}-annualSalary`} name="annualSalary" ariaLabel="연봉" defaultValue={employee.annualSalary ?? 0} /></label><label htmlFor={`employee-${employee.id}-basePay`}><span>기본급 · 1원 단위</span><WonInput id={`employee-${employee.id}-basePay`} name="basePay" ariaLabel="기본급" defaultValue={employee.basePay ?? 0} /></label><label htmlFor={`employee-${employee.id}-mealAllowance`}><span>식대 · 1원 단위</span><WonInput id={`employee-${employee.id}-mealAllowance`} name="mealAllowance" ariaLabel="식대" defaultValue={employee.mealAllowance ?? 0} /></label><label htmlFor={`employee-${employee.id}-childcareAllowance`}><span>육아수당 · 1원 단위</span><WonInput id={`employee-${employee.id}-childcareAllowance`} name="childcareAllowance" ariaLabel="육아수당" defaultValue={employee.childcareAllowance ?? 0} /></label><label htmlFor={`employee-${employee.id}-vehicleAllowance`}><span>자가운전수당 · 1원 단위</span><WonInput id={`employee-${employee.id}-vehicleAllowance`} name="vehicleAllowance" ariaLabel="자가운전수당" defaultValue={employee.vehicleAllowance ?? 0} /></label><label><span>첫 계약 지급률(%)</span><input name="firstTermPayPercent" type="number" min="1" max="100" step="1" defaultValue={employee.firstTermPayPercent ?? 100} /></label></div></form>
+      <aside className="panel detail-card history-card"><div className="detail-card-heading"><div data-korean-heading><h2>인사이력</h2></div><span>{employee.history.length}건</span></div><div className="history-list">{employee.history.map((item, index) => <div className="history-item" key={`${item.date}-${index}`}><span></span><div><strong>{item.type}</strong><p>{item.detail}</p><small>{item.date}</small></div></div>)}</div></aside>
     </div>
-    <EmployeeInterviewLog employee={employee} />
+    <EmployeeInterviewLog key={employee.id} employee={employee} />
+    <LeaveLedgerPanel employeeId={employee.id} onNotify={onNotify} />
     {/* 근로계약서 작성. 미리보기는 실제 파일에 들어가는 값과 같은 표(contractTokens)를 쓴다 —
         보여 준 값과 내려받은 값이 다르면 안 된다. 이 팝업은 인사기록 팝업 위에 겹쳐 뜨므로
         mousedown 전파를 끊어 바깥 팝업이 함께 닫히지 않게 한다. */}
@@ -2023,9 +2060,9 @@ function EmployeeDetail({ employee, employees, organizations, ranks, jobTitles, 
       const pay = contractPay(employee, contractOptions);
       const missing = ([["생년월일", employee.birth], ["주소", employee.address], ["연락처", employee.phone]] as const)
         .filter(([, value]) => !value || value === "미입력").map(([label]) => label);
-      return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { event.stopPropagation(); if (event.target === event.currentTarget) setContractOpen(false); }}>
-        <form className="employee-modal contract-modal" onSubmit={(event) => void downloadContract(event)} onMouseDown={(event) => event.stopPropagation()}>
-          <div className="modal-header"><div><p>EMPLOYMENT CONTRACT</p><h2>{employee.name} 근로계약서 작성</h2></div><button type="button" aria-label="닫기" onClick={() => setContractOpen(false)}>×</button></div>
+      return <HrModalBackdrop className="modal-backdrop" role="presentation" >
+        <form className="employee-modal contract-modal" onSubmit={(event) => void downloadContract(event)} >
+          <div className="modal-header"><div data-korean-heading><h2>{employee.name} 근로계약서 작성</h2></div><button type="button" aria-label="닫기" onClick={() => setContractOpen(false)}>×</button></div>
           <p className="optional-form-notice">저장된 인사기록의 기본정보·급여 기준으로 회사 양식(26년 근로계약서)을 채웁니다. 방금 고친 값이 있으면 먼저 「변경사항 저장」을 누르세요.</p>
           <div className="form-grid">
             {/* 계약 종류를 바꾸면 시작일 기본값(입사일 / 첫 계약 다음 날)만 다시 잡고, 손으로 적은 담당업무·작성일은 남긴다. */}
@@ -2058,10 +2095,10 @@ function EmployeeDetail({ employee, employees, organizations, ranks, jobTitles, 
           {contractNotice && <p className="contract-warning">{contractNotice}</p>}
           <div className="modal-actions"><button type="button" onClick={() => setContractOpen(false)}>취소</button><button type="submit" className="primary-button" disabled={contractBusy || Boolean(pay.problem)}>{contractBusy ? "만드는 중…" : "근로계약서 다운로드"}</button></div>
         </form>
-      </div>;
+      </HrModalBackdrop>;
     })()}
     </div>
-  </div>;
+  </HrModalBackdrop>;
 }
 
 type PermissionsPolicyLike = {
@@ -2154,7 +2191,6 @@ function EmployeeInterviewLog({ employee }: { employee: Employee }) {
 
   useEffect(() => {
     let active = true;
-    setLoading(true);
     fetch(`/api/hr/interviews?employeeId=${encodeURIComponent(employee.id)}`)
       .then(async (response) => {
         if (!response.ok) throw new Error("면담 기록을 불러오지 못했습니다.");
@@ -2275,15 +2311,15 @@ function EmployeeInterviewLog({ employee }: { employee: Employee }) {
   }
 
   return <section className="panel interview-log-card">
-    <div className="detail-card-heading"><div><p className="eyebrow">INTERVIEW LOG</p><h2>면담 기록</h2></div><span>{records.length}건</span></div>
+    <div className="detail-card-heading"><div data-korean-heading><h2>면담 기록</h2></div><span>{records.length}건</span></div>
     <form className="interview-log-form" onSubmit={saveRecord}>
       <label className="recording-consent"><input type="checkbox" checked={consentConfirmed} disabled={recording} onChange={(event) => setConsentConfirmed(event.target.checked)} /><span>면담 당사자에게 녹음 목적과 보관 사실을 안내하고 동의를 확인했습니다.</span></label>
-      <div className="interview-log-top"><label><span>면담일시</span><input required type="datetime-local" value={interviewAt} onChange={(event) => setInterviewAt(event.target.value)} /></label><div className="recording-controls"><span>음성녹음</span><button type="button" className={recording ? "recording" : ""} onClick={recording ? stopRecording : startRecording}>{recording ? "■ 녹음 종료" : "● 녹음 시작"}</button>{audioPreviewUrl && <audio controls src={audioPreviewUrl}>녹음 미리듣기</audio>}</div></div>
+      <div className="interview-log-top"><label><span>면담일시</span><input required type="datetime-local" value={interviewAt} onChange={(event) => setInterviewAt(event.target.value)} /></label><div className="recording-controls"><span>음성녹음</span><button type="button" className={recording ? "recording" : ""} onClick={recording ? stopRecording : startRecording}>{recording ? "■ 녹음 종료" : "● 녹음 시작"}</button>{audioPreviewUrl && <InterviewAudio src={audioPreviewUrl} transcript={transcript} label="녹음 미리듣기" />}</div></div>
       <div className="interview-text-grid"><label><span>실시간 전사 초안</span><textarea value={transcript} onChange={(event) => { setTranscript(event.target.value); recognizedTextRef.current = event.target.value; }} placeholder="지원되는 브라우저에서는 녹음 중 초안이 표시됩니다. 저장 후 서버 AI 전사와 사용자 검토본을 별도로 만들 수 있습니다." /></label><label><span>사용자 메모</span><textarea value={memo} onChange={(event) => setMemo(event.target.value)} placeholder="면담 요약, 후속 조치, 확인할 내용을 기록하세요." /></label></div>
       {message && <p className="interview-log-message">{message}</p>}
       <div className="interview-log-actions"><small>녹음 파일과 기록은 이 직원의 인사기록에 안전하게 저장됩니다.</small><button type="submit" className="primary-button" disabled={saving || recording}>{saving ? "저장 중…" : "면담 기록 저장"}</button></div>
     </form>
-    <div className="interview-record-list">{loading ? <p className="interview-empty">면담 기록을 불러오는 중입니다.</p> : records.length ? records.map((record) => <article key={record.id}><div><strong>{new Date(record.interviewAt).toLocaleString("ko-KR")}</strong><small>{record.audioFileName ? `음성녹음 포함 · 동의 ${record.consentConfirmed ? "확인" : "기록 없음"}` : "텍스트 기록"}</small></div>{record.audioUrl && <audio controls src={record.audioUrl}>면담 녹음</audio>}<section><span>저장 전사·사용자 기록</span><p>{record.transcript || "전사기록 없음"}</p></section><section><span>사용자 메모</span><p>{record.memo || "메모 없음"}</p></section>{record.audioUrl && <AudioTranscriptionControl entityType="EMPLOYEE_INTERVIEW" entityId={record.id} />}</article>) : <p className="interview-empty">아직 등록된 면담 기록이 없습니다.</p>}</div>
+    <div className="interview-record-list">{loading ? <p className="interview-empty">면담 기록을 불러오는 중입니다.</p> : records.length ? records.map((record) => <article key={record.id}><div><strong>{new Date(record.interviewAt).toLocaleString("ko-KR")}</strong><small>{record.audioFileName ? `음성녹음 포함 · 동의 ${record.consentConfirmed ? "확인" : "기록 없음"}` : "텍스트 기록"}</small></div>{record.audioUrl && <InterviewAudio src={record.audioUrl} transcript={record.transcript} label="면담 녹음" />}<section><span>저장 전사·사용자 기록</span><p>{record.transcript || "전사기록 없음"}</p></section><section><span>사용자 메모</span><p>{record.memo || "메모 없음"}</p></section>{record.audioUrl && <AudioTranscriptionControl entityType="EMPLOYEE_INTERVIEW" entityId={record.id} />}</article>) : <p className="interview-empty">아직 등록된 면담 기록이 없습니다.</p>}</div>
   </section>;
 }
 
@@ -2362,7 +2398,7 @@ function TimeAndLeaveView({ employees, onNotify }: { employees: Employee[]; onNo
   }
 
   return <div className="page-wrap module-page time-leave-page">
-    <section className="module-hero"><div><p className="eyebrow">TIME &amp; LEAVE</p><h1>일정·근태·휴가</h1><p>수기 근태와 휴가 신청·승인을 실제 저장합니다. 출입기록 자동연동 전까지 자료 출처는 수기 입력으로 표시됩니다.</p></div><span className="manual-source-badge">MANUAL · 자동연동 미설정</span></section>
+    <section className="module-hero"><div data-korean-heading><h1>일정·근태·휴가</h1><p>수기 근태와 휴가 신청·승인을 실제 저장합니다. 출입기록 자동연동 전까지 자료 출처는 수기 입력으로 표시됩니다.</p></div><span className="manual-source-badge">MANUAL · 자동연동 미설정</span></section>
     <section className="metric-grid module-metrics">{[
       ["오늘 근태", `${todayAttendance.length}명`, `재직자 ${activeEmployees.length}명 중 기록`],
       ["휴가 승인 대기", `${pendingLeaves.length}건`, "알림 업무 자동 생성"],
@@ -2371,8 +2407,8 @@ function TimeAndLeaveView({ employees, onNotify }: { employees: Employee[]; onNo
     ].map(([label, value, note], index) => <div className="compact-metric" key={label}><span className={`metric-accent ${["navy", "orange", "blue", "red"][index]}`}></span><p>{label}</p><h2>{value}</h2><small>{note}</small></div>)}</section>
 
     <section className="time-leave-entry-grid">
-      <form className="panel operations-entry-card" onSubmit={createLeave}><div className="detail-card-heading"><div><p className="eyebrow">LEAVE REQUEST</p><h2>휴가 신청</h2></div><span>승인 필요</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={leaveDraft.employeeId} onChange={(event) => setLeaveDraft({ ...leaveDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>휴가 종류</span><select value={leaveDraft.leaveType} onChange={(event) => { const value = event.target.value; setLeaveDraft({ ...leaveDraft, leaveType: value, units: value.startsWith("HALF") ? ".5" : leaveDraft.units }); }}>{Object.entries(leaveTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>시작일</span><input required type="date" value={leaveDraft.startDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, startDate: event.target.value })} /></label><label><span>종료일</span><input required type="date" value={leaveDraft.endDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, endDate: event.target.value })} /></label><label><span>사용일수</span><input required type="number" min=".5" step=".5" value={leaveDraft.units} onChange={(event) => setLeaveDraft({ ...leaveDraft, units: event.target.value })} /></label><label className="wide"><span>사유</span><input value={leaveDraft.reason} onChange={(event) => setLeaveDraft({ ...leaveDraft, reason: event.target.value })} /></label></div><button type="submit" className="primary-button">휴가 신청 저장</button></form>
-      <form className="panel operations-entry-card" onSubmit={createAttendance}><div className="detail-card-heading"><div><p className="eyebrow">ATTENDANCE</p><h2>근태 기록</h2></div><span>수기 입력</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={attendanceDraft.employeeId} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>근무일</span><input required type="date" value={attendanceDraft.workDate} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, workDate: event.target.value })} /></label><label><span>근무 형태</span><select value={attendanceDraft.workType} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, workType: event.target.value })}>{Object.entries(attendanceTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>출근</span><input type="time" value={attendanceDraft.checkIn} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, checkIn: event.target.value })} /></label><label><span>퇴근</span><input type="time" value={attendanceDraft.checkOut} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, checkOut: event.target.value })} /></label><label className="wide"><span>메모</span><input value={attendanceDraft.memo} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, memo: event.target.value })} /></label></div><button type="submit" className="primary-button">근태 기록 저장</button></form>
+      <form className="panel operations-entry-card" onSubmit={createLeave}><div className="detail-card-heading"><div data-korean-heading><h2>휴가 신청</h2></div><span>승인 필요</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={leaveDraft.employeeId} onChange={(event) => setLeaveDraft({ ...leaveDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>휴가 종류</span><select value={leaveDraft.leaveType} onChange={(event) => { const value = event.target.value; setLeaveDraft({ ...leaveDraft, leaveType: value, units: value.startsWith("HALF") ? ".5" : leaveDraft.units }); }}>{Object.entries(leaveTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>시작일</span><input required type="date" value={leaveDraft.startDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, startDate: event.target.value })} /></label><label><span>종료일</span><input required type="date" value={leaveDraft.endDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, endDate: event.target.value })} /></label><label><span>사용일수</span><input required type="number" min=".5" step=".5" value={leaveDraft.units} onChange={(event) => setLeaveDraft({ ...leaveDraft, units: event.target.value })} /></label><label className="wide"><span>사유</span><input value={leaveDraft.reason} onChange={(event) => setLeaveDraft({ ...leaveDraft, reason: event.target.value })} /></label></div><button type="submit" className="primary-button">휴가 신청 저장</button></form>
+      <form className="panel operations-entry-card" onSubmit={createAttendance}><div className="detail-card-heading"><div data-korean-heading><h2>근태 기록</h2></div><span>수기 입력</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={attendanceDraft.employeeId} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>근무일</span><input required type="date" value={attendanceDraft.workDate} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, workDate: event.target.value })} /></label><label><span>근무 형태</span><select value={attendanceDraft.workType} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, workType: event.target.value })}>{Object.entries(attendanceTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>출근</span><input type="time" value={attendanceDraft.checkIn} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, checkIn: event.target.value })} /></label><label><span>퇴근</span><input type="time" value={attendanceDraft.checkOut} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, checkOut: event.target.value })} /></label><label className="wide"><span>메모</span><input value={attendanceDraft.memo} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, memo: event.target.value })} /></label></div><button type="submit" className="primary-button">근태 기록 저장</button></form>
     </section>
 
     <section className="time-leave-tables">
@@ -2404,6 +2440,7 @@ const documentCategoryLabels: Record<string, string> = {
 const VERSIONED_CATEGORIES = new Set(["EMPLOYMENT_CONTRACT", "PERSONNEL_ORDER", "CERTIFICATE"]);
 
 function EmployeeDocumentView({ employees, onNotify }: { employees: Employee[]; onNotify: (message: string) => void }) {
+  const dialog = useErpDialog();
   // 재직자와 퇴사자를 나눠 본다. 퇴사자 문서는 보존·발급이 주된 일이라 한 목록에 섞여 있으면 재직자를 찾기 어렵다.
   const [scope, setScope] = useState<"active" | "retired">(() => employees.some(isCurrentEmployee) ? "active" : "retired");
   const [employeeId, setEmployeeId] = useState(() => (employees.find(isCurrentEmployee) ?? employees[0])?.id ?? "");
@@ -2525,7 +2562,7 @@ function EmployeeDocumentView({ employees, onNotify }: { employees: Employee[]; 
   }
 
   async function remove(document: EmployeeDocument) {
-    if (!window.confirm(`${document.fileName} 문서를 목록에서 삭제할까요? 원본은 복구를 위해 보존됩니다.`)) return;
+    if (!(await dialog.confirm(`${document.fileName} 문서를 목록에서 삭제할까요? 원본은 복구를 위해 보존됩니다.`, { title: "문서 삭제", confirmLabel: "삭제", danger: true }))) return;
     const response = await fetch("/api/documents", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: document.id }) });
     const payload = await response.json() as { error?: string };
     if (!response.ok) { onNotify(payload.error || "문서를 삭제하지 못했습니다."); return; }
@@ -2546,9 +2583,9 @@ function EmployeeDocumentView({ employees, onNotify }: { employees: Employee[]; 
     .filter(([, group]) => group.length > 0);
 
   return <div className="page-wrap module-page employee-documents-page">
-    <section className="module-hero"><div><p className="eyebrow">HR DOCUMENT VAULT</p><h1>인사문서</h1><p>직원별 계약서·발령서·증명서 원본을 버전별로 보관하고 다운로드·삭제 이력을 기록합니다.</p></div><span className="secure-document-badge">PRIVATE · 접근기록 저장</span></section>
+    <section className="module-hero"><div data-korean-heading><h1>인사문서</h1><p>직원별 계약서·발령서·증명서 원본을 버전별로 보관하고 다운로드·삭제 이력을 기록합니다.</p></div><span className="secure-document-badge">PRIVATE · 접근기록 저장</span></section>
     <section className="document-layout">
-      <aside className="panel document-employee-list"><div className="detail-card-heading"><div><p className="eyebrow">EMPLOYEE</p><h2>직원 선택</h2></div><span>{scopedEmployees.length}명</span></div><div className="document-scope"><button type="button" className={scope === "active" ? "active" : ""} onClick={() => switchScope("active")}>재직자 {activeCount}</button><button type="button" className={scope === "retired" ? "active" : ""} onClick={() => switchScope("retired")}>퇴사자 {employees.length - activeCount}</button></div><div>{scopedEmployees.length ? scopedEmployees.map((employee) => <button type="button" key={employee.id} className={employee.id === employeeId ? "active" : ""} onClick={() => setEmployeeId(employee.id)}><span>{employee.name.slice(0, 1)}</span><p><strong>{employee.name}</strong><small>{scope === "retired" ? `퇴직 ${employee.retirement?.date ?? "일자 미입력"} · ${employee.department}` : `${employee.department} · ${employee.position}`}</small></p></button>) : <p className="document-group-empty">{scope === "retired" ? "퇴사자가 없습니다." : "재직자가 없습니다."}</p>}</div></aside>
+      <aside className="panel document-employee-list"><div className="detail-card-heading"><div data-korean-heading><h2>직원 선택</h2></div><span>{scopedEmployees.length}명</span></div><div className="document-scope"><button type="button" className={scope === "active" ? "active" : ""} onClick={() => switchScope("active")}>재직자 {activeCount}</button><button type="button" className={scope === "retired" ? "active" : ""} onClick={() => switchScope("retired")}>퇴사자 {employees.length - activeCount}</button></div><div>{scopedEmployees.length ? scopedEmployees.map((employee) => <button type="button" key={employee.id} className={employee.id === employeeId ? "active" : ""} onClick={() => setEmployeeId(employee.id)}><span>{employee.name.slice(0, 1)}</span><p><strong>{employee.name}</strong><small>{scope === "retired" ? `퇴직 ${employee.retirement?.date ?? "일자 미입력"} · ${employee.department}` : `${employee.department} · ${employee.position}`}</small></p></button>) : <p className="document-group-empty">{scope === "retired" ? "퇴사자가 없습니다." : "재직자가 없습니다."}</p>}</div></aside>
       <div className="document-content">
         {scope === "retired" && <p className="document-scope-note">퇴사자 문서입니다. 경력증명서 발급과 분쟁 대비를 위해 보존하며, 필요한 문서는 계속 등록할 수 있습니다.</p>}
         <form
@@ -2558,7 +2595,7 @@ function EmployeeDocumentView({ employees, onNotify }: { employees: Employee[]; 
         onDragOver={(event) => { if (event.dataTransfer.types.includes("Files")) { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; } }}
         onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); }}
         onDrop={dropFiles}
-      ><div className="detail-card-heading"><div><p className="eyebrow">NEW VERSION</p><h2>{selectedEmployee?.name ?? "직원"} 문서 등록</h2></div><span>최대 25MB</span></div><div className="document-upload-fields"><label><span>문서 분류</span><select value={category} onChange={(event) => setCategory(event.target.value)}>{Object.entries(documentCategoryLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="file-field"><span>원본 파일</span><input type="file" accept={DOCUMENT_FILE_TYPES.join(",")} onChange={(event) => chooseFile(event.target.files?.[0])} /><strong>{file?.name ?? "파일을 선택하거나 이 카드 위로 끌어다 놓으세요."}</strong></label><button type="submit" className="primary-button" disabled={saving}>{saving ? "등록 중…" : "문서 등록"}</button></div>{notice && <p className="document-upload-notice">{notice}</p>}</form>
+      ><div className="detail-card-heading"><div data-korean-heading><h2>{selectedEmployee?.name ?? "직원"} 문서 등록</h2></div><span>최대 25MB</span></div><div className="document-upload-fields"><label><span>문서 분류</span><select value={category} onChange={(event) => setCategory(event.target.value)}>{Object.entries(documentCategoryLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label className="file-field"><span>원본 파일</span><input type="file" accept={DOCUMENT_FILE_TYPES.join(",")} onChange={(event) => chooseFile(event.target.files?.[0])} /><strong>{file?.name ?? "파일을 선택하거나 이 카드 위로 끌어다 놓으세요."}</strong></label><button type="submit" className="primary-button" disabled={saving}>{saving ? "등록 중…" : "문서 등록"}</button></div>{notice && <p className="document-upload-notice">{notice}</p>}</form>
         {loading ? <section className="panel document-table-card"><div className="table-toolbar"><div><h2>보관 문서</h2><span>불러오는 중</span></div></div><p className="document-group-empty">문서를 불러오는 중입니다.</p></section> : groupedDocuments.length ? groupedDocuments.map(([groupCategory, groupDocuments]) => { const versioned = VERSIONED_CATEGORIES.has(groupCategory); return <section className="panel document-table-card" key={groupCategory}><div className="table-toolbar"><div><h2>{documentCategoryLabels[groupCategory] ?? groupCategory}</h2><span>{groupDocuments.length}건{versioned ? " · 같은 분류를 다시 올리면 버전이 증가합니다." : " · 버전을 매기지 않는 분류입니다."}</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>파일명</th><th>분류 변경</th><th>버전</th><th>등록자</th><th>등록일시</th><th>상태</th><th>작업</th></tr></thead><tbody>{groupDocuments.map((document) => <tr key={document.id}><td><a className="document-download-link" href={document.downloadUrl}>{document.fileName}</a></td><td><select className="document-category-select" value={document.category} disabled={recategorizing === document.id} onChange={(event) => void recategorize(document, event.target.value)}>{Object.entries(documentCategoryLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}{!(document.category in documentCategoryLabels) && <option value={document.category}>{document.category}</option>}</select></td><td>{versioned ? `v${document.version}` : "-"}</td><td>{document.uploadedBy}</td><td>{new Date(document.createdAt).toLocaleString("ko-KR")}</td><td>{versioned ? <StatusPill value={document.version === latestByCategory.get(document.category) ? "최신" : "이전 버전"} /> : "-"}</td><td><div className="row-actions"><a href={document.downloadUrl}>다운로드</a><button type="button" className="reject-action" onClick={() => void remove(document)}>삭제</button></div></td></tr>)}</tbody></table></div></section>; }) : <section className="panel document-table-card"><div className="table-toolbar"><div><h2>보관 문서</h2><span>0건</span></div></div><p className="document-group-empty">등록된 인사문서가 없습니다.</p></section>}
       </div>
     </section>
@@ -2592,10 +2629,10 @@ const payrollStatusTransitions: Record<PayrollSummary["status"], PayrollSummary[
 };
 
 /** 급여월 상태 변경 한 곳. 상세 화면의 버튼과 목록의 상태 칸이 같은 규칙(재개방 사유·전자결재 안내)을 쓴다. */
-async function requestPayrollStatusChange(month: string, currentStatus: PayrollSummary["status"], status: PayrollSummary["status"]) {
+async function requestPayrollStatusChange(dialog: ErpDialogApi, month: string, currentStatus: PayrollSummary["status"], status: PayrollSummary["status"]) {
   let reopenedReason = "";
   if (status === "DRAFT" && ["APPROVED", "LOCKED"].includes(currentStatus)) {
-    reopenedReason = window.prompt("승인·마감된 급여월을 다시 여는 사유를 입력해 주세요.")?.trim() ?? "";
+    reopenedReason = (await dialog.prompt("승인·마감된 급여월을 다시 여는 사유를 입력해 주세요.", { title: "급여 재개 사유", placeholder: "예: 공제 항목 정정", multiline: true })) ?? "";
     if (!reopenedReason) return { applied: false, notice: "", error: "급여월 재개방 사유가 필요합니다." };
   }
   const response = await fetch("/api/hr/payroll", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period: month, status, reopenedReason }) });
@@ -2614,6 +2651,7 @@ function PayrollStatusCell({ summary, busy, onChange }: { summary: PayrollSummar
   const [editing, setEditing] = useState(false);
   const stop = (event: React.SyntheticEvent) => event.stopPropagation();
   if (editing) {
+    // eslint-disable-next-line jsx-a11y/no-autofocus -- 칸을 눌러 여는 편집용 select 라 바로 초점을 받아야 한다
     return <select className="applicant-to-select payroll-status-select" autoFocus value={summary.status} aria-label={`${payrollMonthLabel(summary.yearMonth)} 처리 상태 변경`}
       onClick={stop} onMouseDown={stop} onKeyDown={(event) => { stop(event); if (event.key === "Escape") setEditing(false); }} onBlur={() => setEditing(false)}
       onChange={(event) => { const next = event.target.value as PayrollSummary["status"]; setEditing(false); if (next !== summary.status) onChange(next); }}>
@@ -2626,6 +2664,7 @@ function PayrollStatusCell({ summary, busy, onChange }: { summary: PayrollSummar
 }
 
 function PayrollOverview({ onSelectMonth }: { onSelectMonth: (month: string) => void }) {
+  const dialog = useErpDialog();
   const [summaries, setSummaries] = useState<PayrollSummary[]>([]);
   // 상태 칸에서 바로 바꿀 때의 진행 중 급여월과 결과 안내.
   const [busyMonth, setBusyMonth] = useState("");
@@ -2633,7 +2672,7 @@ function PayrollOverview({ onSelectMonth }: { onSelectMonth: (month: string) => 
   const [statusError, setStatusError] = useState("");
   async function changeStatus(summary: PayrollSummary, status: PayrollSummary["status"]) {
     setNotice(""); setStatusError(""); setBusyMonth(summary.yearMonth);
-    const result = await requestPayrollStatusChange(summary.yearMonth, summary.status, status);
+    const result = await requestPayrollStatusChange(dialog, summary.yearMonth, summary.status, status);
     setBusyMonth("");
     if (result.error) { setStatusError(`${payrollMonthLabel(summary.yearMonth)}: ${result.error}`); return; }
     if (result.applied) setSummaries((items) => items.map((item) => item.yearMonth === summary.yearMonth ? { ...item, status } : item));
@@ -2669,7 +2708,7 @@ function PayrollOverview({ onSelectMonth }: { onSelectMonth: (month: string) => 
     { label: "실 지급액", value: latest ? formatWon(latest.netPay) : "-", note: "지급총액 - 원본 공제", tone: "red" },
   ];
 
-  return <div className="page-wrap module-page payroll-page"><section className="module-hero"><div><p className="eyebrow">PAYROLL RECORDS</p><h1>급여관리</h1><p>2025~2026년 인건비 자료를 월별로 확인합니다. 세금·4대보험 전체 공제 자료가 아니므로 지급액은 원본 기록 기준입니다.</p></div><span className="payroll-import-badge">20개월 자료 반영</span></section><section className="metric-grid module-metrics">{metrics.map((metric) => <div className="compact-metric" key={metric.label}><span className={`metric-accent ${metric.tone ?? "navy"}`}></span><p>{metric.label}</p><h2>{metric.value}</h2><small>{metric.note}</small></div>)}</section><section className="panel table-panel"><div className="table-toolbar"><div><h2>급여월 현황</h2><span>{period === "all" ? `전체 ${rows.length}개월` : `${period}년 ${rows.length}개월`} · 급여월을 클릭하면 개인별 항목과 원본 메모를 확인할 수 있습니다.</span></div><div className="payroll-year-filter" role="group" aria-label="급여 조회 기간"><button type="button" className={period === "all" ? "active" : ""} onClick={() => setPeriod("all")}>전체 기간</button><button type="button" className={period === "2026" ? "active" : ""} onClick={() => setPeriod("2026")}>2026년</button><button type="button" className={period === "2025" ? "active" : ""} onClick={() => setPeriod("2025")}>2025년</button></div></div>{(notice || statusError) && <p className={`payroll-status-notice${statusError ? " error" : ""}`}>{statusError || notice}</p>}<div className="data-table-wrap"><table className="data-table payroll-table"><thead><tr>{["급여월", "대상 인원", "지급총액", "공제총액", "실 지급액", "상태"].map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={6} className="table-message">급여 기록을 불러오는 중입니다.</td></tr> : error ? <tr><td colSpan={6} className="table-message error">{error}</td></tr> : rows.map((summary) => <tr key={summary.yearMonth} onClick={() => onSelectMonth(summary.yearMonth)} tabIndex={0} onKeyDown={(event) => event.key === "Enter" && onSelectMonth(summary.yearMonth)}><td><button type="button" className="month-link">{payrollMonthLabel(summary.yearMonth)}<span>상세 보기 →</span></button></td><td>{summary.employeeCount}명</td><td>{formatWon(summary.grossPay)}</td><td>{formatWon(summary.deductions)}</td><td>{formatWon(summary.netPay)}</td><td className="payroll-status-cell"><PayrollStatusCell summary={summary} busy={busyMonth === summary.yearMonth} onChange={(status) => changeStatus(summary, status)} />{summary.compensationStatus === "DRAFT" && <StatusPill value="수정 중" />}</td></tr>)}</tbody></table></div></section></div>;
+  return <div className="page-wrap module-page payroll-page"><section className="module-hero"><div data-korean-heading><h1>급여관리</h1><p>2025~2026년 인건비 자료를 월별로 확인합니다. 세금·4대보험 전체 공제 자료가 아니므로 지급액은 원본 기록 기준입니다.</p></div><span className="payroll-import-badge">20개월 자료 반영</span></section><section className="metric-grid module-metrics">{metrics.map((metric) => <div className="compact-metric" key={metric.label}><span className={`metric-accent ${metric.tone ?? "navy"}`}></span><p>{metric.label}</p><h2>{metric.value}</h2><small>{metric.note}</small></div>)}</section><section className="panel table-panel"><div className="table-toolbar"><div><h2>급여월 현황</h2><span>{period === "all" ? `전체 ${rows.length}개월` : `${period}년 ${rows.length}개월`} · 급여월을 클릭하면 개인별 항목과 원본 메모를 확인할 수 있습니다.</span></div><div className="payroll-year-filter" role="group" aria-label="급여 조회 기간"><button type="button" className={period === "all" ? "active" : ""} onClick={() => setPeriod("all")}>전체 기간</button><button type="button" className={period === "2026" ? "active" : ""} onClick={() => setPeriod("2026")}>2026년</button><button type="button" className={period === "2025" ? "active" : ""} onClick={() => setPeriod("2025")}>2025년</button></div></div>{(notice || statusError) && <p className={`payroll-status-notice${statusError ? " error" : ""}`}>{statusError || notice}</p>}<div className="data-table-wrap"><table className="data-table payroll-table"><thead><tr>{["급여월", "대상 인원", "지급총액", "공제총액", "실 지급액", "상태"].map((column) => <th key={column}>{column}</th>)}</tr></thead><tbody>{loading ? <tr><td colSpan={6} className="table-message">급여 기록을 불러오는 중입니다.</td></tr> : error ? <tr><td colSpan={6} className="table-message error">{error}</td></tr> : rows.map((summary) => <tr key={summary.yearMonth} onClick={() => onSelectMonth(summary.yearMonth)} tabIndex={0} onKeyDown={(event) => event.key === "Enter" && onSelectMonth(summary.yearMonth)}><td><button type="button" className="month-link">{payrollMonthLabel(summary.yearMonth)}<span>상세 보기 →</span></button></td><td>{summary.employeeCount}명</td><td>{formatWon(summary.grossPay)}</td><td>{formatWon(summary.deductions)}</td><td>{formatWon(summary.netPay)}</td><td className="payroll-status-cell"><PayrollStatusCell summary={summary} busy={busyMonth === summary.yearMonth} onChange={(status) => changeStatus(summary, status)} />{summary.compensationStatus === "DRAFT" && <StatusPill value="수정 중" />}</td></tr>)}</tbody></table></div></section></div>;
 }
 
 async function fetchPayrollMonth(month: string) {
@@ -2680,6 +2719,7 @@ async function fetchPayrollMonth(month: string) {
 }
 
 function PayrollMonthDetail({ month, onBack }: { month: string; onBack: () => void }) {
+  const dialog = useErpDialog();
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [summary, setSummary] = useState<PayrollSummary | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(null);
@@ -2712,8 +2752,8 @@ function PayrollMonthDetail({ month, onBack }: { month: string; onBack: () => vo
       return "";
     } catch (saveError) {
       const message = saveError instanceof Error ? saveError.message : "급여 내역을 저장하지 못했습니다.";
-      if (message === PAYROLL_DEDUCTION_LOCK_MESSAGE && window.confirm(`${message}
-지금 급여월 잠금을 해제하고 계속할까요?`)) {
+      if (message === PAYROLL_DEDUCTION_LOCK_MESSAGE && await dialog.confirm(`${message}
+지금 급여월 잠금을 해제하고 계속할까요?`, { title: "급여 잠금 해제", confirmLabel: "잠금 해제" })) {
         const unlocked = await updatePayrollStatus("DRAFT");
         if (!unlocked) return message;
         try { await submitPayrollRecord(input); return ""; }
@@ -2725,7 +2765,7 @@ function PayrollMonthDetail({ month, onBack }: { month: string; onBack: () => vo
 
   async function updatePayrollStatus(status: PayrollSummary["status"]) {
     setError(""); setNotice("");
-    const result = await requestPayrollStatusChange(month, summary?.status ?? "DRAFT", status);
+    const result = await requestPayrollStatusChange(dialog, month, summary?.status ?? "DRAFT", status);
     if (result.error) { setError(result.error); return false; }
     if (result.applied) setSummary((current) => current ? { ...current, status } : current);
     if (result.notice) setNotice(result.notice);
@@ -2755,7 +2795,7 @@ function PayrollMonthDetail({ month, onBack }: { month: string; onBack: () => vo
 
   return <div className="page-wrap detail-page payroll-page">
     <button type="button" className="back-button" onClick={onBack}>← 급여월 현황</button>
-    <section className="module-hero"><div><p className="eyebrow">MONTHLY PAYROLL DETAIL</p><h1>{payrollMonthLabel(month)} 급여 상세</h1><p>직원별 기본급과 모든 수당 항목을 한 표에서 확인합니다. 직원명을 클릭하면 추가 항목과 원본 메모를 볼 수 있습니다.</p></div><div className="payroll-workflow"><span className="payroll-import-badge">{summary ? payrollStatusLabels[summary.status] : "불러오는 중"}</span><select aria-label="급여 처리 상태" value={summary?.status ?? "DRAFT"} onChange={(event) => void updatePayrollStatus(event.target.value as PayrollSummary["status"])} disabled={!summary}>{(["DRAFT", "REVIEW", "APPROVED", "LOCKED"] as const).map((value) => {
+    <section className="module-hero"><div data-korean-heading><h1>{payrollMonthLabel(month)} 급여 상세</h1><p>직원별 기본급과 모든 수당 항목을 한 표에서 확인합니다. 직원명을 클릭하면 추가 항목과 원본 메모를 볼 수 있습니다.</p></div><div className="payroll-workflow"><span className="payroll-import-badge">{summary ? payrollStatusLabels[summary.status] : "불러오는 중"}</span><select aria-label="급여 처리 상태" value={summary?.status ?? "DRAFT"} onChange={(event) => void updatePayrollStatus(event.target.value as PayrollSummary["status"])} disabled={!summary}>{(["DRAFT", "REVIEW", "APPROVED", "LOCKED"] as const).map((value) => {
               const allowed = payrollStatusTransitions[summary?.status ?? "DRAFT"].includes(value);
               return <option key={value} value={value} disabled={!allowed}>{payrollStatusOptionLabels[value]}{allowed ? "" : " · 지금은 선택 불가"}</option>;
             })}</select></div></section>
@@ -2845,18 +2885,18 @@ function PayrollRecordModal({ record, locked, lockLabel, onClose, onSave }: {
     setMessage(failure || "저장했습니다.");
   }
 
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <form
       className={`payroll-record-modal${condensed ? " condensed" : ""}`}
       onSubmit={submit}
-      onMouseDown={(event) => event.stopPropagation()}
+
       onScroll={(event) => {
         const top = event.currentTarget.scrollTop;
         setCondensed((current) => nextCondensed(current, top));
       }}
     >
       <div className="modal-header">
-        <div><p className="eyebrow">PAYROLL BREAKDOWN</p><h2>{record.employeeName} · {payrollMonthLabel(record.yearMonth)}</h2></div>
+        <div data-korean-heading><h2>{record.employeeName} · {payrollMonthLabel(record.yearMonth)}</h2></div>
         <div className="modal-header-actions">
           <button type="submit" className="header-save-button" disabled={saving}>{saving ? "저장 중…" : "변경사항 저장"}</button>
           <button type="button" className="modal-close" onClick={onClose} aria-label="닫기">×</button>
@@ -2870,7 +2910,7 @@ function PayrollRecordModal({ record, locked, lockLabel, onClose, onSave }: {
       {locked && <p className="optional-form-notice">{lockLabel} 상태입니다. 저장할 때 잠금을 해제할지 먼저 물어봅니다.</p>}
 
       <div className="payroll-edit-section">
-        <div className="detail-card-heading"><div><p className="eyebrow">PAYMENTS</p><h3>지급 항목</h3></div><span>앞의 8개가 지급총액</span></div>
+        <div className="detail-card-heading"><div data-korean-heading><h3>지급 항목</h3></div><span>앞의 8개가 지급총액</span></div>
         <div className="payroll-edit-grid">{PAYROLL_PAY_FIELDS.map(([key, label, inGross]) => <label key={key} className={inGross ? "" : "reference"}>
           <span>{label}{inGross ? "" : " · 참고"}</span>
           <input type="number" step="1" value={pay[key]} onChange={(event) => setPay({ ...pay, [key]: event.target.value })} />
@@ -2878,7 +2918,7 @@ function PayrollRecordModal({ record, locked, lockLabel, onClose, onSave }: {
       </div>
 
       <div className="payroll-edit-section">
-        <div className="detail-card-heading"><div><p className="eyebrow">DEDUCTIONS</p><h3>공제 내역</h3></div><span>{formatWon(deductions)}</span></div>
+        <div className="detail-card-heading"><div data-korean-heading><h3>공제 내역</h3></div><span>{formatWon(deductions)}</span></div>
         <div className="payroll-deduction-rows">{items.map((item, index) => <div key={index} className="payroll-deduction-row">
           <input list="payroll-deduction-presets" value={item.label} placeholder="항목명 (예: 국민연금)"
             onChange={(event) => updateItem(index, { label: event.target.value })} aria-label={`공제 항목 ${index + 1} 이름`} />
@@ -2892,13 +2932,13 @@ function PayrollRecordModal({ record, locked, lockLabel, onClose, onSave }: {
       </div>
 
       <div className="payroll-edit-section">
-        <div className="detail-card-heading"><div><p className="eyebrow">NOTE</p><h3>메모</h3></div><span>{record.sourceSheet} · {record.sourceRow}행</span></div>
+        <div className="detail-card-heading"><div data-korean-heading><h3>메모</h3></div><span>{record.sourceSheet} · {record.sourceRow}행</span></div>
         <textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="퇴사일, 정산 사유 등 참고할 내용을 적습니다." />
       </div>
 
       {message && <p className="retirement-settlement-message">{message}</p>}
     </form>
-  </div>;
+  </HrModalBackdrop>;
 }
 
 function normalizedMatch(value: string) {
@@ -2928,6 +2968,7 @@ function RequisitionCell({ requisition, applicant, requisitions, onChange }: { r
   if (editing && editable) {
     const current = applicant!.requisitionId || "";
     const choices = requisitions!.filter((item) => OPEN_REQUISITION_STATUSES.includes(item.status) || item.id === current);
+    // eslint-disable-next-line jsx-a11y/no-autofocus -- 칸을 눌러 여는 편집용 select 라 바로 초점을 받아야 한다
     return <select className="applicant-to-select" autoFocus value={current} aria-label="채용요청·TO 변경" onBlur={() => setEditing(false)} onChange={(event) => { const next = event.target.value; setEditing(false); if (next !== current) onChange!(applicant!, next); }}>
       <option value="">예외·미연결</option>{choices.map((item) => <option key={item.id} value={item.id}>{item.title}{OPEN_REQUISITION_STATUSES.includes(item.status) ? "" : " (종료된 공고)"}</option>)}
     </select>;
@@ -2947,25 +2988,26 @@ function RecruitmentView({ applicants, recruiters, requisitions, query, onAdd, o
     const pad = (value: number) => String(value).padStart(2, "0");
     return `${stamp.getFullYear()}-${pad(stamp.getMonth() + 1)}-${pad(stamp.getDate())} ${pad(stamp.getHours())}:${pad(stamp.getMinutes())}`;
   })();
-  const interviewing = visible
-    .filter((applicant) => (applicant.stage === SCREENING_PASSED_STAGE && interviewScheduleLabel(applicant))
-      || applicant.stage === INTERVIEW_PASSED_STAGE)
+  const interviewRows = visible
+    .filter((applicant) => ([SCREENING_PASSED_STAGE, "면접"].includes(applicant.stage) && interviewScheduleLabel(applicant))
+      || applicant.stage === INTERVIEW_PASSED_STAGE || applicant.stage === OFFER_PREPARED_STAGE)
     .slice()
     .map((applicant) => ({ applicant, track: interviewTrackOf(applicant, now) }))
     .sort((a, b) => (interviewTrackOrder[a.track] - interviewTrackOrder[b.track])
       || interviewSortKey(a.applicant).localeCompare(interviewSortKey(b.applicant)));
+  // 면접 결과 입력: 면접 시각이 지났는데 합격·탈락을 아직 안 적은 사람. 오늘 처리할 일이라 전용 표에 따로 둔다.
+  const awaiting = interviewRows.filter((row) => row.track === "AWAITING").map((row) => row.applicant);
+  // 면접 전형 진행 표에는 면접이 남았거나 합격한 사람만 남긴다 — 한 사람이 한 표에만 보이게.
+  const interviewing = interviewRows.filter((row) => row.track !== "AWAITING");
   const interviewCounts = {
-    AWAITING: interviewing.filter((row) => row.track === "AWAITING").length,
     SCHEDULED: interviewing.filter((row) => row.track === "SCHEDULED").length,
     PASSED: interviewing.filter((row) => row.track === "PASSED").length,
   };
-  // 면접 결과. 처우가 저장된 뒤의 상태들을 입사예정일 순으로 모아 둔다 — 수락도 거절도 함께 남는다.
-  const passed = visible
-    .filter((applicant) => OFFER_STAGES.includes(applicant.stage) && applicant.offer)
+  // 입사 예정자. 처우 제안을 수락해 확정된 사람만 입사예정일 순으로 — 제안만 해 둔 사람은 여기 오지 않는다.
+  const joining = visible
+    .filter((applicant) => OFFER_STAGES.includes(applicant.stage) && ["ACCEPTED", "ONBOARDED"].includes(applicant.offer?.status ?? ""))
     .slice()
     .sort((a, b) => (a.offer?.startDate || "9999-99-99").localeCompare(b.offer?.startDate || "9999-99-99"));
-  // 입사 예정자. 처우 제안을 수락해 확정된 사람만이다 — 제안만 해 둔 사람은 여기 오지 않는다.
-  const joining = passed.filter((applicant) => ["ACCEPTED", "ONBOARDED"].includes(applicant.offer?.status ?? ""));
   // 절차가 끝난 사람은 위 지원 현황에서 빼고 맨 아래 "채용 종료" 표에만 둔다.
   // 진행 중인 사람만 위에 남아야 오늘 손댈 대상이 바로 보인다.
   const closed = visible
@@ -2973,19 +3015,20 @@ function RecruitmentView({ applicants, recruiters, requisitions, query, onAdd, o
     .slice()
     .sort((a, b) => b.applied.localeCompare(a.applied));
   // 면접에 합격한 뒤로는 지원 현황에서 뺀다. 합격자는 면접 전형 진행 표에,
-  // 처우까지 제안한 사람은 아래 면접 결과 표에 남아 한 사람이 한 표에만 보이게 한다.
+  // 처우까지 제안한 사람도 면접 전형 진행 표(합격 트랙)나 입사 예정자 표에 남아 한 사람이 한 표에만 보이게 한다.
   const active = visible.filter((applicant) => !CLOSED_STAGES.includes(applicant.stage)
     && !OFFER_STAGES.includes(applicant.stage));
   return <div className="page-wrap module-page recruitment-page">
-    <section className="module-hero"><div><p className="eyebrow">RECRUITING PIPELINE</p><h1>지원자 관리</h1><p>지원자별 담당자와 서류 합격·면접 회신 과정을 한 흐름으로 관리합니다.</p></div><button type="button" className="primary-button" onClick={onAdd}>+ 지원자 등록</button></section>
+    <section className="module-hero"><div data-korean-heading><h1>지원자 관리</h1><p>지원자별 담당자와 서류 합격·면접 회신 과정을 한 흐름으로 관리합니다.</p></div><button type="button" className="primary-button" onClick={onAdd}>+ 지원자 등록</button></section>
     <section className="metric-grid module-metrics">{[
       { label: "등록 지원자", value: `${applicants.length}명`, note: "실제 등록 기준" },
       { label: "서류 검토", value: `${applicants.filter((item) => item.stage === "서류 검토").length}명`, note: "담당자 확인 필요", tone: "blue" },
-      { label: "서류 합격 안내", value: `${applicants.filter((item) => item.stage === "서류 합격 안내 완료").length}명`, note: "면접 회신 대기", tone: "orange" },
-      { label: "면접 일정 회신", value: `${applicants.filter((item) => item.stage === "면접 일정 회신 완료").length}명`, note: "면접관리 연동", tone: "green" },
+      // 예전 지표는 코드 어디에서도 저장되지 않는 단계명("서류 합격 안내 완료" 등)을 세어 늘 0명이었다. 실제 단계로 센다.
+      { label: "서류 합격 · 면접 대기", value: `${applicants.filter((item) => item.stage === SCREENING_PASSED_STAGE && !item.interview?.date).length}명`, note: "면접 일정 입력 필요", tone: "orange" },
+      { label: "면접 일정 확정", value: `${applicants.filter((item) => [SCREENING_PASSED_STAGE, "면접"].includes(item.stage) && Boolean(item.interview?.date)).length}명`, note: "면접 안내 발송 대상", tone: "green" },
     ].map((metric) => <div className="compact-metric" key={metric.label}><span className={`metric-accent ${metric.tone ?? "navy"}`}></span><p>{metric.label}</p><h2>{metric.value}</h2><small>{metric.note}</small></div>)}</section>
     <section className="panel table-panel">
-      <div className="table-toolbar"><div><h2>지원 현황</h2><span>진행 중 {active.length}명 · 종료 {closed.length}명은 아래 채용 종료 표에서 봅니다</span></div><div><button type="button">공고 전체</button><button type="button">단계 필터</button></div></div>
+      <div className="table-toolbar"><div><h2>지원 현황</h2><span>진행 중 {active.length}명 · 종료 {closed.length}명은 아래 채용 종료 표에서 봅니다</span></div></div>
       <div className="data-table-wrap"><table className="data-table applicant-table"><thead><tr><th>지원자</th><th className="applicant-phone-cell">연락처</th><th className="applicant-to-column">채용요청·TO</th><th>지원 직무</th><th>지원일</th><th>지원경로</th><th>경력</th><th className="applicant-owner-column">담당자</th><th className="applicant-stage-column">현재 단계</th><th>채용단계</th><th className="applicant-delete-column">삭제</th></tr></thead><tbody>{active.length ? active.map((applicant) => {
         const previous = previousApplicationsFor(applicant, applicants);
         const requisition = requisitions.find((item) => item.id === applicant.requisitionId);
@@ -2994,14 +3037,14 @@ function RecruitmentView({ applicants, recruiters, requisitions, query, onAdd, o
     </section>
 
     <section className="panel table-panel interview-schedule-panel">
-      <div className="table-toolbar"><div><h2>면접 전형 진행</h2><span>결과 입력 대기 {interviewCounts.AWAITING}명 · 면접 예정 {interviewCounts.SCHEDULED}명 · 면접 합격 {interviewCounts.PASSED}명</span></div></div>
+      <div className="table-toolbar"><div><h2>면접 전형 진행</h2><span>면접 예정 {interviewCounts.SCHEDULED}명 · 면접 합격 {interviewCounts.PASSED}명 · 결과 입력은 아래 표에서</span></div></div>
       <div className="data-table-wrap"><table className="data-table interview-track-table">
         <thead><tr><th className="interview-track-column">전형 상태</th><th>면접 일시</th><th>지원자</th><th>연락처</th><th className="applicant-to-column">채용요청·TO</th><th>지원 직무</th><th>면접 유형</th><th>면접관</th><th>장소·링크</th><th className="applicant-owner-column">담당자</th></tr></thead>
         <tbody>{interviewing.length ? interviewing.map(({ applicant, track }) => {
           const requisition = requisitions.find((item) => item.id === applicant.requisitionId);
           const tone = track.toLowerCase();
           return <tr key={applicant.id} className={`interview-track-row ${tone}`}>
-            <td className="interview-track-column"><span className={`interview-track ${tone}`}>{interviewTrackLabels[track]}</span></td>
+            <td className="interview-track-column"><span className={`interview-track ${tone}`}>{track === "PASSED" ? applicant.stage : interviewTrackLabels[track]}</span></td>
             <td><span className="interview-when"><strong>{applicant.interview?.date || "일자 미정"}</strong>{applicant.interview?.time && <em>{applicant.interview.time}</em>}</span></td>
             <td><button type="button" className="name-link" onClick={() => onSelect(applicant.id)}><span>{applicant.name.slice(0, 1)}</span>{applicant.name}</button></td>
             <td className="applicant-phone-cell">{applicant.phone || "미입력"}</td>
@@ -3012,11 +3055,33 @@ function RecruitmentView({ applicants, recruiters, requisitions, query, onAdd, o
             <td>{applicant.interview?.location || "미정"}</td>
             <td className="applicant-owner-column">{applicant.owner || "미지정"}</td>
           </tr>;
-        }) : <tr><td colSpan={10} className="empty-cell">면접 일정이 잡혔거나 면접에 합격한 지원자가 없습니다.</td></tr>}</tbody>
+        }) : <tr><td colSpan={10} className="empty-cell">면접이 예정되어 있거나 면접에 합격한 지원자가 없습니다.</td></tr>}</tbody>
       </table></div>
     </section>
 
-    {/* 처우를 수락해 입사가 확정된 사람만 따로 본다. 아래 면접 결과 표에는 거절·타사 합격도 함께 남는다. */}
+    {/* 면접 시각이 지났는데 결과가 없는 사람. 여기서 바로 열어 합격·탈락을 적는다. 결과를 적으면 표에서 빠진다. */}
+    <section className="panel table-panel interview-result-panel">
+      <div className="table-toolbar"><div><h2>면접 결과 입력</h2><span>면접 시각이 지나 합격·탈락을 적어야 하는 지원자 {awaiting.length}명</span></div></div>
+      <div className="data-table-wrap"><table className="data-table">
+        <thead><tr><th>면접 일시</th><th>지원자</th><th className="applicant-phone-cell">연락처</th><th className="applicant-to-column">채용요청·TO</th><th>지원 직무</th><th>면접 유형</th><th>면접관</th><th className="applicant-owner-column">담당자</th><th className="applicant-status-column">결과</th></tr></thead>
+        <tbody>{awaiting.length ? awaiting.map((applicant) => {
+          const requisition = requisitions.find((item) => item.id === applicant.requisitionId);
+          return <tr key={applicant.id} className="interview-track-row awaiting">
+            <td><span className="interview-when"><strong>{applicant.interview?.date || "일자 미정"}</strong>{applicant.interview?.time && <em>{applicant.interview.time}</em>}</span></td>
+            <td><button type="button" className="name-link" onClick={() => onSelect(applicant.id)}><span>{applicant.name.slice(0, 1)}</span>{applicant.name}</button></td>
+            <td className="applicant-phone-cell">{applicant.phone || "미입력"}</td>
+            <td className="applicant-to-column"><RequisitionCell requisition={requisition} applicant={applicant} requisitions={requisitions} onChange={onRequisitionChange} /></td>
+            <td>{applicant.role}</td>
+            <td>{applicant.interview?.type || "미정"}</td>
+            <td>{applicant.interview?.interviewers || "미정"}</td>
+            <td className="applicant-owner-column">{applicant.owner || "미지정"}</td>
+            <td className="applicant-status-column"><button type="button" className="interview-result-button" onClick={() => onSelect(applicant.id)}>결과 입력 →</button></td>
+          </tr>;
+        }) : <tr><td colSpan={9} className="empty-cell">결과를 입력할 면접이 없습니다. 면접 시각이 지나면 여기에 나타납니다.</td></tr>}</tbody>
+      </table></div>
+    </section>
+
+    {/* 처우를 수락해 입사가 확정된 사람만 따로 본다. 제안을 거절했거나 타사에 간 사람은 아래 채용 종료 표에 남는다. */}
     <section className="panel table-panel joining-applicant-panel">
       <div className="table-toolbar"><div><h2>입사 예정자</h2><span>처우 제안 수락 · 입사예정일 순 {joining.length}명</span></div></div>
       <div className="data-table-wrap"><table className="data-table">
@@ -3036,29 +3101,6 @@ function RecruitmentView({ applicants, recruiters, requisitions, query, onAdd, o
             <td className="applicant-owner-column">{applicant.owner || "미지정"}</td>
           </tr>;
         }) : <tr><td colSpan={9} className="empty-cell">처우 제안을 수락한 지원자가 없습니다.</td></tr>}</tbody>
-      </table></div>
-    </section>
-
-    <section className="panel table-panel passed-applicant-panel">
-      <div className="table-toolbar"><div><h2>면접 결과</h2><span>처우 제안 이후 · 입사예정일 순 {passed.length}명</span></div></div>
-      <div className="data-table-wrap"><table className="data-table">
-        <thead><tr><th>입사예정일</th><th>지원자</th><th className="applicant-phone-cell">연락처</th><th className="applicant-to-column">채용요청·TO</th><th>제안 직무</th><th>소속</th><th>고용형태</th><th>연봉</th><th className="applicant-status-column">진행 상태</th><th className="applicant-owner-column">담당자</th></tr></thead>
-        <tbody>{passed.length ? passed.map((applicant) => {
-          const requisition = requisitions.find((item) => item.id === applicant.requisitionId);
-          const offer = applicant.offer;
-          return <tr key={applicant.id}>
-            <td><strong>{offer?.startDate || "미정"}</strong></td>
-            <td><button type="button" className="name-link" onClick={() => onSelect(applicant.id)}><span>{applicant.name.slice(0, 1)}</span>{applicant.name}</button></td>
-            <td className="applicant-phone-cell">{applicant.phone || "미입력"}</td>
-            <td className="applicant-to-column"><RequisitionCell requisition={requisition} applicant={applicant} requisitions={requisitions} onChange={onRequisitionChange} /></td>
-            <td>{offer?.proposedTitle || applicant.role}</td>
-            <td>{offer?.department || "미정"}</td>
-            <td>{offer?.employmentType || "미정"}</td>
-            <td>{offer ? `${offer.annualSalary.toLocaleString("ko-KR")}원` : "미정"}</td>
-            <td className="applicant-status-column"><span className={`passed-status ${passedStatusTone(applicant.stage)}`}>{applicant.stage}</span></td>
-            <td className="applicant-owner-column">{applicant.owner || "미지정"}</td>
-          </tr>;
-        }) : <tr><td colSpan={10} className="empty-cell">처우를 제안한 지원자가 없습니다.</td></tr>}</tbody>
       </table></div>
     </section>
 
@@ -3098,131 +3140,12 @@ function RecruiterManagement({ employees, recruiterIds, onAdd, onRemove }: { emp
   const recruiters = employees.filter((employee) => recruiterIds.includes(employee.id));
   const candidates = employees.filter((employee) => isCurrentEmployee(employee) && !recruiterIds.includes(employee.id));
   return <div className="page-wrap module-page recruiter-page">
-    <section className="module-hero"><div><p className="eyebrow">RECRUITING OWNERS</p><h1>채용담당자 관리</h1><p>회사에 등록된 재직자 중 지원자와 면접 과정을 담당할 인원을 지정합니다.</p></div></section>
+    <section className="module-hero"><div data-korean-heading><h1>채용담당자 관리</h1><p>회사에 등록된 재직자 중 지원자와 면접 과정을 담당할 인원을 지정합니다.</p></div></section>
     <section className="panel recruiter-manager">
       <form onSubmit={(event) => { event.preventDefault(); onAdd(candidateId); setCandidateId(""); }}><label><span>채용담당자 추가</span><select value={candidateId} onChange={(event) => setCandidateId(event.target.value)}><option value="">재직자 선택</option>{candidates.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><button type="submit" className="primary-button" disabled={!candidateId}>담당자 추가</button></form>
       <div className="recruiter-list">{recruiters.map((recruiter) => <article key={recruiter.id}><span>{recruiter.name.slice(0, 1)}</span><div><strong>{recruiter.name}</strong><small>{recruiter.department} · {recruiter.position}</small></div><em>채용담당자</em><button type="button" onClick={() => onRemove(recruiter.id)}>담당 해제</button></article>)}</div>
     </section>
   </div>;
-}
-
-function ApplicantInterviewRecorder({ applicantId }: { applicantId: string }) {
-  const localNow = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  const [recordings, setRecordings] = useState<ApplicantInterviewRecording[]>([]);
-  const [recordedAt, setRecordedAt] = useState(localNow);
-  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [recording, setRecording] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [consentConfirmed, setConsentConfirmed] = useState(false);
-  const [message, setMessage] = useState("");
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const previewUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    fetch(`/api/hr/applicant-interview-recordings?applicantId=${encodeURIComponent(applicantId)}`)
-      .then(async (response) => {
-        const data = await response.json() as { recordings?: ApplicantInterviewRecording[]; error?: string };
-        if (!response.ok) throw new Error(data.error || "면접 녹음 기록을 불러오지 못했습니다.");
-        return data.recordings ?? [];
-      })
-      .then((items) => { if (active) setRecordings(items); })
-      .catch((error: Error) => { if (active) setMessage(error.message); })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-  }, [applicantId]);
-
-  useEffect(() => () => {
-    if (recorderRef.current?.state !== "inactive") recorderRef.current?.stop();
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-  }, []);
-
-  async function startRecording() {
-    setMessage("");
-    if (!consentConfirmed) { setMessage("지원자의 녹음 동의를 확인한 뒤 녹음을 시작해 주세요."); return; }
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setMessage("이 브라우저에서는 음성 녹음을 지원하지 않습니다.");
-      return;
-    }
-    try {
-      const stream = await requestMicrophoneStream();
-      streamRef.current = stream;
-      chunksRef.current = [];
-      const recorder = createAudioRecorder(stream);
-      recorderRef.current = recorder;
-      recorder.ondataavailable = (event) => { if (event.data.size) chunksRef.current.push(event.data); };
-      recorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-        const nextUrl = URL.createObjectURL(blob);
-        previewUrlRef.current = nextUrl;
-        setAudioBlob(blob);
-        setPreviewUrl(nextUrl);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-      recorder.start(500);
-      setRecording(true);
-    } catch (error) {
-      console.error("[microphone] applicant interview recording failed", error);
-      streamRef.current?.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-      setMessage(microphoneErrorMessage(error));
-    }
-  }
-
-  function stopRecording() {
-    if (recorderRef.current?.state !== "inactive") recorderRef.current?.stop();
-    recorderRef.current = null;
-    setRecording(false);
-  }
-
-  async function saveRecording() {
-    if (!audioBlob) {
-      setMessage("저장할 면접 녹음을 먼저 만들어 주세요.");
-      return;
-    }
-    setSaving(true);
-    setMessage("");
-    const extension = audioBlob.type.includes("mp4") ? "m4a" : "webm";
-    const form = new FormData();
-    form.append("applicantId", applicantId);
-    form.append("recordedAt", recordedAt);
-    form.append("consentConfirmed", String(consentConfirmed));
-    form.append("audio", new File([audioBlob], `applicant-interview-${Date.now()}.${extension}`, { type: audioBlob.type }));
-    try {
-      const response = await fetch("/api/hr/applicant-interview-recordings", { method: "POST", body: form });
-      const data = await response.json() as { recording?: ApplicantInterviewRecording; error?: string };
-      if (!response.ok || !data.recording) throw new Error(data.error || "면접 녹음을 저장하지 못했습니다.");
-      setRecordings((items) => [data.recording as ApplicantInterviewRecording, ...items]);
-      setRecordedAt(localNow());
-      setAudioBlob(null);
-      setConsentConfirmed(false);
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-      setPreviewUrl(null);
-      setMessage("면접 녹음을 저장했습니다.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "면접 녹음을 저장하지 못했습니다.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return <section className="applicant-interview-recorder">
-    <div className="applicant-recording-heading"><div><h3>면접 녹음</h3></div><span>{recordings.length}건</span></div>
-    <label className="recording-consent"><input type="checkbox" checked={consentConfirmed} disabled={recording} onChange={(event) => setConsentConfirmed(event.target.checked)} /><span>지원자에게 면접 녹음 목적과 보관 사실을 안내하고 동의를 확인했습니다.</span></label>
-    <label className="applicant-recorded-at"><span>녹음일시</span><input type="datetime-local" value={recordedAt} onChange={(event) => setRecordedAt(event.target.value)} /></label>
-    <div className="applicant-recording-controls"><button type="button" className={recording ? "recording" : ""} onClick={recording ? stopRecording : startRecording}>{recording ? "■ 녹음 종료" : "● 녹음 시작"}</button>{previewUrl && <audio controls src={previewUrl}>면접 녹음 미리듣기</audio>}</div>
-    {message && <p className="applicant-recording-message">{message}</p>}
-    <button type="button" className="primary-button applicant-recording-save" disabled={!audioBlob || recording || saving} onClick={saveRecording}>{saving ? "저장 중…" : "면접 녹음 저장"}</button>
-    <div className="applicant-recording-list">{loading ? <p>면접 녹음을 불러오는 중입니다.</p> : recordings.length ? recordings.map((item) => <article key={item.id}><div><strong>{new Date(item.recordedAt).toLocaleString("ko-KR")}</strong><small>{item.audioFileName} · 동의 {item.consentConfirmed ? "확인" : "기록 없음"}</small></div><audio controls src={item.audioUrl}>저장된 면접 녹음</audio><AudioTranscriptionControl entityType="APPLICANT_INTERVIEW" entityId={item.id} /></article>) : <p>아직 저장된 면접 녹음이 없습니다.</p>}</div>
-  </section>;
 }
 
 function ApplicantDetail({ applicant, recruiters, requisitions, organizations, jobTitles, ranks, onClose, onSave, onDecideScreening, onSaveMemo, onSubmitOffer, onRejectInterview, onRespondOffer }: {
@@ -3240,6 +3163,7 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
   ranks: string[];
   onRespondOffer: (applicantId: string, offerId: string, action: "ACCEPT" | "DECLINE", input: { employeeId?: string; position?: string; jobTitle?: string; responseNote: string; startDate?: string; annualSalary?: number; probationMonths?: number; firstTermPayPercent?: number; department?: string; proposedTitle?: string; employmentType?: string; declineKind?: "OFFER" | "OTHER_OFFER" }) => void;
 }) {
+  const dialog = useErpDialog();
   const [draft, setDraft] = useState({
     name: applicant.name,
     role: applicant.role,
@@ -3255,7 +3179,18 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
     requisitionId: applicant.requisitionId,
   });
   const [note, setNote] = useState("");
-  const [schedule, setSchedule] = useState<InterviewSchedule>(applicant.interview ?? { date: "", time: "", type: "1차 대면", interviewers: "", location: "", note: "" });
+  // 면접 일정이 확정되면(면접일이 들어오면) 지원 포지션의 기본 질문지를 채운다(app/hr-interview-question-templates.ts).
+  // 일정은 잡혔는데 질문지가 빈 지원자는 결과를 적기 전 단계일 때 팝업을 열면서 채워 둔다. 저장해야 반영된다.
+  const defaultQuestionsFor = (role: string, requisitionId: string) => {
+    const requisition = requisitions.find((item) => item.id === requisitionId);
+    return buildDefaultInterviewQuestions({ role, requisitionRole: requisition?.role, requisitionTitle: requisition?.title });
+  };
+  const [openedWithDefaultQuestions] = useState(() => Boolean(applicant.interview?.date) && !applicant.interview?.questions?.trim()
+    && [SCREENING_PASSED_STAGE, "면접"].includes(applicant.stage));
+  const [schedule, setSchedule] = useState<InterviewSchedule>(() => {
+    const base = applicant.interview ?? { date: "", time: "", type: "1차 대면", interviewers: "", location: "", note: "" };
+    return openedWithDefaultQuestions ? { ...base, questions: defaultQuestionsFor(applicant.role, applicant.requisitionId).text } : base;
+  });
   const [interviewResult, setInterviewResult] = useState("");
   const [passModalOpen, setPassModalOpen] = useState(false);
   // 처우 제안 단계의 두 갈래. 수락은 최종 처우까지 고쳐 확정하고, 거절은 사유만 남긴다.
@@ -3263,7 +3198,7 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
   const [declineModalOpen, setDeclineModalOpen] = useState(false);
   // 처우 확정·거절 팝업도 내려가면 제목줄을 절반 높이로 접는다. 한 번에 하나만 열리므로 상태 하나를 같이 쓰고, 열릴 때 되돌린다.
   const [responseCondensed, setResponseCondensed] = useState(false);
-  useEffect(() => { setResponseCondensed(false); }, [acceptModalOpen, declineModalOpen]);
+
   const [declineReason, setDeclineReason] = useState("");
   // 거절 구분. 타사 합격은 우리가 떨어뜨린 것이 아니라 지원자 사정이라 채용단계를 따로 적는다.
   const [declineKind, setDeclineKind] = useState<"OFFER" | "OTHER_OFFER">("OFFER");
@@ -3430,29 +3365,53 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
   const counterTone = counterProposalTone(schedule, new Date());
   const counterBadge = counterTone === "soon" ? "면접 임박" : counterTone === "today" ? "오늘 면접" : "";
 
-  // 면접 질문지는 HR 어시스턴트 다리(scripts/claude-assistant-bridge.mjs)가 만든다.
-  // 어시스턴트 화면과 같은 규칙·같은 회사 사업 정보를 쓰므로 결과 모양이 어긋나지 않는다.
-  const [questionStatus, setQuestionStatus] = useState<"idle" | "running">("idle");
-  const [questionMessage, setQuestionMessage] = useState("");
+  // 질문지는 세 단계로 쌓인다.
+  //  1) 면접일이 들어오면 지원 포지션의 기본 질문지를 바로 채운다(AI 없이, 위 defaultQuestionsFor).
+  //  2) 「심화 질문 생성」: 이력서·지금까지의 질문지·면접 중 메모를 보고 겹치지 않는 후속 질문을 덧붙인다.
+  //  3) 「역제안 질문 생성」: 역제안 포지션을 적은 뒤, 그 포지션 질문만 덧붙인다.
+  // 2)·3)은 HR 어시스턴트 다리(scripts/claude-assistant-bridge.mjs)가 만든다. 어시스턴트 화면과 같은 규칙·같은 회사 사업 정보를 쓴다.
+  const [questionStatus, setQuestionStatus] = useState<"idle" | "DEEP_DIVE" | "COUNTER">("idle");
+  const [questionMessage, setQuestionMessage] = useState(openedWithDefaultQuestions
+    ? "면접 일정이 확정되어 지원 포지션 기본 질문지를 채워 두었습니다. 「변경사항 저장」을 눌러야 반영됩니다." : "");
 
-  async function generateInterviewQuestions() {
+  function changeInterviewDate(date: string) {
+    const sheet = date && !schedule.questions?.trim() ? defaultQuestionsFor(draft.role || applicant.role, draft.requisitionId) : null;
+    setSchedule({ ...schedule, date, ...(sheet ? { questions: sheet.text } : {}) });
+    if (sheet) setQuestionMessage(`면접 일정이 확정되어 「${sheet.familyLabel}」 기본 질문지를 채웠습니다. 「변경사항 저장」을 눌러야 반영됩니다.`);
+    setInterviewMessageOverride(null);
+  }
+
+  async function generateInterviewQuestions(mode: "DEEP_DIVE" | "COUNTER") {
     if (!applicant.resumeText) { setQuestionMessage("등록된 이력서 원문이 없어 질문을 만들 수 없습니다."); return; }
-    setQuestionStatus("running");
-    setQuestionMessage("이력서와 지원 포지션을 보고 질문을 만들고 있습니다. 30초~1분 걸립니다.");
+    const counterPosition = schedule.counterProposal?.trim() ?? "";
+    if (mode === "COUNTER" && !counterPosition) { setQuestionMessage("역제안 포지션을 먼저 입력해 주세요."); return; }
+    // 면접 중에 적고 있는 결과와 최근 면접 메모를 넘겨, 그 답변을 더 파고드는 질문이 나오게 한다.
+    const interviewNotes = [interviewResult.trim(), ...(applicant.interviewMemos ?? []).slice(0, 3).map((memo) => memo.text)]
+      .filter(Boolean).join("\n---\n").slice(0, 3000);
+    setQuestionStatus(mode);
+    setQuestionMessage(mode === "COUNTER"
+      ? `역제안 포지션(${counterPosition}) 질문을 만들고 있습니다. 30초~1분 걸립니다.`
+      : "이력서와 지금까지의 질문지·면접 메모를 보고 심화 질문을 만들고 있습니다. 30초~1분 걸립니다.");
     try {
-      const response = await fetch("http://127.0.0.1:3130/assistant", {
+      // 서버의 /api/assistant 가 데스크탑 안의 Claude CLI 다리를 대신 부른다. 브라우저가 로컬 다리를 직접 부르면
+      // 태블릿 등 다른 기기에서는 그 기기 자신을 가리켜 항상 실패했다(어시스턴트 패널과 같은 경로).
+      const response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           module: "hr",
-          question: "첨부한 이력서와 지원 포지션에 맞춘 맞춤 면접 질문 리스트를 만들어 주세요.",
+          question: mode === "COUNTER"
+            ? "지원자가 역제안한 포지션에 대한 면접 질문만 만들어 주세요."
+            : "기본 질문지 다음 단계로, 이력서와 지금까지의 면접 상황을 보고 지원 포지션 심화 면접 질문을 만들어 주세요.",
           context: {
             module: "HR",
             fileAnalysis: { fileName: applicant.resumeFileName, extractedText: applicant.resumeText },
             interviewBrief: {
+              questionMode: mode,
               targetPosition: draft.role || applicant.role,
-              // 지원자가 다른 자리를 역으로 제안했으면 함께 넘긴다. 없으면 보내지 않는다.
-              ...(schedule.counterProposal?.trim() ? { counterProposalPosition: schedule.counterProposal.trim() } : {}),
+              // 역제안 질문은 역제안 포지션을 적었을 때만 만든다. 심화 질문에는 넘기지 않는다.
+              ...(mode === "COUNTER" && schedule.counterProposal?.trim() ? { counterProposalPosition: schedule.counterProposal.trim() } : {}),
+              ...(mode === "DEEP_DIVE" ? { existingQuestions: (schedule.questions ?? "").slice(0, 6000), interviewNotes } : {}),
               companyBusinessProfile: companyInterviewProfile,
             },
             applicants: [{ id: applicant.id, name: applicant.name, role: applicant.role, stage: applicant.stage }],
@@ -3464,16 +3423,23 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
         setQuestionMessage(payload.error ?? "질문을 만들지 못했습니다. HR 어시스턴트가 켜져 있는지 확인해 주세요.");
         return;
       }
-      // 이미 적어 둔 질문지가 있으면 지우지 않고 아래에 잇는다. 면접 중 역제안이 나와
-      // 다시 생성할 때 앞서 물어본 질문이 사라지면 안 된다.
-      const generated = formatInterviewQuestions(payload.interviewQuestions ?? []);
+      // 이미 적어 둔 질문지는 지우지 않고 아래에 잇는다. 앞서 물어본 질문이 사라지면 안 된다.
+      // 모드에 맞지 않는 분류가 섞여 오면 걸러 내고, 어느 단계의 질문인지 구분선으로 가른다.
+      const items = (payload.interviewQuestions ?? []).filter((item) => mode === "COUNTER"
+        ? [...COUNTER_QUESTION_CATEGORIES, "BUSINESS_SCENARIO"].includes(item.category)
+        : !COUNTER_QUESTION_CATEGORIES.includes(item.category));
+      if (!items.length) { setQuestionMessage("이번 요청에 맞는 질문이 오지 않았습니다. 다시 시도해 주세요."); return; }
+      const formatted = formatInterviewQuestions(items);
+      const generated = mode === "COUNTER"
+        ? (formatted.startsWith(COUNTER_QUESTION_SEPARATOR) ? formatted : `${COUNTER_QUESTION_SEPARATOR}\n\n${formatted}`)
+        : `${DEEP_QUESTION_SEPARATOR}\n\n${formatted}`;
       setSchedule((current) => ({
         ...current,
         questions: current.questions?.trim() ? `${current.questions.trim()}\n\n${generated}` : generated,
       }));
-      setQuestionMessage(`질문 ${payload.interviewQuestions.length}개를 만들어 질문지 아래에 이어 붙였습니다. 「변경사항 저장」을 눌러야 반영됩니다.`);
+      setQuestionMessage(`${mode === "COUNTER" ? "역제안" : "심화"} 질문 ${items.length}개를 질문지 아래에 이어 붙였습니다. 「변경사항 저장」을 눌러야 반영됩니다.`);
     } catch {
-      setQuestionMessage("HR 어시스턴트에 연결할 수 없습니다. ERP 서버를 다시 켜거나 `npm run assistant:claude` 를 실행해 주세요.");
+      setQuestionMessage("HR 어시스턴트에 연결할 수 없습니다. ERP 서버가 도는 데스크탑에서 ERP 바로가기로 앱을 다시 실행해 주세요.");
     } finally {
       setQuestionStatus("idle");
     }
@@ -3552,8 +3518,8 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
 
   // 면접 합격. 단계와 메모를 한 번에 저장한다 — 따로 부르면 나중 호출이 앞선 단계 변경을 덮어쓴다.
   // 처우는 아직 제안하지 않은 상태이고, 아래 처우 제안 단계 박스가 이때부터 열린다.
-  function passInterview() {
-    if (!window.confirm(`${applicant.name} 지원자를 면접 합격으로 기록합니다. 계속할까요?`)) return;
+  async function passInterview() {
+    if (!(await dialog.confirm(`${applicant.name} 지원자를 면접 합격으로 기록합니다. 계속할까요?`, { title: "면접 합격", confirmLabel: "합격 기록" }))) return;
     const text = interviewResult.trim() ? `면접 결과(합격): ${interviewResult.trim()}` : "면접 결과(합격)";
     onSave({
       ...applicant,
@@ -3563,9 +3529,9 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
     setInterviewResult("");
   }
 
-  function rejectInterview(attended: boolean) {
+  async function rejectInterview(attended: boolean) {
     const label = attended ? "면접 후 탈락" : "면접 불참 탈락";
-    if (!window.confirm(`${applicant.name} 지원자를 ${label}으로 기록합니다. 계속할까요?`)) return;
+    if (!(await dialog.confirm(`${applicant.name} 지원자를 ${label}으로 기록합니다. 계속할까요?`, { title: "면접 탈락", confirmLabel: "탈락 기록", danger: true }))) return;
     const prefix = attended ? "면접 결과(탈락)" : "면접 불참(탈락)";
     onRejectInterview(applicant.id, interviewResult.trim() ? `${prefix}: ${interviewResult.trim()}` : prefix, attended);
     setInterviewResult("");
@@ -3583,7 +3549,7 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
     // 브라우저의 required 검사가 닿지 않으므로 여기서 직접 막고, 고칠 자리를 열어 준다.
     if (!draft.name.trim() || !draft.role.trim() || !draft.email.trim()) {
       setFieldsModalOpen(true);
-      window.alert("지원 정보 상세에서 이름·지원 직무·이메일을 입력해 주세요.");
+      void dialog.alert("지원 정보 상세에서 이름·지원 직무·이메일을 입력해 주세요.", { title: "입력 필요" });
       return false;
     }
     const newNote: RecruitmentNote | null = note.trim() ? {
@@ -3611,17 +3577,17 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
     return true;
   }
 
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={onClose}>
     <form
       className={`applicant-detail-modal applicant-edit-modal${condensed ? " condensed" : ""}`}
       onSubmit={submit}
-      onMouseDown={(event) => event.stopPropagation()}
+
       onScroll={(event) => {
         const top = event.currentTarget.scrollTop;
         setCondensed((current) => nextCondensed(current, top));
       }}
     >
-      <div className="modal-header"><div><p>APPLICANT PROFILE</p><h2>지원자 정보 확인 및 수정</h2></div><div className="modal-header-actions"><button type="submit" className="header-save-button">변경사항 저장</button><button type="button" onClick={onClose} aria-label="닫기">×</button></div></div>
+      <div className="modal-header"><div data-korean-heading><h2>지원자 정보 확인 및 수정</h2></div><div className="modal-header-actions"><button type="submit" className="header-save-button">변경사항 저장</button><button type="button" onClick={onClose} aria-label="닫기">×</button></div></div>
       {/* 이름 아래 연락처는 자주 보는 값이라 상세를 열지 않아도 여기서 바로 보이게 둔다.
           나머지 지원 정보는 「지원 정보 상세」 팝업에서 고친다. */}
       <div className="applicant-profile">
@@ -3667,7 +3633,7 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
         <div className="detail-card-heading"><div><h3>면접 일정과 결과</h3></div>
           {activeOffer && <StatusPill value={activeOffer.status === "ACCEPTED" ? "입사 예정" : activeOffer.status === "ONBOARDED" ? "입사 완료" : "처우 저장됨"} />}</div>
         <div className="form-grid">
-          <label><span>면접일</span><input type="date" value={schedule.date} onChange={(event) => { setSchedule({ ...schedule, date: event.target.value }); setInterviewMessageOverride(null); }} /></label>
+          <label><span>면접일</span><input type="date" value={schedule.date} onChange={(event) => changeInterviewDate(event.target.value)} /></label>
           <label><span>시작 시간</span><input type="time" value={schedule.time} onChange={(event) => { setSchedule({ ...schedule, time: event.target.value }); setInterviewMessageOverride(null); }} /></label>
         </div>
 
@@ -3689,12 +3655,18 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
           <div className="applicant-interview-pane">
             <label className="form-note"><span>면접 질문지</span>
               <textarea value={schedule.questions ?? ""} onChange={(event) => setSchedule({ ...schedule, questions: event.target.value })}
-                placeholder="면접에서 물어볼 질문을 적거나, 아래 버튼으로 이력서와 지원 포지션에 맞춘 질문을 만들어 채웁니다." />
+                placeholder="면접일을 입력하면 지원 포지션의 기본 질문지가 채워집니다. 면접 상황에 따라 아래 버튼으로 심화·역제안 질문을 덧붙입니다." />
             </label>
             <div className="applicant-interview-pane-actions">
               <label className={`applicant-counter-proposal${counterTone ? ` ${counterTone}` : ""}`}><span>역제안 포지션{counterBadge && <em className="applicant-counter-badge">{counterBadge}</em>}</span><input value={schedule.counterProposal ?? ""} onChange={(event) => setSchedule({ ...schedule, counterProposal: event.target.value })} placeholder="지원자가 지원한 자리 대신 다른 포지션을 제안했다면 적으세요. 비워 두면 지원 직무만 기준으로 질문을 만듭니다." /></label>
-              <button type="button" className="outline-button" disabled={questionStatus === "running" || !applicant.resumeText}
-                onClick={() => void generateInterviewQuestions()}>{questionStatus === "running" ? "질문 생성 중" : "AI 면접질문 생성"}</button>
+              <div className="applicant-question-buttons">
+                <button type="button" className="outline-button" disabled={questionStatus !== "idle" || !applicant.resumeText}
+                  title={applicant.resumeText ? "이력서와 지금까지의 질문지·면접 메모를 보고 겹치지 않는 후속 질문을 덧붙입니다" : "등록된 이력서 원문이 없어 만들 수 없습니다"}
+                  onClick={() => void generateInterviewQuestions("DEEP_DIVE")}>{questionStatus === "DEEP_DIVE" ? "심화 질문 생성 중" : "심화 질문 생성"}</button>
+                <button type="button" className="outline-button" disabled={questionStatus !== "idle" || !applicant.resumeText || !schedule.counterProposal?.trim()}
+                  title={!schedule.counterProposal?.trim() ? "역제안 포지션을 입력하면 켜집니다" : applicant.resumeText ? "역제안 포지션에 대한 질문만 덧붙입니다" : "등록된 이력서 원문이 없어 만들 수 없습니다"}
+                  onClick={() => void generateInterviewQuestions("COUNTER")}>{questionStatus === "COUNTER" ? "역제안 질문 생성 중" : "역제안 질문 생성"}</button>
+              </div>
             </div>
             {questionMessage && <p className="applicant-screening-hint">{questionMessage}</p>}
           </div>
@@ -3792,13 +3764,13 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
                 templateId: "OFFER",
                 title: "합격 안내 메시지",
                 hint: "처우 제안 값으로 자동 작성됩니다",
-                tokens: offerMessageTokens(applicant, activeOffer, { replyDue: offerReplyDue, firstTerm: offerFirstTermOn ? { percent: String(activeOffer.firstTermPayPercent ?? 100) } : null }),
+                tokens: offerMessageTokens(applicant, activeOffer, { replyDue: clampOfferReplyDue(offerReplyDue, activeOffer.startDate), firstTerm: offerFirstTermOn ? { percent: String(activeOffer.firstTermPayPercent ?? 100) } : null }),
                 tokenNames: OFFER_TEMPLATE_TOKENS,
                 override: offerMessageOverride,
                 setOverride: setOfferMessageOverride,
                 rows: 18,
                 controls: <div className="offer-message-controls">
-                  <label><span>회신 기한</span><input type="date" value={offerReplyDue} onChange={(event) => { setOfferReplyDue(event.target.value); setOfferMessageOverride(null); }} /></label>
+                  <label><span>회신 기한{clampOfferReplyDue(offerReplyDue, activeOffer.startDate) !== offerReplyDue && <em className="offer-reply-adjusted"> · 입사예정일에 맞춰 {koreanDate(clampOfferReplyDue(offerReplyDue, activeOffer.startDate))}로 조정됨</em>}</span><input type="date" value={offerReplyDue} max={/^\d{4}-\d{2}-\d{2}$/.test(activeOffer.startDate) ? shiftIsoDate(activeOffer.startDate, -1) : undefined} onChange={(event) => { setOfferReplyDue(event.target.value); setOfferMessageOverride(null); }} /></label>
                   <label className="offer-message-toggle">
                     <input type="checkbox" checked={offerFirstTermOn} onChange={(event) => { setOfferFirstTermOn(event.target.checked); setOfferMessageOverride(null); }} />
                     <span>첫 계약 안내 포함</span>
@@ -3824,10 +3796,10 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
                   employmentType: activeOffer.employmentType, probationMonths: String(activeOffer.probationMonths),
                   firstTermPayPercent: String(activeOffer.firstTermPayPercent ?? 100),
                 });
-                setAcceptModalOpen(true);
+                setResponseCondensed(false); setAcceptModalOpen(true);
               }}>제안 수락</button>
             <button type="button" className="offer-decision decline" disabled={activeOffer.status !== "APPROVED"}
-              onClick={() => { setDeclineReason(""); setDeclineModalOpen(true); }}>제안 거절</button>
+              onClick={() => { setDeclineReason(""); setResponseCondensed(false); setDeclineModalOpen(true); }}>제안 거절</button>
           </div>}
         </div>
       </section>}
@@ -3836,8 +3808,8 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
     </form>
     {/* 지원 정보 상세. 팝업 안에 다 펼쳐 두면 면접·처우가 한참 아래로 밀려서 따로 뺐다.
         입력칸은 모두 draft 상태를 그대로 쓰므로, 여기서 고쳐도 바깥의 「변경사항 저장」으로 함께 저장된다. */}
-    {fieldsModalOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setFieldsModalOpen(false); }}>
-      <section className="employee-modal applicant-fields-modal" role="dialog" aria-modal="true" aria-label={`${applicant.name} 지원 정보 상세`} onMouseDown={(event) => event.stopPropagation()}>
+    {fieldsModalOpen && <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setFieldsModalOpen(false); }}>
+      <section className="employee-modal applicant-fields-modal" role="dialog" aria-modal="true" aria-label={`${applicant.name} 지원 정보 상세`} >
         <div className="modal-header"><div><h2>지원 정보 상세</h2></div><button type="button" aria-label="닫기" onClick={() => setFieldsModalOpen(false)}>×</button></div>
             <section className="applicant-edit-fields">
               {/* 3열 2행. 채용담당자와 지원 경로는 여기서 적지 않기로 해 뺐다 —
@@ -3869,9 +3841,9 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
           <span className="applicant-fields-hint">저장하면 지원자 정보가 반영되고 이 창이 닫힙니다. 저장하지 않고 닫으려면 × 를 누르세요.</span><button type="button" className="primary-button" onClick={() => { if (saveChanges()) setFieldsModalOpen(false); }}>변경사항 저장</button>
         </div>
       </section>
-    </div>}
-    {acceptModalOpen && activeOffer && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAcceptModalOpen(false); }}>
-      <form className={`employee-modal offer-response-modal${responseCondensed ? " condensed" : ""}`} onScroll={(event) => { const top = event.currentTarget.scrollTop; setResponseCondensed((current) => nextCondensed(current, top)); }} onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => {
+    </HrModalBackdrop>}
+    {acceptModalOpen && activeOffer && <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAcceptModalOpen(false); }}>
+      <form className={`employee-modal offer-response-modal${responseCondensed ? " condensed" : ""}`} onScroll={(event) => { const top = event.currentTarget.scrollTop; setResponseCondensed((current) => nextCondensed(current, top)); }}  onSubmit={(event) => {
         event.preventDefault();
         onRespondOffer(applicant.id, activeOffer.id, "ACCEPT", {
           employeeId: responseDraft.employeeId.trim(), position: responseDraft.position.trim(),
@@ -3882,11 +3854,11 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
         });
         setAcceptModalOpen(false);
       }}>
-        <div className="modal-header"><div><p>OFFER ACCEPTED</p><h2>{applicant.name} 최종 처우 확정</h2></div><button type="button" aria-label="닫기" onClick={() => setAcceptModalOpen(false)}>×</button></div>
+        <div className="modal-header"><div data-korean-heading><h2>{applicant.name} 최종 처우 확정</h2></div><button type="button" aria-label="닫기" onClick={() => setAcceptModalOpen(false)}>×</button></div>
         <p className="optional-form-notice">기본값은 앞서 제안한 처우입니다. 협의로 달라졌다면 고친 뒤 확정하세요. 확정하면 입사 예정자로 바뀝니다.</p>
         <div className="form-grid">
           <label><span>입사예정일 *</span><input required type="date" value={finalOffer.startDate} onChange={(event) => setFinalOffer({ ...finalOffer, startDate: event.target.value })} /></label>
-          <label><span>연봉 *</span><WonInput ariaLabel="최종 연봉" value={Number(finalOffer.annualSalary) || 0} onValueChange={(value) => setFinalOffer({ ...finalOffer, annualSalary: String(value) })} /></label>
+          <label htmlFor={`offer-${applicant.id}-salary`}><span>연봉 *</span><WonInput id={`offer-${applicant.id}-salary`} ariaLabel="최종 연봉" value={Number(finalOffer.annualSalary) || 0} onValueChange={(value) => setFinalOffer({ ...finalOffer, annualSalary: String(value) })} /></label>
           <label><span>소속 *</span><select value={finalOffer.department} onChange={(event) => setFinalOffer({ ...finalOffer, department: event.target.value })}>{organizations.map((organization) => <option key={organization.id}>{organization.name}</option>)}</select></label>
           <label><span>제안 직무 *</span><input required value={finalOffer.proposedTitle} onChange={(event) => setFinalOffer({ ...finalOffer, proposedTitle: event.target.value })} /></label>
           <label><span>고용형태</span><select value={finalOffer.employmentType} onChange={(event) => setFinalOffer({ ...finalOffer, employmentType: event.target.value })}><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label>
@@ -3899,15 +3871,15 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
         </div>
         <div className="modal-actions"><button type="button" onClick={() => setAcceptModalOpen(false)}>취소</button><button type="submit" className="primary-button">확정</button></div>
       </form>
-    </div>}
+    </HrModalBackdrop>}
 
-    {declineModalOpen && activeOffer && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeclineModalOpen(false); }}>
-      <form className={`employee-modal offer-response-modal${responseCondensed ? " condensed" : ""}`} onScroll={(event) => { const top = event.currentTarget.scrollTop; setResponseCondensed((current) => nextCondensed(current, top)); }} onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => {
+    {declineModalOpen && activeOffer && <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDeclineModalOpen(false); }}>
+      <form className={`employee-modal offer-response-modal${responseCondensed ? " condensed" : ""}`} onScroll={(event) => { const top = event.currentTarget.scrollTop; setResponseCondensed((current) => nextCondensed(current, top)); }}  onSubmit={(event) => {
         event.preventDefault();
         onRespondOffer(applicant.id, activeOffer.id, "DECLINE", { responseNote: declineReason.trim(), declineKind });
         setDeclineModalOpen(false);
       }}>
-        <div className="modal-header"><div><p>OFFER DECLINED</p><h2>{applicant.name} 제안 거절 기록</h2></div><button type="button" aria-label="닫기" onClick={() => setDeclineModalOpen(false)}>×</button></div>
+        <div className="modal-header"><div data-korean-heading><h2>{applicant.name} 제안 거절 기록</h2></div><button type="button" aria-label="닫기" onClick={() => setDeclineModalOpen(false)}>×</button></div>
         <p className="optional-form-notice">{declineKind === "OTHER_OFFER"
           ? "확정하면 채용단계가 「타사 합격」으로 바뀝니다. 우리가 떨어뜨린 것이 아니라 지원자가 다른 회사로 간 경우입니다."
           : "확정하면 제안 거절자로 바뀝니다. 사유는 채용 이력으로 남습니다."}</p>
@@ -3920,16 +3892,11 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
         </div>
         <div className="modal-actions"><button type="button" onClick={() => setDeclineModalOpen(false)}>취소</button><button type="submit" className="danger-confirm">확정</button></div>
       </form>
-    </div>}
+    </HrModalBackdrop>}
 
-    {passModalOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
-      // 이 팝업은 지원자 상세 팝업의 배경 안쪽에 그려진다. 전파를 끊지 않으면 처우 입력란을
-      // 클릭한 mousedown 이 바깥 배경까지 올라가 상세 팝업이 통째로 닫혀 버린다.
-      event.stopPropagation();
-      if (event.target === event.currentTarget) setPassModalOpen(false);
-    }}>
+    {passModalOpen && <HrModalBackdrop className="modal-backdrop" role="presentation" >
       <form className="employee-modal interview-pass-modal" onSubmit={submitOffer}>
-        <div className="modal-header"><div><p>OFFER DETAILS</p><h2>{applicant.name} 처우 제안 입력</h2></div><button type="button" aria-label="닫기" onClick={() => setPassModalOpen(false)}>×</button></div>
+        <div className="modal-header"><div data-korean-heading><h2>{applicant.name} 처우 제안 입력</h2></div><button type="button" aria-label="닫기" onClick={() => setPassModalOpen(false)}>×</button></div>
         <div className="form-grid">
           <label><span>제안 직무 *</span><input required value={offerDraft.proposedTitle} onChange={(event) => setOfferDraft({ ...offerDraft, proposedTitle: event.target.value })} /></label>
           {linkedDepartment ? <label><span>소속 조직 *</span><select value={linkedDepartment} disabled aria-describedby="offer-department-note"><option>{linkedDepartment}</option></select></label> : <label><span>소속 조직 *</span><select required value={offerDraft.department} onChange={(event) => setOfferDraft({ ...offerDraft, department: event.target.value })}>{organizations.map((organization) => <option key={organization.id}>{organization.name}</option>)}</select></label>}
@@ -3949,8 +3916,8 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
           <button type="submit" className="primary-button">처우 제안 저장</button>
         </div>
       </form>
-    </div>}
-  </div>;
+    </HrModalBackdrop>}
+  </HrModalBackdrop>;
 }
 
 function PersonnelActionModal({ employee, ranks, organizations, onClose, onSubmit }: { employee: Employee; ranks: string[]; organizations: Organization[]; onClose: () => void; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void }) {
@@ -3966,7 +3933,7 @@ function PersonnelActionModal({ employee, ranks, organizations, onClose, onSubmi
       ? "현재보다 높은 직위으로 변경합니다."
       : "현재보다 낮은 직위으로 변경하며 정당한 사유가 반드시 필요합니다.";
 
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><form className="employee-modal personnel-modal" onSubmit={onSubmit} onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><p>PERSONNEL ACTION</p><h2>인사 발령 등록</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div><div className="form-grid"><label><span>시행일 *</span><input required name="effectiveDate" type="date" defaultValue="2026-09-01" /></label><label><span>발령 구분 *</span><select required name="actionType" value={actionType} onChange={(event) => setActionType(event.target.value as PersonnelActionType)}><option>인사이동(전보)</option><option>승진</option><option>강등</option></select></label><div className="action-type-help wide"><strong>{actionType}</strong><span>{actionHelp}</span></div>{actionType === "인사이동(전보)" ? <label className="wide"><span>이동할 부서 *</span><select required name="targetDepartment" defaultValue=""><option value="" disabled>부서 선택</option>{departments.filter((department) => department !== employee.department).map((department) => <option key={department}>{department}</option>)}</select><input type="hidden" name="targetPosition" value={employee.position} /></label> : <label className="wide"><span>변경 직위 *</span><select required name="targetPosition" defaultValue=""><option value="" disabled>직위 선택</option>{availableRanks.map((rank) => <option key={rank}>{rank}</option>)}</select><input type="hidden" name="targetDepartment" value={employee.department} /></label>}</div><label className={`form-note ${actionType === "강등" ? "personnel-note-required" : ""}`}><span>{actionType === "강등" ? "강등 사유 *" : "발령 사유 및 내용"}</span><textarea required={actionType === "강등"} name="note" placeholder={actionType === "강등" ? "강등의 정당한 사유와 근거를 구체적으로 입력하세요." : "발령 배경이나 전달사항을 입력하세요."}></textarea>{actionType === "강등" && <small>강등은 정당한 사유와 객관적인 근거가 확인되어야 등록할 수 있습니다.</small>}</label><div className="modal-actions"><button type="button" onClick={onClose}>취소</button><button type="submit" className="primary-button">인사 발령 등록</button></div></form></div>;
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={onClose}><form className="employee-modal personnel-modal" onSubmit={onSubmit} ><div className="modal-header"><div data-korean-heading><h2>인사 발령 등록</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div><div className="form-grid"><label><span>시행일 *</span><input required name="effectiveDate" type="date" defaultValue="2026-09-01" /></label><label><span>발령 구분 *</span><select required name="actionType" value={actionType} onChange={(event) => setActionType(event.target.value as PersonnelActionType)}><option>인사이동(전보)</option><option>승진</option><option>강등</option></select></label><div className="action-type-help wide"><strong>{actionType}</strong><span>{actionHelp}</span></div>{actionType === "인사이동(전보)" ? <label className="wide"><span>이동할 부서 *</span><select required name="targetDepartment" defaultValue=""><option value="" disabled>부서 선택</option>{departments.filter((department) => department !== employee.department).map((department) => <option key={department}>{department}</option>)}</select><input type="hidden" name="targetPosition" value={employee.position} /></label> : <label className="wide"><span>변경 직위 *</span><select required name="targetPosition" defaultValue=""><option value="" disabled>직위 선택</option>{availableRanks.map((rank) => <option key={rank}>{rank}</option>)}</select><input type="hidden" name="targetDepartment" value={employee.department} /></label>}</div><label className={`form-note ${actionType === "강등" ? "personnel-note-required" : ""}`}><span>{actionType === "강등" ? "강등 사유 *" : "발령 사유 및 내용"}</span><textarea required={actionType === "강등"} name="note" placeholder={actionType === "강등" ? "강등의 정당한 사유와 근거를 구체적으로 입력하세요." : "발령 배경이나 전달사항을 입력하세요."}></textarea>{actionType === "강등" && <small>강등은 정당한 사유와 객관적인 근거가 확인되어야 등록할 수 있습니다.</small>}</label><div className="modal-actions"><button type="button" onClick={onClose}>취소</button><button type="submit" className="primary-button">인사 발령 등록</button></div></form></HrModalBackdrop>;
 }
 
 type OnboardingTask = { id: string; employee_id: string; task_group: string; title: string; due_date: string; status: string };
@@ -3982,7 +3949,12 @@ function nextCondensed(current: boolean, scrollTop: number) {
 
 const safeJsonArray = (value: string) => { try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.map(String) : []; } catch { return []; } };
 
-function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ranks: string[] }) {
+function LifecycleManagementView({ jobTitles, ranks, onSelectApplicant, applicantPopupOpen = false }: {
+  jobTitles: string[]; ranks: string[];
+  /** 이름을 누르면 지원자 관리와 같은 「지원·면접 기록」 팝업을 연다. 팝업은 앱 최상위(XdnodeHrApp)가 띄운다. */
+  onSelectApplicant?: (applicantId: string) => void;
+  applicantPopupOpen?: boolean;
+}) {
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [retirementTasks, setRetirementTasks] = useState<OnboardingTask[]>([]);
   const [retirements, setRetirements] = useState<LifecycleRetirementRequest[]>([]);
@@ -4019,16 +3991,12 @@ function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ra
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, []);
-  async function toggle(task: OnboardingTask) {
-    const response = await fetch("/api/hr/operations", {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resource: "lifecycleTask", id: task.id, status: task.status === "DONE" ? "OPEN" : "DONE" }),
-    });
-    const payload = await response.json() as { error?: string };
-    if (!response.ok) return setMessage(payload.error || "온보딩 업무를 변경하지 못했습니다.");
-    setMessage("온보딩 업무를 저장했습니다. 모든 업무가 완료되고 입사일이 도래하면 재직으로 전환됩니다.");
-    await load();
-  }
+  // 팝업에서 입사일·처우·메모를 고쳤을 수 있으니, 팝업이 닫히면 이 화면의 표를 다시 읽는다.
+  const applicantPopupWasOpen = useRef(false);
+  useEffect(() => {
+    if (applicantPopupWasOpen.current && !applicantPopupOpen) void load();
+    applicantPopupWasOpen.current = applicantPopupOpen;
+  }, [applicantPopupOpen]);
   async function toggleRetirement(request: LifecycleRetirementRequest, logicalId: string) {
     const completed = safeJsonArray(request.checklist_json);
     const next = completed.includes(logicalId) ? completed.filter((id) => id !== logicalId) : [...completed, logicalId];
@@ -4053,6 +4021,8 @@ function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ra
     }
     setMessage(resource === "onboardingComplete" ? "입사 완료 처리했습니다. 인사기록카드에 재직자로 반영되었습니다." : resource === "onboardingCancel" ? "입사를 취소하고 취소 사유를 지원자 특이사항에 기록했습니다." : "입사 예정일과 처우 정보를 수정했습니다.");
     setEditingOnboarding(null);
+    // 앱 최상위의 지원자 목록도 다시 읽게 한다. 안 그러면 방금 입사 완료한 사람의 팝업이 옛 단계를 보여준다.
+    window.dispatchEvent(new Event("hr-recruitment-updated"));
     await load();
     return true;
   }
@@ -4061,8 +4031,8 @@ function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ra
   return (
     <div className="page-wrap module-page lifecycle-page">
       <section className="module-hero">
-        <div>
-          <p className="eyebrow">EMPLOYEE LIFECYCLE</p>
+        <div data-korean-heading>
+
           <h1>입·퇴사 관리</h1>
           <p>입사 전 준비와 퇴직 효력 발생 이후의 정산·회수 절차를 한곳에서 관리합니다.</p>
         </div>
@@ -4077,7 +4047,7 @@ function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ra
       <div className="lifecycle-board">
         <section className="lifecycle-column" aria-labelledby="onboarding-heading">
           <div className="lifecycle-section-heading">
-            <div><p>ONBOARDING</p><h2 id="onboarding-heading">입사 관리</h2></div>
+            <div data-korean-heading><h2 id="onboarding-heading">입사 관리</h2></div>
             <strong>예정 {onboardingCandidates.filter((candidate) => candidate.status !== "ONBOARDED").length}명 · 완료 {onboardingCandidates.filter((candidate) => candidate.status === "ONBOARDED").length}명</strong>
           </div>
           {/* 입사 예정과 입사 완료를 다른 표에 둔다. 한 표에 섞여 있으면 오늘 챙길 사람이 누구인지 세어 봐야 안다.
@@ -4086,7 +4056,9 @@ function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ra
             const pending = onboardingCandidates.filter((candidate) => candidate.status !== "ONBOARDED");
             const completed = onboardingCandidates.filter((candidate) => candidate.status === "ONBOARDED");
             const cells = (candidate: LifecycleOnboardingCandidate) => <>
-              <td><strong>{candidate.name}</strong><small>{candidate.employeeId}</small></td>
+              <td>{onSelectApplicant
+                ? <button type="button" className="name-link lifecycle-applicant-link" title="지원·면접 기록 보기" onClick={() => onSelectApplicant(candidate.applicantId)}>{candidate.name}</button>
+                : <strong>{candidate.name}</strong>}<small>{candidate.employeeId}</small></td>
               <td className="lifecycle-phone-cell">{candidate.phone || "미입력"}</td>
               <td>{candidate.startDate}</td>
               <td><strong>{candidate.department}</strong><small>{candidate.proposedTitle} · {candidate.jobTitle}</small></td>
@@ -4129,7 +4101,7 @@ function LifecycleManagementView({ jobTitles, ranks }: { jobTitles: string[]; ra
         </section>
         <section className="lifecycle-column" aria-labelledby="offboarding-heading">
           <div className="lifecycle-section-heading">
-            <div><p>OFFBOARDING</p><h2 id="offboarding-heading">퇴직자 관리</h2></div>
+            <div data-korean-heading><h2 id="offboarding-heading">퇴직자 관리</h2></div>
             <strong>{retirements.length}명</strong>
           </div>
           <div className="lifecycle-card-list">
@@ -4183,7 +4155,7 @@ function RetirementProcessModal({ request, person, tasks, onToggle, onClose }: {
   const locked = request.status === "COMPLETED";
   // 내려가면 제목줄을 절반 높이로 접는다. 지원자·급여 팝업과 같은 방식이다.
   const [condensed, setCondensed] = useState(false);
-  return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section
       className={`employee-modal retirement-process-modal${condensed ? " condensed" : ""}`}
       role="dialog"
@@ -4195,7 +4167,7 @@ function RetirementProcessModal({ request, person, tasks, onToggle, onClose }: {
       }}
     >
       <div className="modal-header">
-        <div><p>OFFBOARDING</p><h2>{person?.name ?? request.employee_id} 퇴직 절차</h2></div>
+        <div data-korean-heading><h2>{person?.name ?? request.employee_id} 퇴직 절차</h2></div>
         <button type="button" aria-label="닫기" onClick={onClose}>×</button>
       </div>
       <div className="retirement-modal-summary">
@@ -4225,7 +4197,7 @@ function RetirementProcessModal({ request, person, tasks, onToggle, onClose }: {
         <button type="button" onClick={onClose}>닫기</button>
       </div>
     </section>
-  </div>;
+  </HrModalBackdrop>;
 }
 
 function OnboardingEditModal({ candidate, jobTitles, ranks, onClose, onSave, onCancel }: {
@@ -4257,13 +4229,13 @@ function OnboardingEditModal({ candidate, jobTitles, ranks, onClose, onSave, onC
     await onCancel(cancellationReason.trim());
     setSaving(false);
   }
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><form className={`employee-modal onboarding-edit-modal${condensed ? " condensed" : ""}`} onSubmit={submit} onScroll={(event) => { const top = event.currentTarget.scrollTop; setCondensed((current) => nextCondensed(current, top)); }} onMouseDown={(event) => event.stopPropagation()}><div className="modal-header"><div><p>ONBOARDING DETAILS</p><h2>{candidate.name} 입사 정보 수정</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{candidate.name.slice(0, 1)}</span><div><strong>{candidate.name}</strong><small>{candidate.email || "이메일 미등록"} · {candidate.phone || "연락처 미등록"}</small></div><em>{candidate.employeeId}</em></div><div className="onboarding-edit-grid"><label><span>신규 사번 *</span><input required value={draft.employeeId} onChange={(event) => setDraft({ ...draft, employeeId: event.target.value })} /></label><label><span>입사예정일 *</span><input required type="date" value={draft.startDate} onChange={(event) => setDraft({ ...draft, startDate: event.target.value })} /></label><label><span>소속 파트 *</span><select required value={draft.department} onChange={(event) => setDraft({ ...draft, department: event.target.value })}>{Array.from(new Set([draft.department, ...companyOrganizations.map((item) => item.name)])).map((name) => <option key={name}>{name}</option>)}</select></label><label><span>제안 직무 *</span><input required value={draft.proposedTitle} onChange={(event) => setDraft({ ...draft, proposedTitle: event.target.value })} /></label><label><span>직위 *</span><select required value={draft.position} onChange={(event) => setDraft({ ...draft, position: event.target.value })}><option value="">직위 선택</option>{ranks.map((rank) => <option key={rank}>{rank}</option>)}</select></label><label><span>직무 *</span><select required value={draft.jobTitle} onChange={(event) => setDraft({ ...draft, jobTitle: event.target.value })}><option value="">직무 선택</option>{jobTitles.filter((title) => title !== "조직장").map((title) => <option key={title}>{title}</option>)}</select></label><label><span>고용형태 *</span><select value={draft.employmentType} onChange={(event) => setDraft({ ...draft, employmentType: event.target.value })}><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label><label><span>연봉 *</span><input required type="number" min="1" value={draft.annualSalary} onChange={(event) => setDraft({ ...draft, annualSalary: event.target.value })} /></label><label><span>수습기간(개월) *</span><input required type="number" min="0" max="12" value={draft.probationMonths} onChange={(event) => setDraft({ ...draft, probationMonths: event.target.value })} /></label><label><span>첫 계약 지급률(%) *</span><input required type="number" min="1" max="100" step="1" value={draft.firstTermPayPercent} onChange={(event) => setDraft({ ...draft, firstTermPayPercent: event.target.value })} /></label><label className="wide"><span>처우·회신 메모</span><textarea value={draft.responseNote} onChange={(event) => setDraft({ ...draft, responseNote: event.target.value })} placeholder="처우 협의 내용과 입사 준비 참고사항을 기록하세요." /></label></div><section className="onboarding-cancel-section"><div><strong>입사가 이루어지지 않는 경우</strong><span>취소 사유는 지원자 관리의 특이사항 기록에 영구 보관됩니다.</span></div><textarea value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="입사 취소 사유를 입력하세요." /><button type="button" disabled={saving || !cancellationReason.trim()} onClick={() => void cancelOnboarding()}>입사 취소</button></section><div className="modal-actions"><button type="button" onClick={onClose}>닫기</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "저장 중…" : "입사 정보 저장"}</button></div></form></div>;
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={onClose}><form className={`employee-modal onboarding-edit-modal${condensed ? " condensed" : ""}`} onSubmit={submit} onScroll={(event) => { const top = event.currentTarget.scrollTop; setCondensed((current) => nextCondensed(current, top)); }} ><div className="modal-header"><div data-korean-heading><h2>{candidate.name} 입사 정보 수정</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{candidate.name.slice(0, 1)}</span><div><strong>{candidate.name}</strong><small>{candidate.email || "이메일 미등록"} · {candidate.phone || "연락처 미등록"}</small></div><em>{candidate.employeeId}</em></div><div className="onboarding-edit-grid"><label><span>신규 사번 *</span><input required value={draft.employeeId} onChange={(event) => setDraft({ ...draft, employeeId: event.target.value })} /></label><label><span>입사예정일 *</span><input required type="date" value={draft.startDate} onChange={(event) => setDraft({ ...draft, startDate: event.target.value })} /></label><label><span>소속 파트 *</span><select required value={draft.department} onChange={(event) => setDraft({ ...draft, department: event.target.value })}>{Array.from(new Set([draft.department, ...companyOrganizations.map((item) => item.name)])).map((name) => <option key={name}>{name}</option>)}</select></label><label><span>제안 직무 *</span><input required value={draft.proposedTitle} onChange={(event) => setDraft({ ...draft, proposedTitle: event.target.value })} /></label><label><span>직위 *</span><select required value={draft.position} onChange={(event) => setDraft({ ...draft, position: event.target.value })}><option value="">직위 선택</option>{ranks.map((rank) => <option key={rank}>{rank}</option>)}</select></label><label><span>직무 *</span><select required value={draft.jobTitle} onChange={(event) => setDraft({ ...draft, jobTitle: event.target.value })}><option value="">직무 선택</option>{jobTitles.filter((title) => title !== "조직장").map((title) => <option key={title}>{title}</option>)}</select></label><label><span>고용형태 *</span><select value={draft.employmentType} onChange={(event) => setDraft({ ...draft, employmentType: event.target.value })}><option>일반직4.5</option><option>일반직</option><option>계약직</option><option>인턴</option></select></label><label><span>연봉 *</span><input required type="number" min="1" value={draft.annualSalary} onChange={(event) => setDraft({ ...draft, annualSalary: event.target.value })} /></label><label><span>수습기간(개월) *</span><input required type="number" min="0" max="12" value={draft.probationMonths} onChange={(event) => setDraft({ ...draft, probationMonths: event.target.value })} /></label><label><span>첫 계약 지급률(%) *</span><input required type="number" min="1" max="100" step="1" value={draft.firstTermPayPercent} onChange={(event) => setDraft({ ...draft, firstTermPayPercent: event.target.value })} /></label><label className="wide"><span>처우·회신 메모</span><textarea value={draft.responseNote} onChange={(event) => setDraft({ ...draft, responseNote: event.target.value })} placeholder="처우 협의 내용과 입사 준비 참고사항을 기록하세요." /></label></div><section className="onboarding-cancel-section"><div><strong>입사가 이루어지지 않는 경우</strong><span>취소 사유는 지원자 관리의 특이사항 기록에 영구 보관됩니다.</span></div><textarea value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} placeholder="입사 취소 사유를 입력하세요." /><button type="button" disabled={saving || !cancellationReason.trim()} onClick={() => void cancelOnboarding()}>입사 취소</button></section><div className="modal-actions"><button type="button" onClick={onClose}>닫기</button><button type="submit" className="primary-button" disabled={saving}>{saving ? "저장 중…" : "입사 정보 저장"}</button></div></form></HrModalBackdrop>;
 }
 
 type SeveranceEstimate = {
   requestId: string; period: string; severance: number; tenureDays: number; appliedDailyWage: number;
   averageDailyWage: number; ordinaryDailyWage: number; basis: string; months: string[];
-  usedLeaveUnits: number; payrollMonthReady: boolean; reason: string; eligible: boolean;
+  usedLeaveUnits: number; unusedLeaveDays: number; payrollMonthReady: boolean; reason: string; eligible: boolean;
   limitations: string[];
   averageSeverance: number;
   ordinarySeverance: number;
@@ -4278,6 +4250,7 @@ type SeveranceEstimate = {
 };
 
 function RetirementSettlementPanel({ requestId }: { requestId: string }) {
+  const dialog = useErpDialog();
   const [draft, setDraft] = useState({ finalSalary: "0", retirementPay: "0", leaveDays: "0", leavePay: "0", deductions: "0", payrollConfirmed: false, insuranceConfirmed: false, accessRevoked: false, assetsReturned: false, handoverConfirmed: false });
   const [estimate, setEstimate] = useState<SeveranceEstimate | null>(null);
   const [status, setStatus] = useState("DRAFT");
@@ -4291,12 +4264,16 @@ function RetirementSettlementPanel({ requestId }: { requestId: string }) {
       const computed = (payload.severanceEstimates ?? []).find((row) => row.requestId === requestId) ?? null;
       setEstimate(computed);
       const item = (payload.retirementSettlements ?? []).find((row) => row.request_id === requestId);
-      if (!item) return;
+      // 잔여 연차는 연차관리 잔여로 미리 채운다. 이미 사람이 적어 둔 값(0이 아닌)이 있으면 그대로 둔다.
+      const suggestedDays = computed ? computed.unusedLeaveDays : 0;
+      const suggestedPay = computed ? Math.round(computed.leaveDailyWage * suggestedDays) : 0;
+      if (!item) { if (computed) setDraft((current) => ({ ...current, leaveDays: String(suggestedDays), leavePay: String(suggestedPay) })); return; }
       setDraft({
         finalSalary: String(item.final_salary ?? 0),
         // 추정액을 자동으로 넣지 않는다. 산식이 제외기간을 반영하지 못하므로 사람이 보고 넣어야 한다.
         retirementPay: String(item.retirement_pay ?? 0),
-        leaveDays: String(item.leave_days ?? 0), leavePay: String(item.unused_leave_pay ?? 0),
+        leaveDays: Number(item.leave_days ?? 0) || Number(item.unused_leave_pay ?? 0) ? String(item.leave_days ?? 0) : String(suggestedDays),
+        leavePay: Number(item.leave_days ?? 0) || Number(item.unused_leave_pay ?? 0) ? String(item.unused_leave_pay ?? 0) : String(suggestedPay),
         deductions: String(item.deductions ?? 0),
         payrollConfirmed: Boolean(item.payroll_confirmed), insuranceConfirmed: Boolean(item.insurance_confirmed),
         accessRevoked: Boolean(item.access_revoked), assetsReturned: Boolean(item.assets_returned),
@@ -4348,7 +4325,7 @@ function RetirementSettlementPanel({ requestId }: { requestId: string }) {
     const payload = await response.json() as { error?: string; period?: string; previous?: number; amount?: number; payrollMonthMissing?: boolean; leaveDate?: string | null; leaveDateChanged?: boolean };
     if (!response.ok) {
       if (payload.payrollMonthMissing) {
-        window.alert("이번달 급여 계산을 시작해 주세요");
+        await dialog.alert("이번달 급여 계산을 시작해 주세요", { title: "임금안 없음" });
         return setMessage("퇴사월 임금안이 아직 없습니다. 임금계산에서 해당 월을 먼저 작성해 주세요.");
       }
       return setMessage(payload.error || "임금안에 반영하지 못했습니다.");
@@ -4363,9 +4340,9 @@ function RetirementSettlementPanel({ requestId }: { requestId: string }) {
       + " 임금계산에서 내용을 확인하고 확정해 주세요.";
     setMessage(applied);
     // 반영은 눌러도 화면이 크게 바뀌지 않아 됐는지 알기 어렵다. 결과를 팝업으로 한 번 더 알린다.
-    window.alert(`임금안에 반영되었습니다.
+    await dialog.alert(`임금안에 반영되었습니다.
 
-${applied}`);
+${applied}`, { title: "임금안 반영" });
   }
 
   // 잔여 연차 일수에 1일 통상임금을 곱해 연차수당 칸을 채운다. 일수가 음수면 금액도 음수가 되고,
@@ -4382,11 +4359,11 @@ ${applied}`);
 
   // 급여자료에 손으로 적어 둔 금액이나 이미 채워 둔 값을 계산 추정치로 지우기 전에 확인을 받는다.
   // 퇴직금 대상이 아니면(계속근로 1년 미만 등) 연차수당만 계산한다.
-  function applyEstimate(estimate: SeveranceEstimate) {
+  async function applyEstimate(estimate: SeveranceEstimate) {
     const existing = Number(draft.retirementPay) || 0;
     const nextLeavePay = String(leavePayFor(Number(draft.leaveDays) || 0));
     if (!estimate.eligible) return setDraft((current) => ({ ...current, leavePay: nextLeavePay }));
-    if ((estimate.recordedSeverance > 0 || existing > 0) && !window.confirm("기 입력된 값이 있습니다. 덮어 쓰겠습니까?")) return;
+    if ((estimate.recordedSeverance > 0 || existing > 0) && !(await dialog.confirm("기 입력된 값이 있습니다. 덮어 쓰겠습니까?", { title: "덮어쓰기 확인", confirmLabel: "덮어쓰기" }))) return;
     setDraft((current) => ({ ...current, retirementPay: String(estimate.severance), leavePay: nextLeavePay }));
   }
 
@@ -4413,11 +4390,11 @@ ${applied}`);
   })();
   const amount = Number(draft.finalSalary) + Number(draft.retirementPay) + leavePay - Number(draft.deductions);
   const checks: Array<[keyof typeof draft, string]> = [["payrollConfirmed", "최종 급여 확인"], ["insuranceConfirmed", "4대보험 상실 신고 확인"], ["accessRevoked", "업무 계정·접근권한 회수"], ["assetsReturned", "회사 자산 반납"], ["handoverConfirmed", "업무 인수인계 완료"]];
-  return <section className="retirement-settlement"><div className="detail-card-heading"><div><p className="eyebrow">FINAL SETTLEMENT</p><h3>퇴직 정산·회수 통제</h3></div><StatusPill value={status === "READY" ? "완료 가능" : status === "COMPLETED" ? "퇴직 완료" : "정산 중"} /></div>
+  return <section className="retirement-settlement"><div className="detail-card-heading"><div data-korean-heading><h3>퇴직 정산·회수 통제</h3></div><StatusPill value={status === "READY" ? "완료 가능" : status === "COMPLETED" ? "퇴직 완료" : "정산 중"} /></div>
     <div className="retirement-settlement-amounts">
       <label>최종 급여<input type="number" min="0" value={draft.finalSalary} onChange={(event) => setDraft({ ...draft, finalSalary: event.target.value })} /></label>
       <label>퇴직금<input type="number" min="0" value={draft.retirementPay} onChange={(event) => setDraft({ ...draft, retirementPay: event.target.value })} /></label>
-      <label>잔여 연차(일)<input type="number" step="0.5" min="-366" max="366" value={draft.leaveDays} onChange={(event) => changeLeaveDays(event.target.value)} /></label>
+      <label>잔여 연차(일)<input type="number" step="0.25" min="-366" max="366" value={draft.leaveDays} onChange={(event) => changeLeaveDays(event.target.value)} />{estimate && <button type="button" className="leave-link" onClick={() => changeLeaveDays(String(estimate.unusedLeaveDays))}>연차관리 잔여 {estimate.unusedLeaveDays}일 적용</button>}</label>
       <label>연차수당<input type="number" step="1" value={draft.leavePay} onChange={(event) => setDraft({ ...draft, leavePay: event.target.value })} /></label>
       <label>공제액<input type="number" min="0" value={draft.deductions} onChange={(event) => setDraft({ ...draft, deductions: event.target.value })} /></label>
       {/* 공제액 오른편 빈 칸. 입력을 다 채운 자리에서 바로 누를 수 있게 여기에 둔다. */}
@@ -4483,6 +4460,15 @@ ${applied}`);
   </section>;
 }
 
+function RetirementChecklistGroup({ title, tasks, completedTaskIds, pendingApproval, toggleTask }: { title: string; tasks: { id: string; label: string }[]; completedTaskIds: string[]; pendingApproval: boolean; toggleTask: (id: string) => void }) {
+  return (
+    <section className="retirement-checklist-group">
+      <div className="checklist-group-heading"><div data-korean-heading><h3>{title}</h3></div><span>{tasks.filter((task) => completedTaskIds.includes(task.id)).length}/{tasks.length}</span></div>
+      <div className="retirement-task-list">{tasks.map((task) => <label key={task.id} className={completedTaskIds.includes(task.id) ? "checked" : ""}><input disabled={pendingApproval} type="checkbox" checked={completedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span className="task-check">✓</span><strong>{task.label}</strong></label>)}</div>
+    </section>
+  );
+}
+
 function RetirementModal({ employee, initial, onClose, onSubmit }: { employee: Employee; initial?: { date: string; reason: string } | null; onClose: () => void; onSubmit: (record: RetirementRecord) => void }) {
   const [date, setDate] = useState(employee.retirement?.date ?? initial?.date ?? "2026-09-30");
   const [reason, setReason] = useState(employee.retirement?.reason ?? initial?.reason ?? "");
@@ -4506,25 +4492,20 @@ function RetirementModal({ employee, initial, onClose, onSubmit }: { employee: E
     else setConfirmation(record);
   }
 
-  const ChecklistGroup = ({ title, owner, tasks }: { title: string; owner: string; tasks: { id: string; label: string }[] }) => (
-    <section className="retirement-checklist-group">
-      <div className="checklist-group-heading"><div><p>{owner}</p><h3>{title}</h3></div><span>{tasks.filter((task) => completedTaskIds.includes(task.id)).length}/{tasks.length}</span></div>
-      <div className="retirement-task-list">{tasks.map((task) => <label key={task.id} className={completedTaskIds.includes(task.id) ? "checked" : ""}><input disabled={pendingApproval} type="checkbox" checked={completedTaskIds.includes(task.id)} onChange={() => toggleTask(task.id)} /><span className="task-check">✓</span><strong>{task.label}</strong></label>)}</div>
-    </section>
-  );
 
-  return <div className="modal-backdrop" role="presentation" onMouseDown={onClose}><form
+
+  return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={onClose}><form
     className={`employee-modal retirement-modal${condensed ? " condensed" : ""}`}
     onSubmit={submit}
-    onMouseDown={(event) => event.stopPropagation()}
+
     onScroll={(event) => {
       const top = event.currentTarget.scrollTop;
       setCondensed((current) => nextCondensed(current, top));
     }}
-  ><div className="modal-header"><div><p>RETIREMENT PROCESS</p><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">기존 방식으로 생성된 퇴직 요청입니다. 현재 진행 상태를 확인해 주세요.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><ChecklistGroup title="인사담당자 수행 업무" owner="HR OWNER" tasks={retirementChecklist.hr} /><ChecklistGroup title="퇴직자 수행 업무" owner="EMPLOYEE" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button><button type="submit" disabled={pendingApproval} className="primary-button">{pendingApproval ? "기존 요청 확인 중" : checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button></div></form>{confirmation && <div className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" onMouseDown={(event) => event.stopPropagation()}><p>FINAL CONFIRMATION</p><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></div>}</div>;
+  ><div className="modal-header"><div data-korean-heading><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">기존 방식으로 생성된 퇴직 요청입니다. 현재 진행 상태를 확인해 주세요.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="인사담당자 수행 업무" tasks={retirementChecklist.hr} /><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="퇴직자 수행 업무" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button><button type="submit" disabled={pendingApproval} className="primary-button">{pendingApproval ? "기존 요청 확인 중" : checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button></div></form>{confirmation && <HrModalBackdrop className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section data-korean-heading className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" ><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></HrModalBackdrop>}</HrModalBackdrop>;
 }
 
-function SettingsView({ employees, onSave, onNotify }: { employees: Employee[]; onSave: () => void; onNotify: (message: string) => void }) {
+function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify: (message: string) => void }) {
   const [section, setSection] = useState("company");
   type AccessRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "HR_ADMIN" | "RECRUITER" | "SALES_ADMIN" | "VIEWER";
   type AuthorizedUser = { employeeId: string; email: string; roles: AccessRole[]; active: boolean };
@@ -4553,7 +4534,7 @@ function SettingsView({ employees, onSave, onNotify }: { employees: Employee[]; 
     }
     loadAuthorizedUsers();
     return () => { cancelled = true; };
-  }, []);
+  }, [onNotify]);
 
   async function addAuthorizedUser(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -4618,15 +4599,16 @@ function SettingsView({ employees, onSave, onNotify }: { employees: Employee[]; 
 
   return <div className="page-wrap settings-page">
     <section className="module-hero">
-      <div><p className="eyebrow">WORKSPACE SETTINGS</p><h1>환경설정</h1><p>회사 정보, 인사 기준, 알림과 접근 권한을 설정합니다.</p></div>
-      <button type="button" className="primary-button" onClick={onSave}>변경사항 저장</button>
+      <div data-korean-heading><h1>환경설정</h1><p>회사 정보, 인사 기준, 알림과 접근 권한을 설정합니다.</p></div>
+      {/* 회사·기준정보·알림·데이터 섹션은 아직 저장 경로가 없다. 예전에는 「변경사항 저장」이 성공 토스트만 띄웠다. */}
+      {["permissions", "approvals"].includes(section) ? null : <span className="payroll-import-badge">표시 전용 · 저장 기능 준비 중</span>}
     </section>
     <div className="settings-layout">
       <aside className="panel settings-nav">
         {[["company", "회사·조직 정보"], ["hr", "인사 기준정보"], ["notifications", "알림 설정"], ["permissions", "사용자·권한"], ["approvals", "전자결재 규칙"], ["data", "데이터·백업"]].map(([id, label]) => <button type="button" className={section === id ? "active" : ""} key={id} onClick={() => setSection(id)}>{label}<span>›</span></button>)}
       </aside>
       <section className="panel settings-content">
-        <div className="detail-card-heading"><div><p className="eyebrow">{section.toUpperCase()}</p><h2>{sectionTitle}</h2></div></div>
+        <div className="detail-card-heading"><div data-korean-heading><h2>{sectionTitle}</h2></div></div>
         {section === "company" && <div className="settings-form"><label><span>회사명</span><input defaultValue="XD NODE" /></label><label><span>대표자</span><input defaultValue="이정민" /></label><label><span>사업자등록번호</span><input defaultValue="123-45-67890" /></label><label><span>기본 근무지</span><input defaultValue="서울 본사" /></label><label className="wide"><span>회사 주소</span><input defaultValue="서울특별시 성동구 아차산로 00" /></label></div>}
         {section === "hr" && <div className="setting-list"><SettingToggle title="사번 자동 발급" description="입사연도와 순번으로 사번을 자동 생성합니다." checked /><SettingToggle title="수습기간 종료 알림" description="종료 14일 전에 담당자와 부서장에게 알립니다." checked /><SettingToggle title="급여 마감 후 수정 제한" description="마감된 급여는 급여관리자만 다시 열 수 있습니다." checked /></div>}
         {section === "notifications" && <div className="setting-list"><SettingToggle title="시스템 알림" description="업무 마감과 승인 요청을 알림센터에서 받습니다." checked /><SettingToggle title="이메일 알림" description="중요 HR 일정을 이메일로도 받습니다." checked /><SettingToggle title="미처리 업무 재알림" description="기한이 지난 업무를 매일 오전 다시 알립니다." checked={false} /></div>}
@@ -4653,7 +4635,7 @@ function SettingsView({ employees, onSave, onNotify }: { employees: Employee[]; 
           </div>
         </div>}
         {section === "approvals" && <ApprovalSettings employees={employees} onNotify={onNotify} />}
-        {section === "data" && <div className="data-settings"><div><strong>마지막 자동 백업</strong><span>오늘 03:00 · 정상 완료</span><button type="button" onClick={onSave}>지금 백업</button></div><div><strong>개인정보 보유기간</strong><span>퇴사 후 3년 · 관리자 확인 필요</span><button type="button">정책 관리</button></div><div><strong>엑셀 데이터 가져오기</strong><span>직원·급여·교육 표준양식 지원</span><button type="button">가져오기</button></div></div>}
+        {section === "data" && <div className="data-settings"><div><strong>자동 백업</strong><span>미설정 · 로컬 D1 파일을 수동으로 보관합니다</span><button type="button" disabled title="준비 중">지금 백업</button></div><div><strong>개인정보 보유기간</strong><span>퇴사 후 3년(방침) · 자동 삭제는 미구현</span><button type="button" disabled title="준비 중">정책 관리</button></div><div><strong>엑셀 데이터 가져오기</strong><span>재무 「데이터 통제」의 가져오기를 사용하세요</span><button type="button" disabled title="준비 중">가져오기</button></div></div>}
       </section>
     </div>
   </div>;
@@ -4670,8 +4652,8 @@ function ApprovalSettings({ employees, onNotify }: { employees: Employee[]; onNo
   const moduleLabels: Record<Module, string> = { finance: "재무회계", hr: "HR", recruitment: "채용", sales: "영업", settings: "데이터 통제" };
   const moduleRoles: Record<Module, Role[]> = { finance: ["FINANCE_ADMIN", "SUPER_ADMIN"], hr: ["HR_ADMIN", "SUPER_ADMIN"], recruitment: ["HR_ADMIN", "SUPER_ADMIN"], sales: ["SALES_ADMIN", "SUPER_ADMIN"], settings: ["SUPER_ADMIN"] };
   const roleLabels: Record<Role, string> = { SUPER_ADMIN: "대표 승인", FINANCE_ADMIN: "재무 관리자", HR_ADMIN: "HR 관리자", SALES_ADMIN: "영업 관리자" };
-  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const nextWeek = new Date(Date.now() + (7 * 24 + 9) * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = useKoreanToday();
+  const nextWeek = today ? new Date(new Date(`${today}T00:00:00Z`).getTime() + 7 * 86400000).toISOString().slice(0, 10) : "";
   const [loading, setLoading] = useState(true);
   const [types, setTypes] = useState<Record<Module, Record<string, string>>>({ finance: {}, hr: {}, recruitment: {}, sales: {}, settings: {} });
   const [policies, setPolicies] = useState<Policy[]>([]);
@@ -4686,19 +4668,17 @@ function ApprovalSettings({ employees, onNotify }: { employees: Employee[]; onNo
   const employeeName = (id: string) => employees.find((employee) => employee.id === id)?.name ?? id;
   const formatAmount = (value: number | null) => value === null ? "제한 없음" : `${new Intl.NumberFormat("ko-KR").format(value)}원`;
 
-  async function loadSettings() {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/approval-settings", { cache: "no-store" });
+  const loadSettings = useCallback(() => {
+    return fetch("/api/approval-settings", { cache: "no-store" }).then(async response => {
       const payload = await response.json() as { policies?: Policy[]; defaults?: DefaultRoute[]; delegations?: Delegation[]; users?: AccessUser[]; types?: Record<Module, Record<string, string>>; error?: string };
       if (!response.ok) throw new Error(payload.error || "전자결재 설정을 불러오지 못했습니다.");
       setPolicies(payload.policies ?? []); setDefaults(payload.defaults ?? []); setDelegations(payload.delegations ?? []); setUsers(payload.users ?? []);
       if (payload.types) setTypes(payload.types);
-    } catch (error) { onNotify(error instanceof Error ? error.message : "전자결재 설정을 불러오지 못했습니다."); }
-    finally { setLoading(false); }
-  }
+    }).catch(error => { onNotify(error instanceof Error ? error.message : "전자결재 설정을 불러오지 못했습니다."); })
+      .finally(() => setLoading(false));
+  }, [onNotify, setPolicies, setDefaults, setDelegations, setUsers, setTypes, setLoading]);
 
-  useEffect(() => { void loadSettings(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadSettings(); }, [loadSettings]);
 
   function changePolicyModule(module: Module) {
     setPolicyDraft({ id: "", module, requestType: Object.keys(types[module])[0] ?? "", name: "", minAmount: "0", maxAmount: "", priority: "0", steps: emptySteps(module) });
@@ -4770,17 +4750,17 @@ function SettingToggle({ title, description, checked }: { title: string; descrip
   return <button type="button" className="setting-toggle" onClick={() => setEnabled((value) => !value)}><div><strong>{title}</strong><span>{description}</span></div><i className={enabled ? "on" : ""}><em></em></i></button>;
 }
 
-function Dashboard({ employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, roles, onNavigate, onOpenEmployee, onOpenApplicant, onMarkRegular, onEndContract }: {
+function Dashboard({ employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, leaveLedgers, roles, onNavigate, onOpenEmployee, onOpenApplicant, onMarkRegular, onEndContract }: {
   employees: Employee[]; organizations: Organization[]; applicants: Applicant[]; requisitions: RecruitmentRequisitionOption[];
-  lifecycleTasks: DashboardLifecycleTask[]; payrollRuns: DashboardPayrollRun[]; roles: string[];
+  lifecycleTasks: DashboardLifecycleTask[]; payrollRuns: DashboardPayrollRun[]; leaveLedgers: DashboardLeaveLedger[]; roles: string[];
   onNavigate: (id: string) => void; onOpenEmployee: (id: string) => void; onOpenApplicant: (id: string) => void;
   onMarkRegular: (employee: Employee, date: string, review: FirstTermReview) => void; onEndContract: (employee: Employee, endDate: string, review: FirstTermReview) => void;
 }) {
   // 오늘(한국시간)을 기준으로 앞뒤를 가른다. 이 화면의 "예정"은 모두 이 날짜가 기준이다.
-  const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const today = useKoreanToday();
   // 계산은 전부 hr-dashboard-model 에 있다. 이 컴포넌트는 그 결과를 배치하고 클릭을 연결할 뿐이다.
   const model = buildDashboardModel({
-    today, employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, roles,
+    today, employees, organizations, applicants, requisitions, lifecycleTasks, payrollRuns, leaveLedgers, roles,
     isCurrent: (employee) => isCurrentEmployee(employee as Employee),
     isRejectedStage: (stage) => REJECTED_STAGES.includes(stage),
     funnelStages: [SCREENING_PENDING_STAGE, SCREENING_PASSED_STAGE, "면접", INTERVIEW_PASSED_STAGE, OFFER_PREPARED_STAGE, "입사 예정", "입사 완료"],
@@ -4825,7 +4805,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
   const sections: Record<string, React.ReactNode> = {
     inbox: (
       <section className="panel dash-panel dash-inbox span-12" key="inbox" data-dash-anchor="inbox">
-        <div className="section-heading"><div><p className="eyebrow">ACTION INBOX</p><h2>처리 대기 <em>{model.inbox.length}건</em>{criticalCount > 0 && <span className="dash-critical-badge">긴급 {criticalCount}</span>}</h2></div><span className="dash-hint">계약 만료·퇴직/입사 절차·오퍼 회신·급여 마감·인사정보 미입력을 우선순위순으로 모았습니다</span></div>
+        <div className="section-heading"><div data-korean-heading><h2>처리 대기 <em>{model.inbox.length}건</em>{criticalCount > 0 && <span className="dash-critical-badge">긴급 {criticalCount}</span>}</h2></div><span className="dash-hint">계약 만료·퇴직/입사 절차·오퍼 회신·급여 마감·인사정보 미입력을 우선순위순으로 모았습니다</span></div>
         {model.inbox.length ? <ul className="dash-inbox-list">{model.inbox.map((item) => (
           <li key={item.id} className={item.priority}>
             <button type="button" onClick={(event) => openTarget(event, item.target)}>
@@ -4840,7 +4820,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
     ),
     renewal: (
       <section className={`panel dash-panel renewal-panel span-12${model.renewals.length || model.missingRegularRecords.length ? "" : " compact"}`} key="renewal" data-dash-anchor="renewal">
-        <div className="section-heading"><div><p className="eyebrow">CONTRACT RENEWAL</p><h2>정규직 전환 예정 <em>{model.renewals.length}건</em></h2></div><span className="renewal-hint">첫 계약(3개월 기간제) 만료 30일 전부터 표시 · 만료 7일 전까지 서면 통지</span></div>
+        <div className="section-heading"><div data-korean-heading><h2>정규직 전환 예정 <em>{model.renewals.length}건</em></h2></div><span className="renewal-hint">첫 계약(3개월 기간제) 만료 30일 전부터 표시 · 만료 7일 전까지 서면 통지</span></div>
         {model.renewals.length ? <table className="data-table dashboard-mini-table renewal-table"><thead><tr><th>직원</th><th>소속·직위</th><th>입사일</th><th>계약 만료일</th><th>첫 계약 지급률</th><th>상태</th><th>조치</th></tr></thead>
           <tbody>{model.renewals.map(({ employee, endDate, nextStart, state }) => <tr key={employee.id}>
             <td><strong>{employee.name}</strong></td><td>{employee.department} · {employee.position}</td><td>{employee.joinDate}</td>
@@ -4853,7 +4833,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
     ),
     timeline: (
       <section className="panel dash-panel dash-timeline span-7" key="timeline" data-dash-anchor="timeline">
-        <div className="section-heading"><div><p className="eyebrow">UPCOMING</p><h2>일정 <em>{timelineItems.length}건</em></h2></div>
+        <div className="section-heading"><div data-korean-heading><h2>일정 <em>{timelineItems.length}건</em></h2></div>
           <div className="dash-chips" role="group" aria-label="기간">{([["week", "이번 주"], ["month", "이번 달"], ["all", "전체 예정"]] as const).map(([value, label]) => <button type="button" key={value} className={timelineRange === value ? "active" : ""} onClick={() => setTimelineRange(value)}>{label}</button>)}</div></div>
         <div className="dash-chips kinds" role="group" aria-label="종류">
           {(["전체", ...TIMELINE_KINDS] as const).map((kind) => { const count = kind === "전체" ? model.timeline.filter((item) => inRange(item.date)).length : model.timeline.filter((item) => item.kind === kind && inRange(item.date)).length; return <button type="button" key={kind} className={timelineKind === kind ? "active" : ""} onClick={() => setTimelineKind(kind)}>{kind}<em>{count}</em></button>; })}
@@ -4869,7 +4849,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
     ),
     pipeline: (
       <section className="panel dash-panel dash-pipeline span-5" key="pipeline" data-dash-anchor="pipeline">
-        <div className="section-heading"><div><p className="eyebrow">RECRUITING</p><h2>채용 파이프라인</h2></div><button type="button" onClick={() => onNavigate("requisitions")}>채용요청·TO →</button></div>
+        <div className="section-heading"><div data-korean-heading><h2>채용 파이프라인</h2></div><button type="button" onClick={() => onNavigate("requisitions")}>채용요청·TO →</button></div>
         <h3 className="dash-subtitle">단계별 지원자</h3>
         <HorizontalBars rows={model.funnel.map((item) => ({ label: item.stage, value: item.count }))} />
         <h3 className="dash-subtitle">채용요청 충원 현황</h3>
@@ -4881,20 +4861,20 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
     people: (
       <Fragment key="people">
         <section className="panel dash-panel span-7" data-dash-anchor="flow">
-          <div className="section-heading"><div><p className="eyebrow">HEADCOUNT FLOW</p><h2>최근 12개월 입사·퇴사</h2></div><button type="button" onClick={() => onNavigate("reports")}>통계·리포트 →</button></div>
+          <div className="section-heading"><div data-korean-heading><h2>최근 12개월 입사·퇴사</h2></div><button type="button" onClick={() => onNavigate("reports")}>통계·리포트 →</button></div>
           <MonthlyFlowChart months={model.flow} />
         </section>
         <section className="panel dash-panel span-5" data-dash-anchor="headcount">
-          <div className="section-heading"><div><p className="eyebrow">HEADCOUNT</p><h2>조직별 인원</h2></div><button type="button" onClick={() => onNavigate("organization")}>조직관리 →</button></div>
+          <div className="section-heading"><div data-korean-heading><h2>조직별 인원</h2></div><button type="button" onClick={() => onNavigate("organization")}>조직관리 →</button></div>
           <HorizontalBars rows={model.headcount.map((row) => ({ label: row.organization, value: row.count, note: row.leaving ? `퇴사 예정 ${row.leaving}` : undefined }))} />
           {model.unassigned > 0 && <p className="dash-footnote">소속 미지정 {model.unassigned}명은 조직관리에서 배정해 주세요.</p>}
         </section>
         <section className="panel dash-panel span-4" data-dash-anchor="composition">
-          <div className="section-heading"><div><p className="eyebrow">EMPLOYMENT TYPE</p><h2>고용형태 구성</h2></div></div>
+          <div className="section-heading"><div data-korean-heading><h2>고용형태 구성</h2></div></div>
           <CompositionBar segments={model.employmentTypes.map((item) => ({ label: item.type, count: item.count, share: item.share }))} total={model.employeeCount} />
         </section>
         <section className="panel dash-panel span-4" data-dash-anchor="recent">
-          <div className="section-heading"><div><p className="eyebrow">RECENT JOIN</p><h2>최근 입사자</h2></div><button type="button" onClick={() => onNavigate("employees")}>전체 보기 →</button></div>
+          <div className="section-heading"><div data-korean-heading><h2>최근 입사자</h2></div><button type="button" onClick={() => onNavigate("employees")}>전체 보기 →</button></div>
           {model.recentHires.length ? <table className="data-table dashboard-mini-table"><thead><tr><th>직원</th><th>소속·직위</th><th>입사일</th><th>근속</th></tr></thead>
             <tbody>{model.recentHires.map(({ employee, tenure }) => <tr key={employee.id}>
               <td><button type="button" className="name-link" onClick={() => onOpenEmployee(employee.id)}>{employee.name}</button></td><td>{employee.department} · {employee.position}</td><td>{employee.joinDate}</td><td>{tenure}</td>
@@ -4904,7 +4884,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
     ),
     payroll: (
       <section className="panel dash-panel dash-payroll span-4" key="payroll" data-dash-anchor="payroll">
-        <div className="section-heading"><div><p className="eyebrow">PAYROLL</p><h2>급여 진행 상태</h2></div><button type="button" onClick={() => onNavigate("payroll")}>급여관리 →</button></div>
+        <div className="section-heading"><div data-korean-heading><h2>급여 진행 상태</h2></div><button type="button" onClick={() => onNavigate("payroll")}>급여관리 →</button></div>
         {model.payroll.latest ? <>
           <div className="dash-payroll-head"><strong>{model.payroll.latest.period}</strong><span>대상 {model.payroll.latest.employee_count ?? 0}명 · 실지급 {koreanWon(model.payroll.latest.net_pay ?? 0)}</span></div>
           <PayrollStepper status={model.payroll.latest.status} steps={model.payroll.steps} />
@@ -4917,8 +4897,8 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
   return (
     <div className="page-wrap dashboard-page">
       <section className="welcome-row dash-welcome">
-        <div>
-          <p className="eyebrow">XDNODE PEOPLE DATA</p>
+        <div data-korean-heading>
+
           <h1>인사 현황 한눈에 보기</h1>
           <p className="dash-basis">기준일 {today} · 재직자 {model.employeeCount}명 · 처리 대기 {model.inbox.length}건{criticalCount ? ` (긴급 ${criticalCount}건)` : ""}</p>
         </div>
@@ -4958,9 +4938,9 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
           if (reviewConfirm === "CONVERT") onMarkRegular(employee, nextStart, record); else onEndContract(employee, endDate, record);
           setReviewTarget(null);
         };
-        return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setReviewTarget(null); }}>
-          <form className="employee-modal first-term-review-modal" onMouseDown={(event) => event.stopPropagation()} onSubmit={(event) => event.preventDefault()}>
-            <div className="modal-header"><div><p>FIRST TERM REVIEW</p><h2>{employee.name} 첫 계약 근무평가</h2></div><button type="button" aria-label="닫기" onClick={() => setReviewTarget(null)}>×</button></div>
+        return <HrModalBackdrop className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setReviewTarget(null); }}>
+          <form className="employee-modal first-term-review-modal"  onSubmit={(event) => event.preventDefault()}>
+            <div className="modal-header"><div data-korean-heading><h2>{employee.name} 첫 계약 근무평가</h2></div><button type="button" aria-label="닫기" onClick={() => setReviewTarget(null)}>×</button></div>
             <p className="optional-form-notice">계약서 제2조의 기준으로 평가하고 결정을 기록합니다. 결정과 평가는 인사이력에 남고, 「계약 만료 종료」를 고르면 퇴직 절차 팝업이 이어서 열립니다.</p>
             <div className="contract-preview"><div><span>입사일</span><strong>{employee.joinDate}</strong></div><div><span>계약 만료일</span><strong>{endDate} <em className="renewal-dday">{dDay(endDate)}</em></strong></div><div><span>첫 계약 지급률</span><strong>{employee.firstTermPayPercent ?? 100}%</strong></div><div><span>전환 계약 시작일</span><strong>{nextStart}</strong></div></div>
             <div className="form-grid">
@@ -4974,7 +4954,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
               ? <div className="modal-actions dash-confirm-strip"><span>{employee.name}님을 「{decisionLabel(reviewConfirm)}」으로 기록합니다. 평가 내용은 인사이력에 남습니다.</span><button type="button" onClick={() => setReviewConfirm(null)}>돌아가기</button><button type="button" className={reviewConfirm === "END" ? "danger-confirm" : "primary-button"} onClick={apply}>{decisionLabel(reviewConfirm)} 확정</button></div>
               : <div className="modal-actions"><button type="button" onClick={() => setReviewTarget(null)}>취소</button><button type="button" className="danger-confirm" onClick={() => request("END")}>계약 만료 종료</button><button type="button" className="primary-button" onClick={() => request("CONVERT")}>정규직 전환</button></div>}
           </form>
-        </div>;
+        </HrModalBackdrop>;
       })()}
     </div>
   );

@@ -100,7 +100,7 @@ export default function FinanceCloseWorkspace() {
 
   return <div className="finance-close-workspace">
     <section className="finance-close-hero">
-      <div><p>MONTH-END CONTROL</p><h1>월마감 통제센터</h1><span>자동 원장 검증과 수동 검토, 증빙, 승인 이력을 하나의 월마감 실행으로 잠급니다.</span></div>
+      <div data-korean-heading><h1>월마감 통제센터</h1><span>자동 원장 검증과 수동 검토, 증빙, 승인 이력을 하나의 월마감 실행으로 잠급니다.</span></div>
       <label>마감월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => { setPeriod(event.target.value); void load(event.target.value); }} /></label>
     </section>
 
@@ -126,24 +126,24 @@ export default function FinanceCloseWorkspace() {
 
     <section className="finance-close-grid">
       <article className="panel finance-close-controls">
-        <header><div><p>AUTOMATED CONTROLS</p><h2>원장 자동 검증</h2></div><span>{data?.asOf} 기준</span></header>
+        <header><div data-korean-heading><h2>원장 자동 검증</h2></div><span>{data?.asOf} 기준</span></header>
         <div>{(data?.controls ?? []).map((control, index) => <div className={`finance-close-control ${control.status.toLowerCase()}`} key={control.key}><span>{String(index + 1).padStart(2, "0")}</span><p><strong>{control.title}</strong><small>{control.message}</small></p><em>{controlStatusLabel[control.status]}</em></div>)}</div>
       </article>
 
       <article className="panel finance-close-tasks">
-        <header><div><p>MANUAL REVIEW</p><h2>마감 업무</h2></div><span>{data?.tasks.length ?? 0}개 통제</span></header>
+        <header><div data-korean-heading><h2>마감 업무</h2></div><span>{data?.tasks.length ?? 0}개 통제</span></header>
         <div>{(data?.tasks ?? []).map((task) => { const automated = automatedCategories.has(task.category); return <div key={task.id}><span className={["COMPLETED", "APPROVED"].includes(task.status) ? "done" : ""}>{["COMPLETED", "APPROVED"].includes(task.status) ? "✓" : "·"}</span><p><strong>{task.title}</strong><small>{task.category}{automated ? " · 원장 자동판정" : " · 담당자 확인"}</small></p><select disabled={automated || data?.run.status !== "OPEN" || working} value={task.status === "APPROVED" ? "COMPLETED" : task.status} onChange={(event) => void updateTask(task, event.target.value)}><option value="OPEN">미착수</option><option value="IN_PROGRESS">확인 필요</option><option value="COMPLETED">완료</option></select></div>; })}</div>
       </article>
     </section>
 
     <section className="finance-close-bottom-grid">
       <article className="panel finance-close-evidence">
-        <header><div><p>CLOSE PACK</p><h2>마감 증빙</h2><span>시산표·은행 잔액·세금·급여·검토표를 한 묶음으로 보관합니다.</span></div><label className={working || data?.run.status !== "OPEN" ? "disabled" : ""}>+ 파일 첨부<input disabled={working || data?.run.status !== "OPEN"} type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(event) => void uploadEvidence(event)} /></label></header>
+        <header><div data-korean-heading><h2>마감 증빙</h2><span>시산표·은행 잔액·세금·급여·검토표를 한 묶음으로 보관합니다.</span></div><label className={working || data?.run.status !== "OPEN" ? "disabled" : ""}>+ 파일 첨부<input disabled={working || data?.run.status !== "OPEN"} type="file" accept=".pdf,.docx,.xlsx,.png,.jpg,.jpeg,.txt,.csv" onChange={(event) => void uploadEvidence(event)} /></label></header>
         <div>{(data?.documents ?? []).map((document) => <a href={document.downloadUrl} key={document.id}><span>{document.fileName.split(".").pop()?.toUpperCase() || "FILE"}</span><p><strong>{document.fileName}</strong><small>v{document.version} · {document.uploadedBy || "담당자"} · {new Date(document.createdAt).toLocaleString("ko-KR")}</small></p><em>다운로드</em></a>)}{!data?.documents.length && <p className="finance-close-empty">마감 근거 파일을 첨부하면 삭제 대신 이력과 버전을 보존합니다.</p>}</div>
       </article>
 
-      <article className="panel finance-close-action">
-        <p>PERIOD LOCK</p><h2>{period} 마감</h2>
+      <article data-korean-heading className="panel finance-close-action">
+        <h2>{period} 마감</h2>
         <div><span>기간 종료일</span><strong>{data?.run.periodEnd}</strong></div><div><span>현재 상태</span><strong>{runStatusLabel[data?.run.status ?? "OPEN"]}</strong></div>
         {data?.run.status === "OPEN" && <button type="button" disabled={!data.summary.canSubmit || working} onClick={() => void mutate({ action: "SUBMIT_CLOSE" }, "월마감 잠금 결재를 제출했습니다.")}>월마감 잠금 결재 제출</button>}
         {data?.run.status === "SUBMITTED" && <button type="button" disabled>전자결재 진행 중</button>}

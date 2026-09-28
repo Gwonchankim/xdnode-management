@@ -97,13 +97,12 @@ const noTreasuryWarnings: TreasuryOverviewSnapshot["warnings"] = [];
 const modules: Array<{
   key: ModuleKey;
   label: string;
-  eyebrow: string;
   glyph: string;
 }> = [
-  { key: "finance", label: "재무회계", eyebrow: "Finance", glyph: "₩" },
-  { key: "sales", label: "영업", eyebrow: "Sales", glyph: "↗" },
-  { key: "hr", label: "HR", eyebrow: "People", glyph: "◎" },
-  { key: "compensation", label: "임금 계산", eyebrow: "Compensation", glyph: "◫" },
+  { key: "finance", label: "재무회계", glyph: "₩" },
+  { key: "sales", label: "영업", glyph: "↗" },
+  { key: "hr", label: "인사관리", glyph: "◎" },
+  { key: "compensation", label: "임금 계산", glyph: "◫" },
 ];
 
 const erpAlerts = [
@@ -402,7 +401,7 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
           <span className="brand-mark">XD</span>
           <div>
             <strong>XD NODE</strong>
-            <small>OPERATIONS</small>
+
           </div>
         </div>
 
@@ -418,7 +417,7 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
               <span className="module-glyph">{module.glyph}</span>
               <span>
                 <strong>{module.label}</strong>
-                <small>{module.eyebrow}</small>
+
               </span>
             </button>
           ))}
@@ -454,7 +453,7 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
           <button type="button" className="erp-alarm-backdrop" aria-label="알람 닫기" onClick={() => setAlertsOpen(false)} />
           <aside className="erp-alarm-panel" role="dialog" aria-modal="true" aria-label="확인할 알람">
             <div className="erp-alarm-panel-header">
-              <div><p>OPERATIONS &amp; NOTIFICATIONS</p><h2>통합 업무함</h2></div>
+              <div data-korean-heading><h2>통합 업무함</h2></div>
               <button type="button" aria-label="닫기" onClick={() => setAlertsOpen(false)}>×</button>
             </div>
             <div className="erp-alarm-summary"><strong>처리할 업무 {activeTasks.length}건 · 일반 알림 {visibleAlerts.length}건</strong><span>실제 데이터에서 생성된 업무는 처리상태와 감사기록이 서버에 저장됩니다.</span><button type="button" onClick={() => { setAlertsOpen(false); setWorkbenchOpen(true); }}>오늘 업무 전체 보기 →</button></div>
@@ -638,8 +637,8 @@ export default function Home() {
         </header>}
 
         <section className={`module-hero ${active}`}>
-          <div>
-            <p className="eyebrow">{modules.find((item) => item.key === active)?.eyebrow} workspace</p>
+          <div data-korean-heading>
+
             <h1>{copy.title}</h1>
             <p>{copy.desc}</p>
           </div>
@@ -1013,7 +1012,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
       <aside className="finance-side-navigation" aria-label="재무회계 메뉴">
         <div className="finance-side-brand">
           <span>₩</span>
-          <div><strong>XDNODE FINANCE</strong><small>FINANCE &amp; ACCOUNTING</small></div>
+          <div><strong>재무회계</strong></div>
         </div>
         <nav>
           {financeNavigation.map((group) => (
@@ -1037,7 +1036,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
       {normalizedSearch && (
         <section className="panel finance-search-results" aria-live="polite">
-          <div className="finance-search-heading"><div><p>SEARCH RESULTS</p><h2>‘{search.trim()}’ 검색 결과</h2></div><span>{financeSearchResults.length}건 표시</span></div>
+          <div className="finance-search-heading"><div data-korean-heading><h2>‘{search.trim()}’ 검색 결과</h2></div><span>{financeSearchResults.length}건 표시</span></div>
           {financeSearchResults.length ? <div className="finance-search-list">{financeSearchResults.map((result) => (
             <button type="button" key={result.key} onClick={() => selectWorkspace(result.view)}><span>⌕</span><p><strong>{result.title}</strong><small>{result.detail}</small></p><em>관련 화면 →</em></button>
           ))}</div> : <div className="finance-empty">일치하는 계좌·거래처·계정과목이 없습니다.</div>}
@@ -1047,7 +1046,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
       {workspace === "overview" && (
         <>
           <div className="finance-scope-note finance-scope-expanded">
-            <span>FINANCE CONTROL ROOM</span>
+
             <div className="finance-year-switch" aria-label="재무 기준연도">
               {(["2024", "2025", "2026"] as const).map((year) => <button type="button" key={year} className={overviewYear === year ? "active" : ""} onClick={() => setOverviewYear(year)}>{year}</button>)}
             </div>
@@ -1068,7 +1067,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
           <section className="finance-alert-section" aria-label="재무 알림">
             <div className="finance-section-heading">
-              <div><p>FINANCIAL ALERTS</p><h2>지금 확인할 재무 알림</h2></div>
+              <div data-korean-heading><h2>지금 확인할 재무 알림</h2></div>
               <div className="finance-alert-heading-actions">
                 <button type="button" disabled={financeOverview.loading} onClick={() => {
                   setFinanceOverview((current) => ({ ...current, loading: true, operationsError: "", treasuryError: "" }));
@@ -1099,7 +1098,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
           <section className="content-grid finance-insight-grid">
             <article className="panel finance-chart-panel">
               <div className="finance-chart-head">
-                <div><p>FINANCIAL TREND</p><h2>{overviewYear === "2026" ? (metric === "cash" ? "자금 잔액 변화" : "세금계산서 매출 공급가액") : (historicalMetric === "cashBalance" ? "보통예금 추이" : historicalMetric === "revenue" ? "회계상 매출 추이" : "당기순이익 추이")}</h2></div>
+                <div data-korean-heading><h2>{overviewYear === "2026" ? (metric === "cash" ? "자금 잔액 변화" : "세금계산서 매출 공급가액") : (historicalMetric === "cashBalance" ? "보통예금 추이" : historicalMetric === "revenue" ? "회계상 매출 추이" : "당기순이익 추이")}</h2></div>
                 <div className="finance-chart-controls">
                   {overviewYear === "2026" ? (
                     <>
@@ -1117,7 +1116,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
             </article>
 
             <article className="panel ai-daily-brief">
-              <div className="ai-brief-head"><span>AI</span><div><p>DAILY CASH BRIEF</p><h2>오늘의 자금일보</h2></div><em>원천 {financeCurrentData.asOf}</em></div>
+              <div className="ai-brief-head"><span>AI</span><div data-korean-heading><h2>오늘의 자금일보</h2></div><em>원천 {financeCurrentData.asOf}</em></div>
               <div className="ai-brief-hero"><small>{dailyBriefMeta}</small><strong>{dailyBriefRisk}</strong><p>{dailyBriefDetail}</p></div>
               <ol className="ai-brief-list">{dailyBriefItems.map((item, index) => <li key={`${index}-${item}`}><span>{index + 1}</span><p>{item}</p></li>)}</ol>
               <div className="ai-priority"><div><span>오늘의 우선순위</span><strong>{dailyBriefPriority}</strong></div><button type="button" onClick={() => setWorkspace(priorityTask ? financeDestinationView(priorityTask.destination) : treasuryWarnings[0] ? financeDestinationView(`finance:${treasuryWarnings[0].destination}`) : "daily-report")}>관련 화면 →</button></div>
@@ -1126,7 +1125,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
           <section className="content-grid finance-assistant-grid">
             <article className="panel finance-assistant-panel">
-              <div className="assistant-heading"><div className="assistant-mark">AI</div><div><p>FINANCE DATA ASSISTANT</p><h2>재무 데이터 어시스턴트</h2><span>2024·2025 이카운트 결산자료와 2026 Clobe 스냅샷을 구분해 분석합니다.</span></div></div>
+              <div className="assistant-heading"><div className="assistant-mark">AI</div><div data-korean-heading><h2>재무 데이터 어시스턴트</h2><span>2024·2025 이카운트 결산자료와 2026 Clobe 스냅샷을 구분해 분석합니다.</span></div></div>
               <div className="assistant-trust-line"><strong className={assistantMeta.evidenceStatus === "VERIFIED" ? "verified" : "review"}>{assistantMeta.evidenceLabel}</strong><span>기준일 {assistantMeta.basisAsOf}</span><em>{assistantMeta.provider === "AI" ? "AI 설명" : "기본 원장 분석"}</em></div>
               <div className={assistantStatus === "error" ? "assistant-answer error" : "assistant-answer"}>{assistantAnswer}</div>
               <div className="assistant-limitations">{assistantMeta.limitations.slice(0, 3).map((item) => <p key={item}><span>i</span>{item}</p>)}</div>
@@ -1136,7 +1135,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
             </article>
 
             <article className="panel finance-source-panel">
-              <PanelHeader eyebrow="Answer lineage" title="이번 답변의 근거" action={`${assistantMeta.sources.length}개 원천`} />
+              <PanelHeader  title="이번 답변의 근거" action={`${assistantMeta.sources.length}개 원천`} />
               <div className="finance-source-list">
                 {assistantMeta.sources.map((source) => <button type="button" key={source.id} onClick={() => setWorkspace(source.destination)}>
                   <span className="source-year">{source.id.includes("2024") ? "24" : source.id.includes("2025") ? "25" : source.id.includes("close") ? "마" : "26"}</span>
@@ -1144,7 +1143,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
                   <em className={source.status === "CONFIRMED" ? "status-pass" : "status-watch"}>{source.status === "CONFIRMED" ? "확인" : "검토"}</em>
                 </button>)}
               </div>
-              <div className="assistant-history-heading"><p>RECENT ANSWERS</p><strong>답변 감사이력</strong><span>수정·삭제 없이 추가 기록</span></div>
+              <div className="assistant-history-heading"><strong>답변 감사이력</strong><span>수정·삭제 없이 추가 기록</span></div>
               <div className="assistant-history-list">
                 {assistantHistoryError && <p className="assistant-history-error">{assistantHistoryError}</p>}
                 {!assistantHistoryError && assistantHistory.length === 0 && <p className="assistant-history-empty">저장된 답변이 없습니다.</p>}
@@ -1198,7 +1197,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
       {workspace === "commercial" && (
         <>
           <div className="finance-subpage-heading">
-            <div><p>SALES & PURCHASE ANALYTICS</p><h2>매입·매출 분석</h2><span>세금계산서 공급가액 기준으로 수정·취소분을 순액 반영합니다.</span></div>
+            <div data-korean-heading><h2>매입·매출 분석</h2><span>세금계산서 공급가액 기준으로 수정·취소분을 순액 반영합니다.</span></div>
             <span className="finance-data-badge">Clobe · {financeCurrentData.asOf} 기준</span>
           </div>
           <section className="panel commercial-period-panel">
@@ -1224,7 +1223,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
           </section>
           <section className="content-grid commercial-ranking-grid">
             <article className="panel commercial-ranking-panel">
-              <PanelHeader eyebrow="Sales ranking" title="매출 거래처 순위" action={`${commercialSalesRows.length}곳`} />
+              <PanelHeader  title="매출 거래처 순위" action={`${commercialSalesRows.length}곳`} />
               <div className="commercial-ranking-list">
                 {commercialSalesRows.slice(0, 15).map((row, index) => <div key={row.partner}>
                   <span>{index + 1}</span>
@@ -1235,7 +1234,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
               </div>
             </article>
             <article className="panel commercial-ranking-panel purchase">
-              <PanelHeader eyebrow="Purchase ranking" title="매입 거래처 순위" action={`${commercialPurchaseRows.length}곳`} />
+              <PanelHeader  title="매입 거래처 순위" action={`${commercialPurchaseRows.length}곳`} />
               <div className="commercial-ranking-list">
                 {commercialPurchaseRows.slice(0, 15).map((row, index) => <div key={row.partner}>
                   <span>{index + 1}</span>
@@ -1248,13 +1247,13 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
           </section>
           <section className="content-grid commercial-forecast-grid">
             <article className="panel finance-chart-panel">
-              <div className="finance-chart-head"><div><p>MONTHLY SALES TREND</p><h2>2026년 월간 매출 추이</h2></div><span className="finance-data-badge">8월 13일까지</span></div>
+              <div className="finance-chart-head"><div data-korean-heading><h2>2026년 월간 매출 추이</h2></div><span className="finance-data-badge">8월 13일까지</span></div>
               <div className="finance-chart-summary"><div><strong>{formatCompactWon(currentSalesYtd)}</strong><span>현재까지 누적 매출액</span></div><em className="positive">2025 연간 대비 {((currentSalesYtd / priorYearSales - 1) * 100).toFixed(1)}%</em></div>
               <FinanceBars data={monthlySalesChart} currentLabel="8월" />
               <div className="chart-coverage-note"><span>i</span>8월은 13일까지의 부분 실적이며 공급가액 기준입니다.</div>
             </article>
-            <article className="panel annual-forecast-panel">
-              <p>YEAR-END SCENARIOS</p>
+            <article data-korean-heading className="panel annual-forecast-panel">
+
               <h2>연말 매출 전망 · 기준</h2>
               <strong>{formatCompactWon(baseSalesForecast.projectedTotal)}</strong>
               <div className="forecast-meter"><i style={{ width: `${Math.min(100, (currentSalesYtd / baseSalesForecast.projectedTotal) * 100)}%` }} /></div>
@@ -1278,7 +1277,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
       {workspace === "statements" && (
         <>
-          <div className="finance-subpage-heading"><div><p>FINANCIAL STATEMENTS</p><h2>손익·재무상태</h2><span>결산후 합계잔액시산표 기준입니다.</span></div><div className="segment-control"><button className={statementYear === "2024" ? "active" : ""} onClick={() => setStatementYear("2024")}>2024</button><button className={statementYear === "2025" ? "active" : ""} onClick={() => setStatementYear("2025")}>2025</button></div></div>
+          <div className="finance-subpage-heading"><div data-korean-heading><h2>손익·재무상태</h2><span>결산후 합계잔액시산표 기준입니다.</span></div><div className="segment-control"><button className={statementYear === "2024" ? "active" : ""} onClick={() => setStatementYear("2024")}>2024</button><button className={statementYear === "2025" ? "active" : ""} onClick={() => setStatementYear("2025")}>2025</button></div></div>
           <section className="kpi-grid">
             <Metric label="자산총계" value={formatCompactWon(selectedHistorical.assets)} delta="차대변 균형 확인" trend="neutral" hint={`${statementYear}년 기말`} />
             <Metric label="매출" value={formatCompactWon(selectedHistorical.revenue)} delta={statementYear === "2025" ? "전년 대비 +95.8%" : "상품매출"} trend={statementYear === "2025" ? "up" : "neutral"} hint="회계상 매출" />
@@ -1288,7 +1287,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
           {statementYear === "2025" && (
             <section className="panel finance-monthly-panel">
-              <PanelHeader eyebrow="Monthly performance" title="2025년 월별 손익·자금 흐름" action="12개월" />
+              <PanelHeader  title="2025년 월별 손익·자금 흐름" action="12개월" />
               <div className="finance-wide-table monthly-performance-table">
                 <div className="finance-table-row header"><span>월</span><span>매출</span><span>매출원가</span><span>당기순이익</span><span>현금 유입</span><span>현금 유출</span><span>기말 보통예금</span></div>
                 {financeHistoricalData.monthly2025.map((row) => <div className="finance-table-row" key={row.month}><strong>{row.month}월</strong><span>{formatCompactWon(row.revenue)}</span><span>{formatCompactWon(row.cogs)}</span><span className={row.netIncome < 0 ? "negative-number" : ""}>{formatCompactWon(row.netIncome)}</span><span>{formatCompactWon(row.cashIn)}</span><span>{formatCompactWon(row.cashOut)}</span><b>{formatCompactWon(row.cashBalance)}</b></div>)}
@@ -1297,7 +1296,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
           )}
 
           <section className="panel finance-trial-balance-panel">
-            <PanelHeader eyebrow="Trial balance" title={`${statementYear}년 합계잔액시산표`} action={`${trialBalance.length}개 계정`} />
+            <PanelHeader  title={`${statementYear}년 합계잔액시산표`} action={`${trialBalance.length}개 계정`} />
             <div className="finance-wide-table trial-balance-table">
               <div className="finance-table-row header"><span>계정코드</span><span>계정명</span><span>차변금액</span><span>대변금액</span><span>기말 차변</span><span>기말 대변</span></div>
               {trialBalance.map((row) => <div className="finance-table-row" key={`${row.code}-${row.name}`}><span>{row.code || "-"}</span><strong>{row.name}</strong><span>{formatWon(row.debit)}</span><span>{formatWon(row.credit)}</span><b>{row.endingDebit ? formatWon(row.endingDebit) : "-"}</b><b>{row.endingCredit ? formatWon(row.endingCredit) : "-"}</b></div>)}
@@ -1309,7 +1308,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
       {workspace === "liquidity" && (
         <>
-          <div className="finance-subpage-heading"><div><p>LIQUIDITY & WORKING CAPITAL</p><h2>자금·채권채무</h2><span>2025년 자금현황표와 2026년 은행 스냅샷을 함께 봅니다.</span></div><span className="finance-data-badge">2025 결산 · 2026 최신</span></div>
+          <div className="finance-subpage-heading"><div data-korean-heading><h2>자금·채권채무</h2><span>2025년 자금현황표와 2026년 은행 스냅샷을 함께 봅니다.</span></div><span className="finance-data-badge">2025 결산 · 2026 최신</span></div>
           <section className="kpi-grid">
             <Metric label="2025 기말 보통예금" value={formatCompactWon(financeHistoricalData.years["2025"].cash)} delta="전년 대비 +65.8%" trend="up" hint="자금현황표 일치" />
             <Metric label="2025 외상매출금" value={formatCompactWon(financeHistoricalData.years["2025"].ar)} delta="전년 대비 -22.3%" trend="up" hint="회수대상 잔액" />
@@ -1318,26 +1317,26 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
           </section>
           <section className="content-grid finance-liquidity-grid">
             <article className="panel finance-chart-panel">
-              <div className="finance-chart-head"><div><p>2025 MONTHLY BALANCE</p><h2>{liquidityMetric === "cash" ? "보통예금" : liquidityMetric === "ar" ? "외상매출금" : "외상매입금"} 월말 잔액</h2></div><div className="segment-control"><button className={liquidityMetric === "cash" ? "active" : ""} onClick={() => setLiquidityMetric("cash")}>자금</button><button className={liquidityMetric === "ar" ? "active" : ""} onClick={() => setLiquidityMetric("ar")}>채권</button><button className={liquidityMetric === "ap" ? "active" : ""} onClick={() => setLiquidityMetric("ap")}>채무</button></div></div>
+              <div className="finance-chart-head"><div data-korean-heading><h2>{liquidityMetric === "cash" ? "보통예금" : liquidityMetric === "ar" ? "외상매출금" : "외상매입금"} 월말 잔액</h2></div><div className="segment-control"><button className={liquidityMetric === "cash" ? "active" : ""} onClick={() => setLiquidityMetric("cash")}>자금</button><button className={liquidityMetric === "ar" ? "active" : ""} onClick={() => setLiquidityMetric("ar")}>채권</button><button className={liquidityMetric === "ap" ? "active" : ""} onClick={() => setLiquidityMetric("ap")}>채무</button></div></div>
               <div className="finance-chart-summary"><div><strong>{formatCompactWon(liquidityChart.at(-1)?.value ?? 0)}</strong><span>2025년 기말 잔액</span></div></div>
               <FinanceBars data={liquidityChart} />
               <div className="chart-coverage-note"><span>i</span>월말 잔액은 계정별원장의 기초잔액과 월별 차대변을 누적해 산출했습니다.</div>
             </article>
             <article className="panel exposure-panel">
-              <div className="finance-chart-head"><div><p>CONCENTRATION</p><h2>거래처별 잔액 집중도</h2></div><div className="segment-control"><button className={exposureType === "receivables" ? "active" : ""} onClick={() => setExposureType("receivables")}>받을 돈</button><button className={exposureType === "payables" ? "active" : ""} onClick={() => setExposureType("payables")}>줄 돈</button></div></div>
+              <div className="finance-chart-head"><div data-korean-heading><h2>거래처별 잔액 집중도</h2></div><div className="segment-control"><button className={exposureType === "receivables" ? "active" : ""} onClick={() => setExposureType("receivables")}>받을 돈</button><button className={exposureType === "payables" ? "active" : ""} onClick={() => setExposureType("payables")}>줄 돈</button></div></div>
               <div className="exposure-list">{exposureRows.map((row, index) => <div key={row.name}><span>{index + 1}</span><p><strong>{row.name}</strong><small>기초 {formatCompactWon(row.opening)}</small></p><b>{formatCompactWon(row.ending)}</b></div>)}</div>
             </article>
           </section>
           <section className="panel finance-exception-panel">
-            <PanelHeader eyebrow="Balance exceptions" title={`${exposureType === "receivables" ? "채권" : "채무"} 음수잔액 확인`} action={`${exposureExceptions.length}건`} />
+            <PanelHeader  title={`${exposureType === "receivables" ? "채권" : "채무"} 음수잔액 확인`} action={`${exposureExceptions.length}건`} />
             <div className="finance-wide-table exception-table">
               <div className="finance-table-row header"><span>거래처</span><span>기초잔액</span><span>증가</span><span>감소</span><span>기말잔액</span><span>조치</span></div>
               {exposureExceptions.map((row) => <div className="finance-table-row" key={row.name}><strong>{row.name}</strong><span>{formatWon(row.opening)}</span><span>{formatWon(row.increase)}</span><span>{formatWon(row.decrease)}</span><b className="negative-number">{formatWon(row.ending)}</b><em>선수·선급/오분류 확인</em></div>)}
             </div>
           </section>
           <section className="content-grid account-risk-grid">
-            <article className={`panel account-risk-hero ${accountRiskLevel === "높음" ? "high" : accountRiskLevel === "주의" ? "watch" : "stable"}`}>
-              <p>ACCOUNT LIQUIDITY SIGNAL</p>
+            <article data-korean-heading className={`panel account-risk-hero ${accountRiskLevel === "높음" ? "high" : accountRiskLevel === "주의" ? "watch" : "stable"}`}>
+
               <div className="account-risk-score"><strong>{accountRiskModel.score}</strong><span>/ 100</span></div>
               <h2>계좌금액 위험도 · {accountRiskLevel}</h2>
               <p>은행성 자산·대출·외화 집중도와 실제 잔액 관측치를 조합한 설명 가능한 운영 신호입니다.</p>
@@ -1350,7 +1349,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
               <small>{accountRiskModel.policyStatus} · {accountRiskModel.limitations[0]} {accountRiskModel.limitations[1]}</small>
             </article>
             <article className="panel account-risk-detail">
-              <PanelHeader eyebrow={`Risk drivers · ${accountRiskModel.version}`} title="위험 신호와 배점" action={`${financeCurrentData.asOf} 기준`} />
+              <PanelHeader  title="위험 신호와 배점" action={`${financeCurrentData.asOf} 기준`} />
               <div className="account-risk-signals">
                 {accountRiskModel.drivers.map((driver, index) => (
                   <div className={driver.status} key={driver.key}>
@@ -1362,7 +1361,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
             </article>
           </section>
           <section className="panel account-register-panel">
-            <PanelHeader eyebrow="Account register" title="계좌별 위험 신호" action={`${financeCurrentData.accounts.length}개 계좌`} />
+            <PanelHeader  title="계좌별 위험 신호" action={`${financeCurrentData.accounts.length}개 계좌`} />
             <div className="account-register-list">
               {financeCurrentData.accounts.map((account) => {
                 const isConcentratedFx = account.type === "FX" && account.krwBalance > bankAssets * .5;
@@ -1390,7 +1389,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
 
       {workspace === "quality" && (
         <>
-          <div className="finance-subpage-heading"><div><p>DATA QUALITY CENTER</p><h2>원장·데이터 점검</h2><span>가져오기 자료의 출처·대사·예외 항목을 한곳에서 확인합니다.</span></div><span className="finance-data-badge warning">확인 필요 2건</span></div>
+          <div className="finance-subpage-heading"><div data-korean-heading><h2>원장·데이터 점검</h2><span>가져오기 자료의 출처·대사·예외 항목을 한곳에서 확인합니다.</span></div><span className="finance-data-badge warning">확인 필요 2건</span></div>
           <section className="finance-quality-cards">
             <article><span>2024</span><strong>결산 기준선</strong><p>재무상태표와 시산표 자산총계가 일치합니다.</p><em className="status-pass">PASS</em></article>
             <article><span>2025</span><strong>상세 이관</strong><p>원장 28개 구간과 시산표 27개 계정을 대사했습니다.</p><em className="status-pass">PASS</em></article>
@@ -1399,12 +1398,12 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
           </section>
           <section className="content-grid finance-quality-grid">
             <article className="panel close-panel finance-check-panel">
-              <PanelHeader eyebrow="Reconciliation" title="반영 상태" action="5 / 7 완료" />
+              <PanelHeader  title="반영 상태" action="5 / 7 완료" />
               <div className="progress-ring"><span>71<small>%</small></span></div>
               <div className="task-list">{financeChecks.map((task) => <div className="task-row" key={task.label}><span className={task.done ? "check done" : "check"}>{task.done ? "✓" : ""}</span><div><strong>{task.label}</strong><small>{task.owner}</small></div></div>)}</div>
             </article>
             <article className="panel finance-import-panel">
-              <PanelHeader eyebrow="Source registry" title="원천자료 등록부" action="8개 파일" />
+              <PanelHeader  title="원천자료 등록부" action="8개 파일" />
               <div className="source-registry">
                 {[
                   ["2024", "재무상태표 · 합계잔액시산표", "결산후"],
@@ -1417,7 +1416,7 @@ function FinanceDashboard({ search, requestedWorkspace, workspaceRequestKey, req
             </article>
           </section>
           <section className="panel account-mapping-panel">
-            <PanelHeader eyebrow="Account mapping" title="이카운트 → 현재 계정명 매핑" action="8개 규칙" />
+            <PanelHeader  title="이카운트 → 현재 계정명 매핑" action="8개 규칙" />
             <div className="finance-wide-table mapping-table">
               <div className="finance-table-row header"><span>이카운트 계정명</span><span>현재 계정명</span><span>현재 코드</span><span>상태</span></div>
               {[
@@ -1457,7 +1456,7 @@ function SalesDashboard(props: {
 
       <section className="content-grid sales-top-grid">
         <article className="panel incentive-lab">
-          <PanelHeader eyebrow="Incentive lab" title="인센티브 미리 계산" action="규정 보기" />
+          <PanelHeader  title="인센티브 미리 계산" action="규정 보기" />
           <div className="calc-layout">
             <div className="calc-form">
               <label>매출가<input type="number" value={props.salePrice} onChange={(event) => props.onSalePrice(Number(event.target.value))} /></label>
@@ -1475,7 +1474,7 @@ function SalesDashboard(props: {
         </article>
 
         <article className="panel rules-panel">
-          <PanelHeader eyebrow="Rule set · v1.0" title="현재 적용 규칙" action="편집" />
+          <PanelHeader  title="현재 적용 규칙" action="편집" />
           <div className="rule-item"><span>01</span><div><strong>마진율 5% 초과</strong><small>5% 이하는 지급 대상에서 제외</small></div></div>
           <div className="rule-item"><span>02</span><div><strong>인바운드 제외</strong><small>웹·전화 문의 유입 건</small></div></div>
           <div className="rule-item"><span>03</span><div><strong>단독 RAM 제외</strong><small>서버 건은 RAM 원가 분리 조정</small></div></div>
@@ -1484,7 +1483,7 @@ function SalesDashboard(props: {
       </section>
 
       <section className="panel pipeline-panel">
-        <PanelHeader eyebrow="Pipeline" title="진행 중 영업 건" action="파이프라인 전체" />
+        <PanelHeader  title="진행 중 영업 건" action="파이프라인 전체" />
         <div className="table-head deal-row"><span>거래처</span><span>담당자</span><span>단계</span><span>예상 매출</span><span>예정일</span><span /></div>
         {filteredDeals.map((deal) => (
           <div className="deal-row" key={deal.company}>
@@ -1494,7 +1493,7 @@ function SalesDashboard(props: {
       </section>
 
       <section className="panel incentive-table">
-        <PanelHeader eyebrow="July payout" title="7월 영업 인센티브 검토" action="급여로 보내기" />
+        <PanelHeader  title="7월 영업 인센티브 검토" action="급여로 보내기" />
         <div className="table-head incentive-row"><span>영업 담당</span><span>확정 매출</span><span>마진율</span><span>지급 예정액</span><span>상태</span></div>
         {incentiveRows.map((row) => (
           <div className="incentive-row" key={row.rep}><strong>{row.rep}</strong><span>{row.sales}</span><span>{row.margin}</span><b>{row.incentive}</b><em className={`status ${row.status}`}>{row.status}</em></div>
@@ -1520,7 +1519,7 @@ function HrDashboard({ search }: { search: string }) {
 
       <section className="content-grid hr-top-grid">
         <article className="panel attendance-panel">
-          <PanelHeader eyebrow="Today" title="오늘의 근무 현황" action="근태 전체" />
+          <PanelHeader  title="오늘의 근무 현황" action="근태 전체" />
           <div className="attendance-visual">
             <div className="donut"><span><b>21</b><small>출근</small></span></div>
             <div className="legend-list"><p><i className="mint" />정상 출근 <b>18</b></p><p><i className="blue" />재택근무 <b>2</b></p><p><i className="amber" />휴가 <b>1</b></p><p><i className="gray" />외근·출장 <b>3</b></p></div>
@@ -1528,12 +1527,12 @@ function HrDashboard({ search }: { search: string }) {
         </article>
 
         <article className="panel approval-panel">
-          <PanelHeader eyebrow="Approvals" title="결재 대기" action="모두 보기" />
+          <PanelHeader  title="결재 대기" action="모두 보기" />
           <div className="finance-empty">실제 결재 문서는 상단 전자결재 센터에서 권한과 결재선에 따라 표시됩니다.</div>
         </article>
 
         <article className="panel compliance-panel">
-          <PanelHeader eyebrow="Compliance" title="인사 일정" action="캘린더" />
+          <PanelHeader  title="인사 일정" action="캘린더" />
           <div className="compliance-item urgent"><span>12</span><div><strong>4대보험 취득 신고</strong><small>신규 입사자 1명</small></div></div>
           <div className="compliance-item"><span>17</span><div><strong>정하늘 입사</strong><small>계정·장비 준비 80%</small></div></div>
           <div className="compliance-item"><span>28</span><div><strong>법정의무교육 마감</strong><small>미수료 4명</small></div></div>
@@ -1541,7 +1540,7 @@ function HrDashboard({ search }: { search: string }) {
       </section>
 
       <section className="panel people-panel">
-        <PanelHeader eyebrow="People directory" title="구성원" action="조직도 보기" />
+        <PanelHeader  title="구성원" action="조직도 보기" />
         <div className="table-head person-row"><span>구성원</span><span>소속·직무</span><span>상태</span><span>입사일</span><span>연차 잔여</span><span /></div>
         {rows.map((person) => (
           <div className="person-row" key={person.name}>
@@ -1557,6 +1556,6 @@ function Metric({ label, value, delta, trend, hint }: { label: string; value: st
   return <article className="metric-card"><div><span>{label}</span><small>{hint}</small></div><strong>{value}</strong><p className={trend}>{trend === "up" ? "↗" : trend === "down" ? "↘" : "•"} {delta}</p></article>;
 }
 
-function PanelHeader({ eyebrow, title, action }: { eyebrow: string; title: string; action: string }) {
-  return <header className="panel-header"><div><p>{eyebrow}</p><h2>{title}</h2></div><button>{action} <span>→</span></button></header>;
+function PanelHeader({ title, action }: { title: string; action: string }) {
+  return <header className="panel-header"><div data-korean-heading><h2>{title}</h2></div><button>{action} <span>→</span></button></header>;
 }

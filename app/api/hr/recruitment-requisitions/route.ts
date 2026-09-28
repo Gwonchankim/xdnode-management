@@ -1,4 +1,6 @@
 import { env } from "cloudflare:workers";
+import { readOptionalHrRows } from "../../../hr-optional-tables";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 import { createApprovalRequest, willAutoApproveForSelf } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
@@ -20,6 +22,7 @@ type EmployeeRow = { employee_id: string; name: string; department: string; stat
 type CountRow = { requisition_id: string; applicant_count: number; filled_count: number };
 
 async function ensureSchema() {
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_recruitment_requisitions (
       id TEXT PRIMARY KEY NOT NULL, workforce_plan_id TEXT NOT NULL, workforce_plan_line_id TEXT NOT NULL,
@@ -40,12 +43,6 @@ async function ensureSchema() {
       id TEXT PRIMARY KEY NOT NULL, plan_id TEXT NOT NULL, organization_id TEXT NOT NULL,
       approved_headcount INTEGER NOT NULL DEFAULT 0, planned_exits INTEGER NOT NULL DEFAULT 0,
       note TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-      employee_id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT NOT NULL, email TEXT NOT NULL,
-      phone TEXT NOT NULL, address TEXT NOT NULL, department TEXT NOT NULL, manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL, join_date TEXT NOT NULL DEFAULT '', position TEXT NOT NULL,
-      job_title TEXT NOT NULL, status TEXT NOT NULL DEFAULT '재직', history_json TEXT NOT NULL DEFAULT '[]',
-      retirement_json TEXT, updated_at INTEGER NOT NULL)`),
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_organization_records (
       organization_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
     db.prepare("CREATE TABLE IF NOT EXISTS hr_recruiters (employee_id TEXT PRIMARY KEY, created_at INTEGER NOT NULL)"),
@@ -100,11 +97,11 @@ async function state() {
     db.prepare("SELECT id, period, version, title FROM hr_workforce_plans WHERE status = 'APPROVED' ORDER BY period DESC, version DESC LIMIT 1").first<PlanRow>(),
     organizationSnapshot(),
     db.prepare("SELECT * FROM hr_recruitment_requisitions ORDER BY created_at DESC").all<RequisitionRow>(),
-    db.prepare(`SELECT a.requisition_id,
+    readOptionalHrRows<CountRow>(db, ["hr_applicants", "hr_offer_requests"], `SELECT a.requisition_id,
       COUNT(DISTINCT a.id) AS applicant_count,
       COUNT(DISTINCT CASE WHEN o.status IN ('ACCEPTED', 'ONBOARDED') THEN a.id END) AS filled_count
       FROM hr_applicants a LEFT JOIN hr_offer_requests o ON o.applicant_id = a.id
-      WHERE TRIM(a.requisition_id) <> '' GROUP BY a.requisition_id`).all<CountRow>(),
+      WHERE TRIM(a.requisition_id) <> '' GROUP BY a.requisition_id`),
     db.prepare("SELECT employee_id FROM hr_recruiters ORDER BY created_at, employee_id").all<{ employee_id: string }>(),
   ]);
   const employees = await employeeSnapshot(organizations);

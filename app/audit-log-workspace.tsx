@@ -82,7 +82,7 @@ export default function AuditLogWorkspace() {
 
   return <div className="audit-log-body">
     <section className="audit-log-boundary">
-      <div><p>IMMUTABLE AUDIT TRAIL</p><h3>통합 감사·변경이력</h3><span>HR·재무회계·영업·설정의 변경 주체, 시각, 대상과 변경 전후 값을 하나의 읽기 전용 원장에서 확인합니다.</span></div>
+      <div data-korean-heading><h3>통합 감사·변경이력</h3><span>HR·재무회계·영업·설정의 변경 주체, 시각, 대상과 변경 전후 값을 하나의 읽기 전용 원장에서 확인합니다.</span></div>
       <ul><li>수정·삭제 불가</li><li>관리자 전용</li><li>보안 값 자동 가림</li></ul>
     </section>
 

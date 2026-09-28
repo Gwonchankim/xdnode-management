@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { useErpDialog } from "./erp-dialog";
 
 type Plan = { id: string; period: string; version: number; title: string };
 type GapLine = {
@@ -29,6 +30,7 @@ const labels: Record<string, string> = {
 const emptyDraft = { organizationId: "", role: "", requestedHeadcount: 1, targetStartDate: "", ownerEmployeeId: "", reason: "" };
 
 export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (message: string) => void }) {
+  const dialog = useErpDialog();
   const [data, setData] = useState<Payload | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -90,13 +92,14 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
     CANCEL: "등록 취소 사유를 5자 이상 입력해 주세요.",
     DELETE: "삭제 사유를 5자 이상 입력해 주세요.",
   };
+  const reasonTitles: Record<"CLOSE" | "CANCEL" | "DELETE", string> = { CLOSE: "채용 마감 사유", CANCEL: "등록 취소 사유", DELETE: "삭제 사유" };
 
   async function action(id: string, name: "SUBMIT" | "CLOSE" | "CANCEL" | "DELETE", title = "") {
     // Deletion removes the row outright rather than moving it to a closed state, so it gets its own
     // confirmation before the reason prompt that the other actions share.
-    if (name === "DELETE" && !window.confirm(`'${title}' 채용요청을 원장에서 삭제합니다.
-되돌릴 수 없으며, 진행 중인 결재가 있으면 함께 취소됩니다.`)) return;
-    const reason = name === "SUBMIT" ? "" : window.prompt(reasonPrompts[name])?.trim() ?? "";
+    if (name === "DELETE" && !(await dialog.confirm(`'${title}' 채용요청을 원장에서 삭제합니다.
+되돌릴 수 없으며, 진행 중인 결재가 있으면 함께 취소됩니다.`, { title: "채용요청 삭제", confirmLabel: "삭제", danger: true }))) return;
+    const reason = name === "SUBMIT" ? "" : (await dialog.prompt(reasonPrompts[name], { title: reasonTitles[name], minLength: 5, multiline: true })) ?? "";
     if (name !== "SUBMIT" && reason.length < 5) return;
     const response = await fetch("/api/hr/recruitment-requisitions", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, id, reason }),
@@ -116,7 +119,7 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
   const teamLine = data?.lines.find((line) => line.organizationId === draft.organizationId);
 
   return <div className="page-wrap module-page requisition-page">
-    <section className="module-hero"><div><p className="eyebrow">RECRUITMENT REQUISITIONS</p><h1>채용요청·TO 관리</h1><p>필요한 팀과 포지션을 직접 등록하고, 지원자와 입사 확정까지 하나의 흐름으로 관리합니다.</p></div><div className="requisition-hero-actions"><span className="requisition-plan-badge">{data?.plan ? `${data.plan.period} · v${data.plan.version} 승인본` : "승인 인력계획 없음"}</span><button type="button" className="primary-button" onClick={openForm} disabled={loading}>+ 채용요청 등록</button></div></section>
+    <section className="module-hero"><div data-korean-heading><h1>채용요청·TO 관리</h1><p>필요한 팀과 포지션을 직접 등록하고, 지원자와 입사 확정까지 하나의 흐름으로 관리합니다.</p></div><div className="requisition-hero-actions"><span className="requisition-plan-badge">{data?.plan ? `${data.plan.period} · v${data.plan.version} 승인본` : "승인 인력계획 없음"}</span><button type="button" className="primary-button" onClick={openForm} disabled={loading}>+ 채용요청 등록</button></div></section>
     <section className="metric-grid module-metrics">{[
       ["계획 충원 필요", `${summary.planGap}명`, "승인 인력계획 기준"], ["진행 중 요청", `${summary.reserved}명`, "작성·결재·모집 중"],
       ["계획 대비 여유", `${summary.available}명`, "인력계획이 있는 팀"], ["입사 확정", `${summary.filled}명`, "제안 수락 기준"],
@@ -134,7 +137,7 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
 
     {formOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (!saving && event.target === event.currentTarget) setFormOpen(false); }}>
       <form className="employee-modal requisition-modal" onSubmit={createDraft}>
-        <div className="modal-header"><div><p>NEW REQUISITION</p><h2>채용요청 등록</h2></div><button type="button" aria-label="닫기" onClick={() => setFormOpen(false)}>×</button></div>
+        <div className="modal-header"><div data-korean-heading><h2>채용요청 등록</h2></div><button type="button" aria-label="닫기" onClick={() => setFormOpen(false)}>×</button></div>
         <div className="form-grid">
           <label><span>채용요청 팀 *</span><select required value={draft.organizationId} onChange={(event) => setDraft({ ...draft, organizationId: event.target.value })}>
             <option value="">팀 선택</option>

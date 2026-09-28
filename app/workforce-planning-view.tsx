@@ -111,7 +111,7 @@ export default function WorkforcePlanningView({ onNotify }: { onNotify: (message
   const editable = selected?.status === "DRAFT";
   return <div className="page-wrap workforce-page">
     <section className="module-hero workforce-hero">
-      <div><p className="eyebrow">WORKFORCE PLANNING</p><h1>인력계획 및 정원 관리</h1><p>승인 정원과 실제 재직·입사 예정 인원을 분리해 조직별 충원 필요를 계산합니다.</p></div>
+      <div data-korean-heading><h1>인력계획 및 정원 관리</h1><p>승인 정원과 실제 재직·입사 예정 인원을 분리해 조직별 충원 필요를 계산합니다.</p></div>
       <div className="workforce-hero-actions">
         {data?.plans.length ? <select aria-label="인력계획 버전" value={selected?.id ?? ""} onChange={(event) => void load(event.target.value)}>{data.plans.map((plan) => <option value={plan.id} key={plan.id}>{plan.period} · v{plan.version} · {statusLabels[plan.status] ?? plan.status}</option>)}</select> : null}
         <button type="button" className="primary-button" onClick={() => setCreateOpen((value) => !value)}>+ 새 계획</button>
@@ -144,7 +144,7 @@ export default function WorkforcePlanningView({ onNotify }: { onNotify: (message
         onRevision={() => { const reason = window.prompt("개정 사유를 5자 이상 입력하세요.", "사업계획 변경 반영"); if (reason) void mutate({ action: "CREATE_REVISION", planId: selected.id, reason }, "인력계획 개정본을 만들었습니다."); }} />
 
       <section className="panel workforce-ledger">
-        <header><div><p>ORGANIZATION CAPACITY</p><h2>조직별 정원 원장</h2><span>지원자 수는 포함하지 않으며 입사 예정 인사기록만 미래 인원으로 반영합니다.</span></div><em>{data.lines.length}개 조직</em></header>
+        <header><div data-korean-heading><h2>조직별 정원 원장</h2><span>지원자 수는 포함하지 않으며 입사 예정 인사기록만 미래 인원으로 반영합니다.</span></div><em>{data.lines.length}개 조직</em></header>
         <div className="workforce-line workforce-head"><span>조직</span><span>현재</span><span>입사 예정</span><span>계획 퇴사</span><span>예상 가동</span><span>승인 정원</span><span>차이</span><span>근거</span>{editable && <span>저장</span>}</div>
         <div>{data.lines.map((line) => <WorkforceLineEditor key={`${line.organizationId}:${line.updatedAt}:${line.currentHeadcount}:${line.incomingHeadcount}`} line={line} editable={editable} busy={busy} onSave={(item, next) => void mutate({ action: "UPSERT_LINE", planId: selected.id, organizationId: item.organizationId, ...next }, `${item.organizationName} 정원 계획을 저장했습니다.`)} />)}</div>
       </section>

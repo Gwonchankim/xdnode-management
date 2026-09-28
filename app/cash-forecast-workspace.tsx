@@ -116,7 +116,7 @@ export default function CashForecastWorkspace() {
 
   return <div className="cash-forecast-workspace">
     <section className="cash-forecast-hero">
-      <div><p>13-WEEK CASH FORECAST</p><h1>13주 자금예측</h1><span>실제 ERP 발생 원장과 수기 계획을 중복 없이 연결해 주차별 가용자금을 계산합니다.</span></div>
+      <div data-korean-heading><h1>13주 자금예측</h1><span>실제 ERP 발생 원장과 수기 계획을 중복 없이 연결해 주차별 가용자금을 계산합니다.</span></div>
       <div className="cash-forecast-hero-actions"><div className="cash-forecast-scenarios" aria-label="예측 시나리오">{(["CONSERVATIVE", "BASE", "OPTIMISTIC"] as Scenario[]).map((item) => <button type="button" key={item} className={scenario === item ? "active" : ""} onClick={() => void changeScenario(item)}>{scenarioLabel[item]}</button>)}</div><button type="button" onClick={() => setSettingsOpen((open) => !open)}>예측 설정</button></div>
     </section>
 
@@ -138,7 +138,7 @@ export default function CashForecastWorkspace() {
     </section>
 
     <section className="panel cash-forecast-chart-panel">
-      <header><div><p>WEEKLY LIQUIDITY</p><h2>주차별 유입·유출과 예상 잔액</h2><span>{data?.coverage.startDate}–{data?.coverage.endDate} · {scenarioLabel[scenario]} 확률 반영</span></div><div><b>유입 {compactWon(data?.summary.totalExpectedInflow ?? 0)}</b><b>유출 {compactWon(data?.summary.totalExpectedOutflow ?? 0)}</b></div></header>
+      <header><div data-korean-heading><h2>주차별 유입·유출과 예상 잔액</h2><span>{data?.coverage.startDate}–{data?.coverage.endDate} · {scenarioLabel[scenario]} 확률 반영</span></div><div><b>유입 {compactWon(data?.summary.totalExpectedInflow ?? 0)}</b><b>유출 {compactWon(data?.summary.totalExpectedOutflow ?? 0)}</b></div></header>
       <div className="cash-forecast-chart">
         {(data?.buckets ?? []).map((bucket) => <article key={bucket.week} className={bucket.belowMinimum ? "risk" : ""}>
           <div className="cash-flow-bars"><i className="inflow" style={{ height: `${Math.max(2, bucket.inflow / maxFlow * 100)}%` }} /><i className="outflow" style={{ height: `${Math.max(2, bucket.outflow / maxFlow * 100)}%` }} /></div>
@@ -150,7 +150,7 @@ export default function CashForecastWorkspace() {
 
     <section className="cash-forecast-grid">
       <article className="panel cash-forecast-week-table">
-        <header><div><p>WEEKLY LEDGER</p><h2>13주 상세</h2></div><span>{data?.coverage.includedCount ?? 0}개 원천 반영</span></header>
+        <header><div data-korean-heading><h2>13주 상세</h2></div><span>{data?.coverage.includedCount ?? 0}개 원천 반영</span></header>
         <div className="cash-forecast-week-row head"><span>주차</span><span>유입</span><span>유출</span><span>순변동</span><span>기말잔액</span><span>상태</span></div>
         {(data?.buckets ?? []).map((bucket) => <button type="button" className={`cash-forecast-week-row ${selectedWeek === bucket.week ? "selected" : ""}`} key={bucket.week} onClick={() => setSelectedWeek(bucket.week)}><p><strong>{bucket.week}주차</strong><small>{bucket.weekStart}–{bucket.weekEnd}</small></p><b className="in">+{won(bucket.inflow)}</b><b className="out">−{won(bucket.outflow)}</b><b>{bucket.net >= 0 ? "+" : "−"}{won(Math.abs(bucket.net))}</b><strong>{won(bucket.endingCash)}</strong><em className={bucket.belowMinimum ? "risk" : "stable"}>{bucket.belowMinimum ? `부족 ${won(bucket.minimumGap)}` : bucket.overdueItemCount ? `연체 ${bucket.overdueItemCount}건 포함` : "안정"}</em></button>)}
         <div className="cash-forecast-week-source">
@@ -165,7 +165,7 @@ export default function CashForecastWorkspace() {
       </article>
 
       <article className="panel cash-forecast-insights">
-        <header><div><p>CONTROL NOTES</p><h2>예측 품질·위험</h2></div><span>{(data?.coverage.missingDateCount ?? 0) + (data?.coverage.fallbackDateCount ?? 0)}건 확인</span></header>
+        <header><div data-korean-heading><h2>예측 품질·위험</h2></div><span>{(data?.coverage.missingDateCount ?? 0) + (data?.coverage.fallbackDateCount ?? 0)}건 확인</span></header>
         <div className="cash-forecast-insight-list">{(data?.insights ?? []).map((insight, index) => <div key={insight}><span>0{index + 1}</span><p>{insight}</p></div>)}</div>
         <div className="cash-forecast-source-counts">{Object.entries(data?.coverage.sourceCounts ?? {}).map(([source, count]) => <div key={source}><span>{sourceLabel[source] ?? source}</span><strong>{count}건</strong></div>)}</div>
         {(data?.missingDateItems.length ?? 0) > 0 && <div className="cash-forecast-missing"><h3>예정일 보완 필요</h3>{data?.missingDateItems.slice(0, 8).map((item) => <div key={`${item.sourceType}:${item.sourceId}`}><p><strong>{item.counterparty || item.category}</strong><small>{sourceLabel[item.sourceType] ?? item.sourceType} · {item.memo || "참조 없음"}</small></p><b>{won(item.amount)}</b></div>)}</div>}
@@ -173,7 +173,7 @@ export default function CashForecastWorkspace() {
     </section>
 
     <section className="panel cash-forecast-manual">
-      <header><div><p>MANUAL PLAN</p><h2>수기 예정 입출금 추가</h2><span>계약 전 계획·세금·대출상환처럼 아직 발생 원장이 없는 항목만 등록합니다.</span></div></header>
+      <header><div data-korean-heading><h2>수기 예정 입출금 추가</h2><span>계약 전 계획·세금·대출상환처럼 아직 발생 원장이 없는 항목만 등록합니다.</span></div></header>
       <form onSubmit={addManual}><label>예정일<input required type="date" min={data?.asOf} value={manual.expectedDate} onChange={(event) => setManual({ ...manual, expectedDate: event.target.value })} /></label><label>구분<select value={manual.direction} onChange={(event) => setManual({ ...manual, direction: event.target.value })}><option value="INFLOW">입금</option><option value="OUTFLOW">출금</option></select></label><label>분류<input required value={manual.category} onChange={(event) => setManual({ ...manual, category: event.target.value })} /></label><label>거래처·대상<input value={manual.counterparty} onChange={(event) => setManual({ ...manual, counterparty: event.target.value })} /></label><label>금액<input required min="1" type="number" value={manual.amount} onChange={(event) => setManual({ ...manual, amount: event.target.value })} /></label><label>발생확률<input required min="0" max="100" type="number" value={manual.probability} onChange={(event) => setManual({ ...manual, probability: event.target.value })} /></label><button type="submit">+ 계획 추가</button></form>
       <p>확정 원장이 생성된 뒤에는 중복 수기 계획을 완료 또는 취소하여 이중 집계를 방지해 주세요.</p>
     </section>

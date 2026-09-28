@@ -3,6 +3,9 @@
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import readXlsxFile from "read-excel-file/browser";
 import { calculateCompensation, type CompensationColumns, type CompensationEmployee, type CompensationRounding } from "./compensation-calculation";
+import { compactLeaveContext, hrAssistantTopics, recentAssistantConversation, type AssistantExchange, type HrAssistantTopic } from "./hr-assistant-context";
+import { emptyRecruitmentInterview, formatRecruitmentQuestions, recruitmentHelperRequest, validateRecruitmentInterview } from "./assistant-recruitment";
+import { HrModalBackdrop } from "./hr-ui";
 
 type AssistantModule = "hr" | "compensation" | "sales";
 type MoneyField = "annualSalary" | "basePay" | "mealAllowance" | "childcareAllowance" | "vehicleAllowance";
@@ -15,8 +18,9 @@ type EmployeeRecord = {
 };
 
 type AssistantAction = {
-  id: string; type: "UPDATE_HR_COMPENSATION_DEFAULTS" | "CREATE_COMPENSATION_DRAFT" | "CREATE_RECRUITMENT_APPLICANT" | "RECORD_INTERVIEW_REJECTION" | "CREATE_RECRUITMENT_OFFER";
+  id: string; type: "UPDATE_HR_COMPENSATION_DEFAULTS" | "CREATE_COMPENSATION_DRAFT" | "CREATE_RECRUITMENT_APPLICANT" | "RECORD_INTERVIEW_REJECTION" | "CREATE_RECRUITMENT_OFFER" | "APPLY_RETIREMENT_PAY";
   title: string; summary: string; employeeId: string; period: string; values: Partial<Record<MoneyField, number | null>>;
+  retirementPay?: { employeeName: string; amount: number; sourceFileName: string; evidence: string } | null;
   applicant: { name: string | null; role: string | null; experience: string | null; email: string | null; phone: string | null; source: string | null; summary: string | null; ownerId: string | null; requisitionId: string | null; resumeFileName: string | null } | null;
   interviewResult: { applicantId: string | null; outcome: "REJECT" | "NO_SHOW" | null; memo: string | null } | null;
   offer: { applicantId: string | null; proposedTitle: string | null; department: string | null; employmentType: string | null; startDate: string | null; annualSalary: number | null; probationMonths: number | null; notes: string | null } | null;
@@ -114,7 +118,7 @@ function textToAnalysis(fileName: string, text: string): FileAnalysis {
 
 async function analyzeFile(file: File): Promise<FileAnalysis> {
   const name = file.name.toLowerCase();
-  if (name.endsWith(".xlsx")) return rowsToAnalysis(file.name, await readXlsxFile(file));
+  if (name.endsWith(".xlsx")) return rowsToAnalysis(file.name, (await readXlsxFile(file))[0]?.data ?? []);
   if (name.endsWith(".pdf")) {
     const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
     pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
@@ -133,6 +137,7 @@ async function analyzeFile(file: File): Promise<FileAnalysis> {
     return textToAnalysis(file.name, result.value);
   }
   const raw = await file.text();
+  if (name.endsWith(".txt")) return textToAnalysis(file.name, raw);
   if (name.endsWith(".json")) {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) throw new Error("JSON 파일은 행 배열 형식이어야 합니다.");
@@ -153,12 +158,13 @@ function toNumber(value: unknown) {
 function safeAction(value: unknown): value is AssistantAction {
   if (!value || typeof value !== "object") return false;
   const action = value as Partial<AssistantAction>;
-  return typeof action.id === "string" && ["UPDATE_HR_COMPENSATION_DEFAULTS", "CREATE_COMPENSATION_DRAFT", "CREATE_RECRUITMENT_APPLICANT", "RECORD_INTERVIEW_REJECTION", "CREATE_RECRUITMENT_OFFER"].includes(String(action.type)) && typeof action.title === "string" && typeof action.summary === "string" && typeof action.employeeId === "string" && typeof action.period === "string" && !!action.values && typeof action.values === "object";
+  return typeof action.id === "string" && ["UPDATE_HR_COMPENSATION_DEFAULTS", "CREATE_COMPENSATION_DRAFT", "CREATE_RECRUITMENT_APPLICANT", "RECORD_INTERVIEW_REJECTION", "CREATE_RECRUITMENT_OFFER", "APPLY_RETIREMENT_PAY"].includes(String(action.type)) && typeof action.title === "string" && typeof action.summary === "string" && typeof action.employeeId === "string" && typeof action.period === "string" && !!action.values && typeof action.values === "object";
 }
 
 function compactEmployee(record: EmployeeRecord) {
   return {
     employeeId: record.employeeId, name: record.name, department: record.department, position: record.position,
+    employmentType: record.type, manager: record.manager, email: record.email, phone: record.phone,
     jobTitle: record.jobTitle, status: record.status, joinDate: record.joinDate,
     retirement: record.retirement, annualSalary: record.annualSalary, basePay: record.basePay,
     mealAllowance: record.mealAllowance, childcareAllowance: record.childcareAllowance, vehicleAllowance: record.vehicleAllowance,
@@ -242,19 +248,31 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
   const [notice, setNotice] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [applying, setApplying] = useState("");
-  const [includeServerData, setIncludeServerData] = useState(false);
+  const [includeOptionalData, setIncludeOptionalData] = useState(false);
+  const includeServerData = module === "hr" || includeOptionalData;
   const [fileAnalysis, setFileAnalysis] = useState<FileAnalysis | null>(null);
+  const [fileBusy, setFileBusy] = useState(false);
+  const [responseAttachment, setResponseAttachment] = useState<FileAnalysis | null>(null);
   const [fileStatus, setFileStatus] = useState("");
+  const [resumeInput, setResumeInput] = useState("");
+  const [interviewDraft, setInterviewDraft] = useState({ ...emptyRecruitmentInterview });
+  const [recruitmentReview, setRecruitmentReview] = useState(false);
+  const [reviewPosition, setReviewPosition] = useState("");
   const [targetPosition, setTargetPosition] = useState("");
   const [period, setPeriod] = useState(currentPeriod);
   const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
   const [recruitmentApplicants, setRecruitmentApplicants] = useState<RecruitmentApplicant[]>([]);
   const [recruiterIds, setRecruiterIds] = useState<string[]>([]);
   const [appliedActionIds, setAppliedActionIds] = useState<string[]>([]);
+  const [hrTopic, setHrTopic] = useState<HrAssistantTopic>("people");
+  const [conversation, setConversation] = useState<AssistantExchange[]>([]);
+  const [responseSources, setResponseSources] = useState<string[]>([]);
+  const [answeredQuestion, setAnsweredQuestion] = useState("");
+  const [responseIncludedData, setResponseIncludedData] = useState(false);
   const title = `${workspaceLabel[module]} AI 어시스턴트`;
-  const suggestions = useMemo(() => suggestedQuestions[module], [module]);
+  const suggestions = useMemo(() => module === "hr" ? hrAssistantTopics[hrTopic].questions : suggestedQuestions[module], [module, hrTopic]);
 
-  function close() { if (!submitting && !applying) setOpen(false); }
+  function close() { if (!applying) setOpen(false); }
 
   async function loadContext() {
     if (module === "sales") {
@@ -278,19 +296,31 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
     setEmployees(records);
     const base = { employeeRecords: records.slice(0, 200).map(compactEmployee), employeeCount: records.length };
     if (module === "hr") {
-      const [operationsResponse, recruitmentResponse] = await Promise.all([
+      const [operationsResponse, recruitmentResponse, leaveResponse] = await Promise.all([
         fetch("/api/hr/operations", { cache: "no-store" }),
         fetch("/api/hr/recruitment", { cache: "no-store" }),
+        fetch("/api/hr/leave", { cache: "no-store" }),
       ]);
       const operationsPayload = await operationsResponse.json().catch(() => ({})) as Record<string, unknown>;
       const recruitmentPayload = await recruitmentResponse.json().catch(() => ({})) as { applicants?: RecruitmentApplicant[]; recruiterIds?: string[]; requisitions?: Array<{ id: string; title: string; role: string; organizationId: string; requestedHeadcount: number; status: string }>; error?: string };
       if (!recruitmentResponse.ok) throw new Error(recruitmentPayload.error || "채용 지원자 데이터를 불러오지 못했습니다.");
       const applicants = Array.isArray(recruitmentPayload.applicants) ? recruitmentPayload.applicants : [];
+      const leavePayload = await leaveResponse.json().catch(() => ({}));
+      const leave = leaveResponse.ok ? compactLeaveContext(leavePayload) : { unavailable: true, reason: "연차 원장을 조회하지 못했습니다. 연차 수치를 추정하지 마세요." };
+      const sources = [
+        `인사기록 ${records.length}명`,
+        operationsResponse.ok ? "입·퇴사 운영 기록" : "입·퇴사 기록 조회 실패",
+        `채용 지원자 ${applicants.length}명`,
+        leaveResponse.ok ? `연차 원장 · ${leavePayload.today ?? "기준일 미확인"}` : "연차 원장 조회 실패",
+      ];
       const currentRecruiterIds = Array.isArray(recruitmentPayload.recruiterIds) ? recruitmentPayload.recruiterIds : [];
       setRecruitmentApplicants(applicants);
       setRecruiterIds(currentRecruiterIds);
       return {
         ...base,
+        sources,
+        leave,
+        asOf: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
         operations: operationsResponse.ok ? operationsPayload : { unavailable: true },
         recruitment: {
           applicantCount: applicants.length,
@@ -325,6 +355,8 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    setResumeInput("");
+    setFileBusy(true);
     setFileStatus("파일을 이 브라우저에서 분석 중…");
     try {
       const analysis = await analyzeFile(file);
@@ -333,22 +365,35 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
     } catch (caught) {
       setFileAnalysis(null);
       setFileStatus(caught instanceof Error ? caught.message : "파일을 읽지 못했습니다.");
-    }
+    } finally { setFileBusy(false); }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const request = question.trim();
-    if (!request || submitting) return;
-    setSubmitting(true); setError(""); setNotice(""); setResponse(null); setAppliedActionIds([]);
+  async function submit(event?: FormEvent<HTMLFormElement>, recruitmentHelper = false) {
+    event?.preventDefault();
+    const request = recruitmentHelper ? recruitmentHelperRequest : question.trim();
+    if (!request || submitting || fileBusy || applying) return;
+    let attachment = fileAnalysis;
+    if (module === "hr" && hrTopic === "recruitment" && resumeInput.trim()) {
+      attachment = textToAnalysis("직접 입력한 이력서.txt", resumeInput);
+      setFileAnalysis(attachment);
+    }
+    if (recruitmentHelper && (!targetPosition.trim() || !attachment?.extractedText?.trim())) {
+      setError("지원 포지션과 이력서 파일 또는 이력서 내용을 입력해 주세요."); return;
+    }
+    const priorConversation = module === "hr" && response && answeredQuestion
+      ? [...conversation, { question: answeredQuestion, answer: response.answer, includedServerData: responseIncludedData }].slice(-8)
+      : conversation;
+    setSubmitting(true); setError(""); setNotice("");
     try {
       const liveData = includeServerData ? await loadContext() : { dataAccess: "not-requested" };
       const context = {
-        module: workspaceLabel[module], period: module === "compensation" ? period : undefined,
+        module: workspaceLabel[module], period: module === "compensation" || module === "hr" ? period : undefined,
         dataAccess: includeServerData ? "user-authorized-current-erp-data" : "not-requested",
-        fileAnalysis: includeServerData ? fileAnalysis ?? undefined : undefined,
+        conversation: module === "hr" ? recentAssistantConversation(priorConversation, includeServerData) : undefined,
+        fileAnalysis: includeServerData ? attachment ?? undefined : undefined,
         interviewBrief: module === "hr" ? {
           targetPosition: targetPosition.trim() || null,
+          recruitmentHelper,
           companyBusinessProfile: companyInterviewContext,
         } : undefined,
         ...liveData,
@@ -360,7 +405,26 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
       const payload = await result.json().catch(() => ({})) as AssistantResponse & { error?: string };
       if (!result.ok) throw new Error(payload.error || "AI 어시스턴트에 연결하지 못했습니다.");
       if (!payload.answer) throw new Error("AI 응답 형식이 올바르지 않습니다. 다시 시도해 주세요.");
+      if (recruitmentHelper) {
+        const creates = (payload.proposedActions ?? []).filter(action => safeAction(action) && action.type === "CREATE_RECRUITMENT_APPLICANT");
+        if (creates.length > 1) throw new Error("지원자 등록안이 여러 개 반환되었습니다. 한 명의 이력서로 다시 요청해 주세요.");
+        payload.proposedActions = creates.map(action => ({ ...action, applicant: action.applicant ? { ...action.applicant, role: targetPosition.trim() } : null }));
+      }
+      payload.proposedActions = (payload.proposedActions ?? []).map(action => action.type === "CREATE_RECRUITMENT_APPLICANT" ? { ...action, id: `AP-${crypto.randomUUID()}` } : action);
+      if (module === "hr") setConversation(priorConversation);
+      setAnsweredQuestion(request);
+      setResponseIncludedData(includeServerData);
+      setResponseAttachment(includeServerData ? attachment : null);
+      setRecruitmentReview(recruitmentHelper);
+      setReviewPosition(targetPosition.trim());
+      if (recruitmentHelper) {
+        setInterviewDraft(current => ({ ...current, questions: formatRecruitmentQuestions(payload.interviewQuestions ?? []) }));
+      }
+      setAppliedActionIds([]);
+      if (module === "hr" && "sources" in liveData) setResponseSources(liveData.sources);
+      if (!includeServerData) setResponseSources(["질문과 일반 업무 안내 · ERP 데이터 미포함"]);
       setResponse({ ...payload, proposedActions: (payload.proposedActions ?? []).filter(safeAction) });
+      setQuestion("");
     } catch (caught) {
       const detail = caught instanceof Error ? caught.message : "알 수 없는 연결 오류입니다.";
       setError(detail);
@@ -384,7 +448,29 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
   }
 
   async function applyAction(action: AssistantAction) {
-    if (applying || appliedActionIds.includes(action.id)) return;
+    if (submitting || applying || appliedActionIds.includes(action.id)) return;
+    if (action.type === "APPLY_RETIREMENT_PAY") {
+      setApplying(action.id); setError(""); setNotice("");
+      try {
+        const detail = action.retirementPay;
+        if (module !== "hr" || !detail || !Number.isSafeInteger(detail.amount) || detail.amount < 0 || !/^\d{4}-(0[1-9]|1[0-2])$/.test(action.period)) throw new Error("직원·반영 월·퇴직금 금액을 다시 확인해 주세요.");
+        if (!fileAnalysis || fileAnalysis !== responseAttachment || fileAnalysis.fileName !== detail.sourceFileName || !detail.evidence?.trim()) throw new Error("분석한 영수증과 추출 근거를 확인해 주세요. 파일을 바꿨다면 다시 분석해 주세요.");
+        if (!employees.some((employee) => employee.employeeId === action.employeeId && employee.name.trim() === detail.employeeName.trim())) throw new Error("인사기록과 영수증의 직원명이 일치하지 않습니다.");
+        const before = await fetch(`/api/hr/compensation?period=${encodeURIComponent(action.period)}`, { cache: "no-store" });
+        const current = await before.json() as { run?: CompensationRun; error?: string };
+        if (!before.ok || !current.run) throw new Error(current.error || `${action.period} 임금안이 없습니다. 임금계산에서 해당 월 급여 작성을 먼저 해 주세요.`);
+        const update = await fetch("/api/hr/compensation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+          action: "APPLY_RETIREMENT_PAY", period: action.period, version: current.run.version, employeeId: action.employeeId,
+          employeeName: detail.employeeName, amount: detail.amount, sourceFileName: detail.sourceFileName,
+        }) });
+        const saved = await update.json() as { error?: string };
+        if (!update.ok) throw new Error(saved.error || "퇴직금을 반영하지 못했습니다.");
+        setAppliedActionIds((ids) => [...ids, action.id]);
+        setNotice(`${detail.employeeName}님의 ${action.period} 퇴직금을 ${detail.amount.toLocaleString("ko-KR")}원으로 반영했습니다. 임금계산에서 확인할 수 있습니다.`);
+      } catch (caught) { setError(caught instanceof Error ? caught.message : "퇴직금 반영에 실패했습니다."); }
+      finally { setApplying(""); }
+      return;
+    }
     const confirmation = action.type === "UPDATE_HR_COMPENSATION_DEFAULTS"
       ? `${action.title}\n\n이 변경안의 금액을 인사기록카드에 반영할까요? 기존 값이 덮어써집니다.`
       : action.type === "CREATE_COMPENSATION_DRAFT"
@@ -394,12 +480,12 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
           : action.type === "RECORD_INTERVIEW_REJECTION"
             ? `${action.title}\n\n면접 결과를 탈락으로 기록할까요? 이 변경은 지원자 단계와 면접 메모에 반영됩니다.`
             : `${action.title}\n\n처우 오퍼를 생성할까요? 지원자 수락·사번 발급·입사 전환은 이 작업에 포함되지 않습니다.`;
-    if (!window.confirm(confirmation)) return;
+    if (action.type !== "CREATE_RECRUITMENT_APPLICANT" && !window.confirm(confirmation)) return;
     setApplying(action.id); setError(""); setNotice("");
     try {
       if (action.type === "UPDATE_HR_COMPENSATION_DEFAULTS") {
         const target = employees.find((employee) => employee.employeeId === action.employeeId);
-        if (!target) throw new Error("적용할 직원을 현재 인사기록카드에서 찾지 못했습니다. 데이터 조회 권한을 켜고 다시 요청해 주세요.");
+        if (!target) throw new Error("적용할 직원을 현재 인사기록카드에서 찾지 못했습니다. 최신 자료로 다시 요청해 주세요.");
         const values = Object.fromEntries(moneyFields.flatMap((field) => {
           const amount = action.values[field];
           return amount === undefined || amount === null ? [] : [[field, toNumber(amount)]];
@@ -421,6 +507,9 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         const applicant = action.applicant;
         if (!applicant?.name?.trim() || !applicant.role?.trim() || !applicant.email?.trim()) throw new Error("지원자 등록에는 이름·지원 직무·이메일이 필요합니다.");
         if (!fileAnalysis?.extractedText?.trim()) throw new Error("이력서의 추출 텍스트가 없습니다. PDF, DOCX 또는 TXT 이력서를 다시 첨부해 주세요.");
+        if (module !== "hr" || fileAnalysis !== responseAttachment || (resumeInput.trim() && resumeInput.slice(0, 24000) !== responseAttachment?.extractedText)) throw new Error("이력서가 변경되었습니다. 다시 분석한 뒤 등록해 주세요.");
+        if (recruitmentReview && targetPosition.trim() !== reviewPosition) throw new Error("지원 포지션이 변경되었습니다. 면접 질문을 다시 생성해 주세요.");
+        const interview = recruitmentReview ? validateRecruitmentInterview(interviewDraft, true) : undefined;
         const normalizedEmail = applicant.email.trim().toLocaleLowerCase();
         const normalizedPhone = applicant.phone?.replace(/[^0-9]/g, "") ?? "";
         const duplicate = recruitmentApplicants.find((item) => item.email.toLocaleLowerCase() === normalizedEmail
@@ -429,24 +518,25 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         const ownerId = applicant.ownerId?.trim() || recruiterIds[0] || "";
         const owner = employees.find((employee) => employee.employeeId === ownerId)?.name ?? "미지정";
         const newApplicant: RecruitmentApplicant = {
-          id: `AP-${Date.now()}`, name: applicant.name.trim(), role: applicant.role.trim(),
-          applied: new Date().toISOString().slice(0, 10).replaceAll("-", "."), ownerId, owner, stage: "서류 검토",
+          id: action.id.startsWith("AP-") ? action.id : `AP-${action.id}`, name: applicant.name.trim(), role: applicant.role.trim(),
+          applied: new Date().toISOString().slice(0, 10).replaceAll("-", "."), ownerId, owner, stage: interview?.date ? "면접" : "서류 검토", interview,
           experience: applicant.experience?.trim() ?? "", email: applicant.email.trim(), phone: applicant.phone?.trim() ?? "",
           source: applicant.source?.trim() || "이력서 내용 추출", summary: applicant.summary?.trim() ?? "",
-          resumeFileName: applicant.resumeFileName?.trim() || fileAnalysis.fileName, resumeText: fileAnalysis.extractedText.slice(0, 30_000),
+          resumeFileName: fileAnalysis.fileName, resumeText: fileAnalysis.extractedText.slice(0, 30_000),
           checklist: [], screeningMemos: [], interviewMemos: [], requisitionId: applicant.requisitionId?.trim() ?? "",
         };
-        const update = await fetch("/api/hr/recruitment", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(newApplicant) });
+        const update = await fetch("/api/hr/recruitment", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...newApplicant, createOnly: true, recruitmentHelper: recruitmentReview }) });
         const payload = await update.json().catch(() => ({})) as { error?: string };
         if (!update.ok) throw new Error(payload.error || "지원자를 등록하지 못했습니다.");
         setRecruitmentApplicants((current) => [newApplicant, ...current]);
+        window.dispatchEvent(new Event("hr-recruitment-updated"));
       } else if (action.type === "RECORD_INTERVIEW_REJECTION") {
         const result = action.interviewResult;
         if (!result?.applicantId || !result.outcome) throw new Error("면접 결과 대상과 결과값을 확인하지 못했습니다.");
         const target = recruitmentApplicants.find((item) => item.id === result.applicantId);
-        if (!target) throw new Error("현재 지원자 목록에서 면접 결과를 반영할 대상을 찾지 못했습니다. 데이터 동의를 켜고 다시 요청해 주세요.");
+        if (!target) throw new Error("현재 지원자 목록에서 면접 결과를 반영할 대상을 찾지 못했습니다. 최신 자료로 다시 요청해 주세요.");
         const note = `${result.outcome === "NO_SHOW" ? "면접 불참(탈락)" : "면접 결과(탈락)"}${result.memo?.trim() ? `: ${result.memo.trim()}` : ""}`;
-        const updated: RecruitmentApplicant = { ...target, stage: result.outcome === "NO_SHOW" ? "면접 불참 탈락" : "면접 후 탈락", interviewMemos: [{ id: `IN-${Date.now()}`, text: note, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() }, ...(target.interviewMemos ?? [])] };
+        const updated: RecruitmentApplicant = { ...target, stage: result.outcome === "NO_SHOW" ? "면접 불참 탈락" : "면접 후 탈락", interviewMemos: [{ id: `IN-${crypto.randomUUID()}`, text: note, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() }, ...(target.interviewMemos ?? [])] };
         const update = await fetch("/api/hr/recruitment", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
         const payload = await update.json().catch(() => ({})) as { error?: string };
         if (!update.ok) throw new Error(payload.error || "면접 탈락 결과를 저장하지 못했습니다.");
@@ -457,11 +547,11 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
           || !/^\d{4}-\d{2}-\d{2}$/.test(offer.startDate ?? "") || !Number.isFinite(offer.annualSalary) || Number(offer.annualSalary) <= 0
           || !Number.isInteger(offer.probationMonths) || Number(offer.probationMonths) < 0 || Number(offer.probationMonths) > 12) throw new Error("처우 오퍼의 대상·직무·소속·고용형태·입사예정일·연봉·수습기간을 확인해 주세요.");
         const target = recruitmentApplicants.find((item) => item.id === offer.applicantId);
-        if (!target) throw new Error("현재 지원자 목록에서 처우 오퍼 대상을 찾지 못했습니다. 데이터 동의를 켜고 다시 요청해 주세요.");
+        if (!target) throw new Error("현재 지원자 목록에서 처우 오퍼 대상을 찾지 못했습니다. 최신 자료로 다시 요청해 주세요.");
         const create = await fetch("/api/hr/recruitment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource: "offer", applicantId: offer.applicantId, proposedTitle: offer.proposedTitle.trim(), department: offer.department.trim(), employmentType: offer.employmentType.trim(), startDate: offer.startDate, annualSalary: Math.round(Number(offer.annualSalary)), probationMonths: Number(offer.probationMonths), notes: offer.notes?.trim() ?? "" }) });
         const payload = await create.json().catch(() => ({})) as { offer?: { id: string; status: string }; error?: string };
         if (!create.ok || !payload.offer) throw new Error(payload.error || "처우 오퍼를 저장하지 못했습니다.");
-        const interviewMemo = { id: `IN-${Date.now()}`, text: `면접 결과(합격) · 처우 오퍼 생성: ${offer.proposedTitle.trim()} / 연봉 ${Number(offer.annualSalary).toLocaleString("ko-KR")}원${offer.notes?.trim() ? ` · ${offer.notes.trim()}` : ""}`, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() };
+        const interviewMemo = { id: `IN-${crypto.randomUUID()}`, text: `면접 결과(합격) · 처우 오퍼 생성: ${offer.proposedTitle.trim()} / 연봉 ${Number(offer.annualSalary).toLocaleString("ko-KR")}원${offer.notes?.trim() ? ` · ${offer.notes.trim()}` : ""}`, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() };
         const updated: RecruitmentApplicant = { ...target, stage: "면접 합격", interviewMemos: [interviewMemo, ...(target.interviewMemos ?? [])], offer: payload.offer };
         const memoUpdate = await fetch("/api/hr/recruitment", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
         const memoPayload = await memoUpdate.json().catch(() => ({})) as { error?: string };
@@ -469,22 +559,24 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         setRecruitmentApplicants((current) => current.map((item) => item.id === updated.id ? updated : item));
       }
       setAppliedActionIds((current) => [...current, action.id]);
-      setNotice("변경안이 기존 ERP API를 통해 반영되었습니다. 해당 탭을 새로고침해 결과를 확인해 주세요.");
+      setNotice(action.type === "CREATE_RECRUITMENT_APPLICANT" && recruitmentReview ? "지원자와 면접 질문지를 등록했습니다. 입력한 일정도 함께 저장했습니다. 지원자 관리에서 해당 지원자의 면접 일정·면접 질문지를 확인해 주세요." : "변경안이 기존 ERP API를 통해 반영되었습니다. 해당 탭을 새로고침해 결과를 확인해 주세요.");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "변경안을 반영하지 못했습니다."); }
     finally { setApplying(""); }
   }
 
   return <>
     <button type="button" className="local-codex-assistant-trigger" onClick={() => setOpen(true)} aria-label={`${title} 열기`} title={title}><span aria-hidden="true">✦</span><small>AI</small></button>
-    {open && <div className="local-codex-assistant-backdrop" role="presentation" onMouseDown={close}>
-      <section className="local-codex-assistant-dialog" role="dialog" aria-modal="true" aria-labelledby="local-codex-assistant-title" onMouseDown={(event) => event.stopPropagation()}>
-        <header><div><p>LOCAL AI · CLAUDE</p><h2 id="local-codex-assistant-title">{title}</h2><span>Sonnet · Medium · 조회·분석 후 확인하고 반영</span></div><button type="button" className="local-codex-assistant-close" onClick={close} aria-label="대화창 닫기">×</button></header>
+    {open && <HrModalBackdrop className="local-codex-assistant-backdrop" onMouseDown={close}>
+      <section className={`local-codex-assistant-dialog${module === "hr" ? " hr-assistant-dialog" : ""}`} aria-labelledby="local-codex-assistant-title">
+        <header><div data-korean-heading><h2 id="local-codex-assistant-title">{title}</h2><span>직원 정보 확인 · 첨부 자료 분석 · 변경안 반영</span></div><button type="button" className="local-codex-assistant-close" onClick={close} aria-label="대화창 닫기">×</button></header>
         <div className="local-codex-assistant-body">
-          <p className="local-codex-assistant-notice">이 컴퓨터의 Claude(Sonnet · Medium)가 실행합니다. 현재 ERP 데이터나 첨부 이력서의 추출 텍스트를 포함하려면 아래 동의에 체크하세요. 변경안은 반드시 확인 후 직접 적용해야 반영됩니다.</p>
-          <label className="local-codex-data-consent"><input type="checkbox" checked={includeServerData} onChange={(event) => setIncludeServerData(event.target.checked)} disabled={submitting} /><span>현재 HR·임금 계산 데이터와 첨부 파일의 추출 텍스트를 AI 분석에 포함하는 데 동의합니다.</span></label>
+          <p className="local-codex-assistant-notice">{module === "hr" ? "저장된 직원·입퇴사·채용·연차 정보를 조회해 답변합니다. 첨부 파일도 함께 분석하며, 금액과 기록 변경은 아래 변경안을 확인하고 반영할 수 있습니다." : "이 컴퓨터의 Claude가 실행합니다. ERP 데이터와 첨부 파일을 분석하려면 아래 동의를 선택하세요. 변경안은 확인 후 직접 적용할 때 반영됩니다."}</p>
+          {module !== "hr" && <label className="local-codex-data-consent"><input type="checkbox" checked={includeServerData} onChange={(event) => setIncludeOptionalData(event.target.checked)} disabled={submitting} /><span>현재 HR·임금 계산 데이터와 첨부 파일의 추출 텍스트를 AI 분석에 포함하는 데 동의합니다.</span></label>}
+          {module === "hr" && <div className="hr-assistant-topics" aria-label="HR 도움 주제">{(Object.keys(hrAssistantTopics) as HrAssistantTopic[]).map((key) => <button type="button" key={key} aria-pressed={hrTopic === key} onClick={() => setHrTopic(key)}>{hrAssistantTopics[key].label}</button>)}</div>}
+          {module === "hr" && (conversation.length > 0 || response) && <div className="hr-assistant-history"><div><strong>이전 대화</strong><button type="button" disabled={submitting || Boolean(applying)} onClick={() => { setConversation([]); setResponse(null); setAnsweredQuestion(""); setQuestion(""); setResponseSources([]); setError(""); setNotice(""); setAppliedActionIds([]); }}>새 대화</button></div>{conversation.map((entry, index) => <details key={index}><summary>{entry.question}</summary><p>{entry.answer}</p></details>)}</div>}
           <div className="local-codex-file">
             <label className={`local-codex-file-picker${fileAnalysis ? " selected" : ""}${submitting ? " disabled" : ""}`}>
-              <input type="file" accept=".xlsx,.csv,.json,.txt,.pdf,.docx" onChange={handleFile} disabled={submitting} />
+              <input type="file" accept=".xlsx,.csv,.json,.txt,.pdf,.docx" onChange={handleFile} disabled={submitting || fileBusy} />
               <span className="local-codex-file-icon" aria-hidden="true">⌁</span>
               <span className="local-codex-file-copy"><b>{fileAnalysis ? fileAnalysis.fileName : "분석할 파일 첨부"}</b><small>{fileAnalysis ? `${fileAnalysis.rowCount.toLocaleString("ko-KR")}행 · ${fileAnalysis.columns.length}개 열` : "XLSX · CSV · JSON · TXT · PDF · DOCX"}</small></span>
               <span className="local-codex-file-action">{fileAnalysis ? "분석 완료" : "파일 선택"}</span>
@@ -492,12 +584,27 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
             {fileStatus && <small className="local-codex-file-status" role="status">{fileStatus}</small>}
             {fileAnalysis && <button type="button" onClick={() => { setFileAnalysis(null); setFileStatus(""); }} disabled={submitting}>파일 제외</button>}
           </div>
-          {module === "hr" && <label className="local-codex-target-position"><span>지원 포지션</span><input value={targetPosition} maxLength={120} onChange={(event) => setTargetPosition(event.target.value)} placeholder="예: AI 인프라 기술영업 / 기술지원 / 온라인 마케팅" disabled={submitting} /><small>이력서와 함께 입력하면 XD NODE 사업·직무 흐름을 반영한 질문 리스트를 만듭니다.</small></label>}
-          {module === "compensation" && <label className="local-codex-period"><span>임금 초안 대상 월</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} disabled={submitting} /></label>}
+          {module === "hr" && hrTopic === "recruitment" && <label className="local-codex-target-position"><span>지원 포지션</span><input value={targetPosition} maxLength={120} onChange={(event) => setTargetPosition(event.target.value)} placeholder="예: AI 인프라 기술영업 / 기술지원 / 온라인 마케팅" disabled={submitting} /><small>이력서와 함께 입력하면 XD NODE 사업·직무 흐름을 반영한 질문 리스트를 만듭니다.</small></label>}
+          {module === "hr" && hrTopic === "recruitment" && <div className="hr-recruitment-helper">
+            <strong>채용 보조</strong><p>이력서 분석 → 지원자 정보 확인 → 일정·질문지 함께 저장</p>
+            <label><span>이력서 내용 직접 입력</span><textarea value={resumeInput} maxLength={24000} disabled={submitting || Boolean(applying)} placeholder="파일 대신 이력서 내용을 붙여 넣어도 됩니다. 이름, 이메일, 경력 내용을 포함해 주세요." onChange={event => { setResumeInput(event.target.value); setFileAnalysis(null); setFileStatus(""); }} /></label>
+            <div className="hr-recruitment-fields">
+              <label><span>면접일</span><input type="date" value={interviewDraft.date} disabled={Boolean(applying)} onChange={event => setInterviewDraft({ ...interviewDraft, date: event.target.value })} /></label>
+              <label><span>시작 시간 (한국 시간)</span><input type="time" value={interviewDraft.time} disabled={Boolean(applying)} onChange={event => setInterviewDraft({ ...interviewDraft, time: event.target.value })} /></label>
+              <label><span>면접 방식</span><select value={interviewDraft.type} disabled={Boolean(applying)} onChange={event => setInterviewDraft({ ...interviewDraft, type: event.target.value })}><option>1차 대면</option><option>2차 대면</option><option>화상 면접</option><option>전화 면접</option></select></label>
+              <label><span>면접관</span><input value={interviewDraft.interviewers} maxLength={200} disabled={Boolean(applying)} onChange={event => setInterviewDraft({ ...interviewDraft, interviewers: event.target.value })} placeholder="예: 채용 담당자, 팀장" /></label>
+              <label className="wide"><span>장소 또는 접속 링크</span><input value={interviewDraft.location} maxLength={1000} disabled={Boolean(applying)} onChange={event => setInterviewDraft({ ...interviewDraft, location: event.target.value })} /></label>
+            </div>
+            <small>일정 미정이면 날짜와 시간을 비워 두세요. 일정을 입력하면 면접 단계로 등록합니다.</small>
+            <button type="button" onClick={() => void submit(undefined, true)} disabled={submitting || fileBusy || Boolean(applying)}>{submitting ? "이력서 분석·질문 생성 중…" : "이력서 분석 · 등록안과 질문 생성"}</button>
+          </div>}
+          {(module === "compensation" || module === "hr" && hrTopic === "payroll") && <label className="local-codex-period"><span>임금 초안 대상 월</span><input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} disabled={submitting} /></label>}
           <div className="local-codex-assistant-suggestions" aria-label="추천 질문">{suggestions.map((item) => <button type="button" key={item} onClick={() => setQuestion(item)} disabled={submitting}>{item}</button>)}</div>
-          <form onSubmit={submit}><label htmlFor="local-codex-question">무엇을 도와드릴까요?</label><textarea id="local-codex-question" value={question} maxLength={2000} onChange={(event) => setQuestion(event.target.value)} placeholder={module === "hr" ? "예: 첨부 이력서와 지원 포지션을 바탕으로 맞춤 면접 질문 리스트를 만들어줘." : "예: 올린 파일을 인사기록카드의 급여 기본값과 대조하고, 반영할 변경안을 만들어줘."} disabled={submitting} /><div className="local-codex-assistant-form-footer"><span>{question.length.toLocaleString("ko-KR")} / 2,000</span><button type="submit" disabled={!question.trim() || submitting}>{submitting ? "Claude가 검토 중…" : "요청하기"}</button></div></form>
+          <form onSubmit={submit}><label htmlFor="local-codex-question">무엇을 도와드릴까요?</label><textarea id="local-codex-question" value={question} maxLength={2000} onChange={(event) => setQuestion(event.target.value)} placeholder={module === "hr" ? hrAssistantTopics[hrTopic].questions[0] : "예: 올린 파일을 인사기록카드의 급여 기본값과 대조하고, 반영할 변경안을 만들어줘."} disabled={submitting} /><div className="local-codex-assistant-form-footer"><span>{question.length.toLocaleString("ko-KR")} / 2,000</span><button type="submit" disabled={!question.trim() || submitting || fileBusy}>{submitting ? "Claude가 검토 중…" : "요청하기"}</button></div></form>
           {error && <p className="local-codex-assistant-error" role="alert">{error}</p>}{notice && <p className="local-codex-assistant-success">{notice}</p>}
-          {response && <article className="local-codex-assistant-answer">
+          {submitting && <p role="status" className="hr-assistant-progress">직원 정보와 첨부 자료를 검토하고 있습니다. 창을 닫아도 요청은 계속됩니다.</p>}
+          {response && <article className="local-codex-assistant-answer" aria-live="polite">
+            {module === "hr" && <><strong className="hr-assistant-question">{answeredQuestion}</strong><div className="hr-assistant-sources" aria-label="이번 답변에 제공한 자료">{responseSources.map((source) => <span key={source}>{source}</span>)}{responseIncludedData && responseAttachment && <span>첨부: {responseAttachment.fileName}</span>}</div></>}
             <p className="local-codex-assistant-answer-label">AI 답변</p><p>{response.answer}</p>
             {response.cautions && response.cautions.length > 0 && <div><strong>유의사항</strong><ul>{response.cautions.map((item) => <li key={item}>{item}</li>)}</ul></div>}
             {response.nextSteps && response.nextSteps.length > 0 && <div><strong>다음 단계</strong><ul>{response.nextSteps.map((item) => <li key={item}>{item}</li>)}</ul></div>}
@@ -522,14 +629,20 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
               {response.proposedActions.map((action) => <article key={action.id}><div><b>{action.title}</b><p>{action.summary}</p>
                 {action.type === "UPDATE_HR_COMPENSATION_DEFAULTS" && <ul>{moneyFields.filter((field) => action.values[field] !== undefined && action.values[field] !== null).map((field) => <li key={field}>{moneyLabels[field]}: {Number(action.values[field]).toLocaleString("ko-KR")}원</li>)}</ul>}
                 {action.type === "CREATE_COMPENSATION_DRAFT" && <small>{action.period} 임금 초안 작성</small>}
-                {action.type === "CREATE_RECRUITMENT_APPLICANT" && action.applicant && <small>{action.applicant.name} · {action.applicant.role} · {action.applicant.email}<br />이력서: {action.applicant.resumeFileName}</small>}
+                {action.type === "APPLY_RETIREMENT_PAY" && action.retirementPay && <div className="hr-retirement-pay-review"><dl><div><dt>직원</dt><dd>{action.retirementPay.employeeName}</dd></div><div><dt>반영 월</dt><dd>{action.period}</dd></div><div><dt>퇴직금</dt><dd>{Number(action.retirementPay.amount).toLocaleString("ko-KR")}원</dd></div></dl><small>첨부: {action.retirementPay.sourceFileName}</small><blockquote>{action.retirementPay.evidence}</blockquote><small>선택한 월의 퇴직금 항목을 위 금액으로 갱신합니다.</small></div>}
+                {action.type === "CREATE_RECRUITMENT_APPLICANT" && action.applicant && <div className="hr-recruitment-review">
+                  <strong>{action.applicant.role} · 지원자 등록</strong>
+                  <div className="hr-recruitment-fields">{(["name", "email", "phone", "experience", "summary"] as const).map(field => <label key={field} className={field === "summary" ? "wide" : ""}><span>{{ name: "지원자 이름", email: "이메일", phone: "연락처", experience: "경력", summary: "지원자 요약" }[field]}</span><input value={action.applicant?.[field] ?? ""} maxLength={field === "summary" ? 4000 : 200} disabled={Boolean(applying) || appliedActionIds.includes(action.id)} onChange={event => setResponse(current => current ? { ...current, proposedActions: current.proposedActions?.map(item => item.id === action.id && item.applicant ? { ...item, applicant: { ...item.applicant, [field]: event.target.value } } : item) } : current)} /></label>)}</div>
+                  <small>이력서: {responseAttachment?.fileName}</small>
+                  {recruitmentReview && <><p>면접 일정: {interviewDraft.date ? `${interviewDraft.date} ${interviewDraft.time} · ${interviewDraft.type}` : "미정 · 서류 검토로 등록"}<br />{interviewDraft.interviewers} {interviewDraft.location}</p><label><span>저장할 면접 질문지</span><textarea value={interviewDraft.questions} maxLength={20000} disabled={Boolean(applying) || appliedActionIds.includes(action.id)} onChange={event => setInterviewDraft({ ...interviewDraft, questions: event.target.value })} /></label><small>지원자 상세의 ‘면접 질문지’란에 자동으로 입력됩니다.</small></>}
+                </div>}
                 {action.type === "RECORD_INTERVIEW_REJECTION" && action.interviewResult && <small>{recruitmentApplicants.find((item) => item.id === action.interviewResult?.applicantId)?.name ?? "지원자"} · {action.interviewResult.outcome === "NO_SHOW" ? "면접 불참 탈락" : "면접 후 탈락"}</small>}
                 {action.type === "CREATE_RECRUITMENT_OFFER" && action.offer && <small>{recruitmentApplicants.find((item) => item.id === action.offer?.applicantId)?.name ?? "지원자"} · {action.offer.proposedTitle} · 연봉 {Number(action.offer.annualSalary ?? 0).toLocaleString("ko-KR")}원<br />{action.offer.department} · {action.offer.startDate}</small>}
-              </div><button type="button" onClick={() => void applyAction(action)} disabled={Boolean(applying) || appliedActionIds.includes(action.id)}>{appliedActionIds.includes(action.id) ? "반영 완료" : applying === action.id ? "반영 중…" : "내용 확인 후 반영"}</button></article>)}
+              </div><button type="button" onClick={() => void applyAction(action)} disabled={submitting || Boolean(applying) || appliedActionIds.includes(action.id)}>{appliedActionIds.includes(action.id) ? "반영 완료" : applying === action.id ? "반영 중…" : action.type === "CREATE_RECRUITMENT_APPLICANT" && recruitmentReview ? "지원자 · 일정 · 질문지 저장" : "내용 확인 후 반영"}</button></article>)}
             </div>}
           </article>}
         </div>
       </section>
-    </div>}
+    </HrModalBackdrop>}
   </>;
 }

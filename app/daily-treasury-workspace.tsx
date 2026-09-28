@@ -97,7 +97,7 @@ export default function DailyTreasuryWorkspace({ onNavigate }: { onNavigate: (vi
   return (
     <section className="treasury-workspace">
       <header className="treasury-hero">
-        <div><p>DAILY TREASURY CONTROL</p><h1>일일 자금일보</h1><span>은행 실적과 7일 채권·채무·차입 일정을 동결하고 담당자 검토 후 확정합니다.</span></div>
+        <div data-korean-heading><h1>일일 자금일보</h1><span>은행 실적과 7일 채권·채무·차입 일정을 동결하고 담당자 검토 후 확정합니다.</span></div>
         <div className="treasury-date-actions">
           <label>보고일<input type="date" min="2026-01-01" max={data.asOf} value={reportDate} onChange={(event) => setReportDate(event.target.value)} /></label>
           <button type="button" disabled={working} onClick={() => { setSelectedId(""); void load(reportDate, "").catch((error: unknown) => setMessage(error instanceof Error ? error.message : "조회하지 못했습니다.")); }}>조회</button>
@@ -121,7 +121,7 @@ export default function DailyTreasuryWorkspace({ onNavigate }: { onNavigate: (vi
 
       <div className="treasury-grid">
         <article className="panel treasury-detail">
-          <header><div><p>CASH POSITION</p><h2>잔액과 당일 실적</h2></div><span>{snapshot.balances.closingDate || "관측일 없음"}</span></header>
+          <header><div data-korean-heading><h2>잔액과 당일 실적</h2></div><span>{snapshot.balances.closingDate || "관측일 없음"}</span></header>
           <div className="treasury-detail-list">
             <div><span>직전 은행성 자산</span><strong>{won(snapshot.balances.openingBankAssets)}</strong><small>{snapshot.balances.openingDate || "관측일 없음"}</small></div>
             <div><span>원화 입출금계좌</span><strong>{won(snapshot.balances.checkingBalance)}</strong><small>최신 기준일에만 표시</small></div>
@@ -133,7 +133,7 @@ export default function DailyTreasuryWorkspace({ onNavigate }: { onNavigate: (vi
         </article>
 
         <article className="panel treasury-detail">
-          <header><div><p>NEXT 7 DAYS</p><h2>입출금 예정</h2></div><span>{snapshot.horizonEnd}</span></header>
+          <header><div data-korean-heading><h2>입출금 예정</h2></div><span>{snapshot.horizonEnd}</span></header>
           <div className="treasury-detail-list compact">
             <div><span>명시 입금예측</span><strong>{won(snapshot.next7Days.explicitForecast.inflow)}</strong><small>{snapshot.next7Days.explicitForecast.count}건의 수동·연결 계획</small></div>
             <div><span>명시 출금예측</span><strong>{won(snapshot.next7Days.explicitForecast.outflow)}</strong><small>중복 합산 방지를 위해 별도 표시</small></div>
@@ -145,13 +145,13 @@ export default function DailyTreasuryWorkspace({ onNavigate }: { onNavigate: (vi
       </div>
 
       <article className="panel treasury-analysis">
-        <header><div><p>AI ANALYSIS</p><h2>동결 스냅샷 분석</h2></div>{report ? <span className={report.analysisSource === "AI" ? "ai" : "fallback"}>{report.analysisSource === "AI" ? "AI 분석" : `규칙 기반 · ${report.aiStatus}`}</span> : <span>생성 전</span>}</header>
+        <header><div data-korean-heading><h2>동결 스냅샷 분석</h2></div>{report ? <span className={report.analysisSource === "AI" ? "ai" : "fallback"}>{report.analysisSource === "AI" ? "AI 분석" : `규칙 기반 · ${report.aiStatus}`}</span> : <span>생성 전</span>}</header>
         <div className="treasury-analysis-text">{report?.analysisText || "자금일보를 생성하면 AI 또는 규칙 기반 분석이 동결 스냅샷과 함께 저장됩니다."}</div>
         {snapshot.warnings.length > 0 && <div className="treasury-warning-list">{snapshot.warnings.map((warning) => <div key={warning.code}><strong>{warning.code}</strong><span>{warning.message}</span></div>)}</div>}
       </article>
 
       <article className="panel treasury-alert-actions">
-        <header><div><p>ALERT ACTION LEDGER</p><h2>재무 경보 조치현황</h2></div><button type="button" onClick={() => onNavigate("risk-actions")}>조치센터 열기 →</button></header>
+        <header><div data-korean-heading><h2>재무 경보 조치현황</h2></div><button type="button" onClick={() => onNavigate("risk-actions")}>조치센터 열기 →</button></header>
         {!alertActionsConnected && <p className="alert-lineage-legacy">이 저장본은 재무 경보 연계 전에 생성되어 당시 경보 상태를 확정할 수 없습니다. 새 버전을 생성하면 기준일 상태가 동결됩니다.</p>}
         <div className="treasury-alert-summary"><span>미해결 <strong>{alertActionsConnected ? alertActions.unresolvedCount : "-"}</strong></span><span>중요 <strong>{alertActionsConnected ? alertActions.highCriticalUnresolvedCount : "-"}</strong></span><span>종료 검토 <strong>{alertActionsConnected ? alertActions.reviewCount : "-"}</strong></span><span>기한 경과 <strong>{alertActionsConnected ? alertActions.overdueCount : "-"}</strong></span></div>
         <div className="treasury-alert-list">{alertActions.items.filter((item) => item.status !== "CLOSED").slice(0, 6).map((item) => <button type="button" key={item.id} onClick={() => onNavigate("risk-actions")}><em className={item.priority.toLowerCase()}>{item.priority}</em><p><strong>{item.title}</strong><small>{(companyEmployees.find((employee) => employee.id === item.ownerEmployeeId)?.name ?? item.ownerEmployeeId) || "담당자 미지정"} · {item.dueDate || "기한 미정"} · 증빙 {item.evidenceCount}건</small></p><span>{alertStatusLabel[item.status] ?? item.status}</span></button>)}{alertActionsConnected && alertActions.unresolvedCount === 0 && <p className="treasury-empty">보고일 기준 미해결 재무 경보가 없습니다.</p>}</div>
@@ -159,7 +159,7 @@ export default function DailyTreasuryWorkspace({ onNavigate }: { onNavigate: (vi
 
       <div className="treasury-grid review">
         <form className="panel treasury-review" onSubmit={review}>
-          <header><div><p>HUMAN REVIEW</p><h2>담당자 검토</h2></div><span>AI 결과는 참고자료</span></header>
+          <header><div data-korean-heading><h2>담당자 검토</h2></div><span>AI 결과는 참고자료</span></header>
           <label>경영 메모<textarea value={managementNote} disabled={!report || report.status !== "DRAFT"} onChange={(event) => setManagementNote(event.target.value)} placeholder="오늘의 자금 판단과 확인사항을 10자 이상 기록하세요." /></label>
           <label>후속조치<textarea value={actionItems} disabled={!report || report.status !== "DRAFT"} onChange={(event) => setActionItems(event.target.value)} placeholder={"한 줄에 하나씩 기록하세요.\n예: 미분류 출금 계정 지정"} /></label>
           <button type="submit" disabled={working || !report || report.status !== "DRAFT"}>검토 완료 저장</button>
@@ -168,7 +168,7 @@ export default function DailyTreasuryWorkspace({ onNavigate }: { onNavigate: (vi
         </form>
 
         <article className="panel treasury-history">
-          <header><div><p>VERSION HISTORY</p><h2>보고서 이력</h2></div><span>{data.reports.length}개 버전</span></header>
+          <header><div data-korean-heading><h2>보고서 이력</h2></div><span>{data.reports.length}개 버전</span></header>
           <div>{data.reports.length ? data.reports.map((item) => <button type="button" className={item.id === report?.id ? "selected" : ""} key={item.id} onClick={() => void load(reportDate, item.id)}><span>v{item.version}</span><p><strong>{statusLabel[item.status]}</strong><small>원천 {item.sourceAsOf} · {item.analysisSource === "AI" ? "AI" : "규칙 기반"}</small></p><em>보기 →</em></button>) : <p className="treasury-empty">이 보고일에 저장된 자금일보가 없습니다.</p>}</div>
         </article>
       </div>

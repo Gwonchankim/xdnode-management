@@ -1,15 +1,22 @@
 import { env } from "cloudflare:workers";
+import { calculateCompensation, type CompensationEmployee } from "../../../compensation-calculation";
+import { normalizeCompensationSettings } from "../../../compensation-settings";
 import { createApprovalRequest } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees } from "../../../hr-company-data";
 import { applyDueOnboarding } from "../../../hr-onboarding";
 import { applyDueRetirements } from "../../../hr-retirements";
 import { averageWageMonths, calculateLeaveAllowance, calculateSeverance, normalizeDate } from "../../../hr-severance-calculation";
+import { computeLeaveLedger, type GrantAdjustment, type LeaveKind } from "../../../hr-leave-accrual";
+import { monthlyOrdinaryWageOn } from "../../../hr-ordinary-wage";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
 
 async function ensureSchema() {
+  // hr_employee_records 는 app/hr-employee-schema.ts 한 곳에서 정의한다. 다른 표보다 먼저 보장한다.
+  await ensureHrEmployeeRecordsSchema(db);
   await db.batch([
     db.prepare(`CREATE TABLE IF NOT EXISTS hr_payroll_runs (
       period TEXT PRIMARY KEY NOT NULL, status TEXT NOT NULL DEFAULT 'DRAFT', employee_count INTEGER NOT NULL DEFAULT 0,
@@ -57,12 +64,6 @@ async function ensureSchema() {
       prepared_by TEXT NOT NULL DEFAULT '', completed_by TEXT NOT NULL DEFAULT '', completed_at INTEGER,
       created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
     )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_employee_records (
-      employee_id TEXT PRIMARY KEY, name TEXT NOT NULL, birth TEXT NOT NULL, email TEXT NOT NULL,
-      phone TEXT NOT NULL, address TEXT NOT NULL, department TEXT NOT NULL, manager TEXT NOT NULL,
-      employment_type TEXT NOT NULL, join_date TEXT NOT NULL DEFAULT '', position TEXT NOT NULL, job_title TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT '재직', history_json TEXT NOT NULL DEFAULT '[]', retirement_json TEXT, updated_at INTEGER NOT NULL
-    )`),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_hr_personnel_employee_effective ON hr_personnel_actions(employee_id, effective_date)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_hr_attendance_employee_date ON hr_attendance_records(employee_id, work_date)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_hr_attendance_status_date ON hr_attendance_records(status, work_date)"),
@@ -76,12 +77,22 @@ async function ensureSchema() {
   if (!settlementColumns.results.some((column) => column.name === "leave_days")) {
     await db.prepare("ALTER TABLE hr_retirement_settlements ADD COLUMN leave_days REAL NOT NULL DEFAULT 0").run();
   }
+  // 연차관리(app/api/hr/leave)가 더한 열과 조정 표. 이 라우트가 먼저 뜰 수도 있어 같은 보강을 둔다.
+  const leaveColumns = await db.prepare("PRAGMA table_info(hr_leave_requests)").all<{ name: string }>();
+  const leaveNames = new Set(leaveColumns.results.map((column) => column.name));
+  if (!leaveNames.has("deducts")) await db.prepare("ALTER TABLE hr_leave_requests ADD COLUMN deducts INTEGER NOT NULL DEFAULT 1").run();
+  if (!leaveNames.has("source")) await db.prepare("ALTER TABLE hr_leave_requests ADD COLUMN source TEXT NOT NULL DEFAULT 'ERP'").run();
+  if (!leaveNames.has("recorded_by")) await db.prepare("ALTER TABLE hr_leave_requests ADD COLUMN recorded_by TEXT NOT NULL DEFAULT ''").run();
+  await db.prepare("CREATE TABLE IF NOT EXISTS hr_leave_grant_adjustments (id TEXT PRIMARY KEY NOT NULL, employee_id TEXT NOT NULL, grant_key TEXT NOT NULL, status TEXT NOT NULL DEFAULT '', units REAL, note TEXT NOT NULL DEFAULT '', updated_by TEXT NOT NULL DEFAULT '', updated_at INTEGER NOT NULL, UNIQUE (employee_id, grant_key))").run();
 }
 
 type SeveranceContext = {
   employeeId: string; employeeName: string; retirementDate: string; period: string; joinDate: string;
   monthlyOrdinaryWage: number; usedLeaveUnits: number;
+  /** 퇴직일 기준 연차관리 잔여(음수면 선사용). 미사용 연차수당의 자동 계산 근거다. */
+  unusedLeaveDays: number;
 };
+const LEAVE_TYPE_KIND: Record<string, LeaveKind> = { ANNUAL: "ANNUAL", HALF: "HALF", HALF_AM: "HALF", HALF_PM: "HALF", QUARTER: "QUARTER", BIRTHDAY_HALF: "BIRTHDAY_HALF", OFFICIAL: "OFFICIAL", SICK: "SICK", FAMILY: "FAMILY", OTHER: "OTHER" };
 
 // hr_payroll_records 의 employee_id 는 출처에 따라 값이 다르다. 가져온 인건비 자료는 HR 사번(lhy0220)을
 // 쓰지만, ERP 임금계산이 확정하며 만든 행은 임금안 라인의 UUID 를 넣는다. 사번만으로 찾으면 임금계산에서
@@ -91,21 +102,28 @@ const PAYROLL_MATCH = "(employee_id = ? OR employee_name = ?)";
 /** 퇴직금 산정에 필요한 사람·급여 정보를 모은다. 정산 저장과 화면 미리보기가 같은 값을 쓰도록 한 곳에 둔다. */
 async function severanceContextFor(employeeId: string, retirementDate: string): Promise<SeveranceContext> {
   const employee = await db.prepare(`SELECT name, join_date, annual_salary, base_pay, meal_allowance,
-    childcare_allowance, vehicle_allowance FROM hr_employee_records WHERE employee_id = ?`)
+    childcare_allowance, vehicle_allowance, first_term_pay_percent, regular_contract_date FROM hr_employee_records WHERE employee_id = ?`)
     .bind(employeeId).first<{ name: string; join_date: string; annual_salary: number; base_pay: number;
-      meal_allowance: number; childcare_allowance: number; vehicle_allowance: number }>();
-  // 통상임금은 연봉 기준이 있으면 연봉/12, 없으면 고정 지급분 합계로 본다.
-  // 여기서 반올림하지 않는다 — 반올림은 퇴직금 산식의 맨 끝에서 한 번만 한다.
-  // 연봉 44,000,000 이면 3,666,666.666… 을 그대로 넘긴다(예전에는 3,666,667 로 올려 보냈다).
-  const monthlyOrdinaryWage = !employee ? 0
-    : employee.annual_salary > 0 ? employee.annual_salary / 12
-    : employee.base_pay + employee.meal_allowance + employee.childcare_allowance + employee.vehicle_allowance;
-  const used = await db.prepare(`SELECT COALESCE(SUM(units), 0) AS units FROM hr_leave_requests
-    WHERE employee_id = ? AND status = 'APPROVED' AND leave_type IN ('ANNUAL', 'HALF_AM', 'HALF_PM')`)
-    .bind(employeeId).first<{ units: number }>();
+      meal_allowance: number; childcare_allowance: number; vehicle_allowance: number; first_term_pay_percent: number | null; regular_contract_date: string | null }>();
+  const monthlyOrdinaryWage = monthlyOrdinaryWageOn(employee ? {
+    joinDate: employee.join_date, annualSalary: employee.annual_salary, basePay: employee.base_pay,
+    mealAllowance: employee.meal_allowance, childcareAllowance: employee.childcare_allowance,
+    vehicleAllowance: employee.vehicle_allowance, firstTermPayPercent: employee.first_term_pay_percent,
+    regularContractDate: employee.regular_contract_date,
+  } : null, retirementDate);
+  // 미사용 연차는 연차관리와 같은 엔진으로 퇴직일 기준 잔여를 낸다(발생·소멸·차감 제외 종류까지 같은 규칙).
+  const requests = await db.prepare("SELECT id, leave_type, start_date, units, deducts FROM hr_leave_requests WHERE employee_id = ? AND status = 'APPROVED'")
+    .bind(employeeId).all<{ id: string; leave_type: string; start_date: string; units: number; deducts: number }>();
+  const adjustmentRows = await db.prepare("SELECT grant_key, status, units, note FROM hr_leave_grant_adjustments WHERE employee_id = ?")
+    .bind(employeeId).all<{ grant_key: string; status: string; units: number | null; note: string }>();
+  const ledger = computeLeaveLedger({
+    employeeId, joinDate: employee?.join_date ?? "", exitDate: retirementDate, today: retirementDate,
+    usages: requests.results.map((row) => ({ id: row.id, date: row.start_date, kind: LEAVE_TYPE_KIND[row.leave_type] ?? "OTHER", units: row.units / 100, deducts: Boolean(row.deducts) })),
+    adjustments: adjustmentRows.results.map((row): GrantAdjustment => ({ grantKey: row.grant_key, note: row.note, ...(row.status === "EXCLUDED" ? { status: "EXCLUDED" as const } : {}), ...(row.units === null ? {} : { units: row.units }) })),
+  });
   return {
     employeeId, employeeName: employee?.name ?? "", retirementDate, period: retirementDate.slice(0, 7),
-    joinDate: employee?.join_date ?? "", monthlyOrdinaryWage, usedLeaveUnits: Number(used?.units ?? 0),
+    joinDate: employee?.join_date ?? "", monthlyOrdinaryWage, usedLeaveUnits: ledger.used, unusedLeaveDays: ledger.balance,
   };
 }
 
@@ -216,7 +234,7 @@ export async function GET(request: Request) {
         .first<{ retirement_pay: number; annual_leave_pay: number }>();
       return {
         requestId: String(row.id ?? ""), period: context.period, joinDate: context.joinDate,
-        monthlyOrdinaryWage: context.monthlyOrdinaryWage, usedLeaveUnits: context.usedLeaveUnits,
+        monthlyOrdinaryWage: context.monthlyOrdinaryWage, usedLeaveUnits: context.usedLeaveUnits, unusedLeaveDays: context.unusedLeaveDays,
         recordedSeverance: Number(recorded?.retirement_pay ?? 0),
         recordedLeavePay: Number(recorded?.annual_leave_pay ?? 0),
         leaveDailyWage: calculateLeaveAllowance(1, context.monthlyOrdinaryWage, String(row.retirement_date ?? "")).dailyWage,
@@ -302,9 +320,9 @@ export async function POST(request: Request) {
     statements.unshift(db.prepare(`INSERT INTO hr_retirement_requests
       (id, employee_id, retirement_date, reason, status, checklist_json, total_tasks, completed_tasks,
         requested_by, approved_by, approved_at, completed_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'IN_PROGRESS', ?, ?, ?, ?, ?, ?, NULL, ?, ?)`)
+      VALUES (?, ?, ?, ?, 'SUBMITTED', ?, ?, ?, ?, '', NULL, NULL, ?, ?)`)
       .bind(id, employeeId, eventDate, reason, JSON.stringify(completedTaskIds), tasks.length, completedTaskIds.length,
-        authorization.principal.employeeId, authorization.principal.employeeId, now, now, now));
+        authorization.principal.employeeId, now, now));
     if (employee) {
       statements.unshift(db.prepare(`INSERT OR IGNORE INTO hr_employee_records
         (employee_id, name, birth, email, phone, address, department, manager, employment_type, join_date,
@@ -324,7 +342,7 @@ export async function POST(request: Request) {
       detail: `${persistedEmployee?.department || employee?.department || "소속 미상"} ${persistedEmployee?.position || employee?.position || ""} 퇴직 예정 · ${reason}`.replace(/\s+/g, " ").trim(),
     };
     const currentHistory = persistedEmployee
-      ? (JSON.parse(persistedEmployee.history_json || "[]") as Array<{ date?: string; type?: string; detail?: string }>)
+      ? ((() => { try { const parsed = JSON.parse(persistedEmployee.history_json || "[]"); return Array.isArray(parsed) ? parsed : []; } catch { return []; } })() as Array<{ date?: string; type?: string; detail?: string }>)
       : (employee?.history ?? []);
     const alreadyRecorded = currentHistory.some((item) => item.type === retirementHistory.type && item.date === retirementHistory.date);
     if (!alreadyRecorded) {
@@ -333,9 +351,25 @@ export async function POST(request: Request) {
     }
 
     await db.batch(statements);
+    // 인사발령·휴가처럼 결재선을 탄다(HR_RETIREMENT). 승인되면 엔진이 IN_PROGRESS 전환·정산 초안·인사기록의 퇴직 예정 표시를 한다.
+    // 예전에는 요청자 본인이 approved_by 로 저장되는 자기결재였다.
+    let approval: { autoApproved?: boolean } = {};
+    try {
+      approval = await createApprovalRequest(db, authorization.principal, {
+        module: "hr", requestType: "RETIREMENT", title: `${persistedEmployee?.name ?? employee?.name ?? employeeId} 퇴직 승인 요청`,
+        description: `${eventDate} 퇴직 예정 · ${reason}`, targetEntityType: "HR_RETIREMENT", targetEntityId: id, dueDate: eventDate,
+        metadata: { employeeId, eventDate, reason, taskCount: tasks.length },
+      });
+    } catch (error) {
+      await db.batch([
+        db.prepare("UPDATE hr_lifecycle_tasks SET status = 'CANCELLED', updated_at = ? WHERE lifecycle_type = 'RETIREMENT' AND id LIKE ?").bind(now, `${id}:%`),
+        db.prepare("UPDATE hr_retirement_requests SET status = 'REJECTED', updated_at = ? WHERE id = ?").bind(now, id),
+      ]);
+      return Response.json({ error: error instanceof Error ? error.message : "퇴직 결재선을 만들지 못했습니다." }, { status: 409 });
+    }
     await applyDueRetirements(db, now);
     const created = await db.prepare("SELECT status FROM hr_retirement_requests WHERE id = ?").bind(id).first<{ status: string }>();
-    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "RETIREMENT_APPROVED", entityType: "employeeRetirement", entityId: id, after: { employeeId, employeeName: employee?.name ?? persistedEmployee?.name ?? employeeId, eventDate, reason, completedTaskIds, status: created?.status ?? "IN_PROGRESS" } });
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: approval.autoApproved ? "RETIREMENT_APPROVED" : "RETIREMENT_SUBMITTED", entityType: "employeeRetirement", entityId: id, after: { employeeId, employeeName: employee?.name ?? persistedEmployee?.name ?? employeeId, eventDate, reason, completedTaskIds, status: created?.status ?? "IN_PROGRESS" } });
     return Response.json({ item: { id, employeeId, eventDate, taskCount: tasks.length, completedTaskIds, status: created?.status ?? "IN_PROGRESS" } }, { status: 201 });
   }
 
@@ -355,11 +389,13 @@ export async function POST(request: Request) {
       || startDate > endDate || !Number.isInteger(units) || units <= 0) {
       return Response.json({ error: "휴가 대상·종류·기간·사용일수를 확인해 주세요." }, { status: 400 });
     }
+    // 연차관리(app/hr-leave-accrual.ts LEAVE_KINDS)와 같은 규칙: 연차·반차만 잔여에서 차감하고 병가·가족돌봄·기타는 기록만 한다.
+    const deducts = ["ANNUAL", "HALF_AM", "HALF_PM"].includes(leaveType) ? 1 : 0;
     await db.prepare(`INSERT INTO hr_leave_requests
       (id, employee_id, leave_type, start_date, end_date, units, reason, status,
-        approver_employee_id, decided_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', '', NULL, ?, ?)`)
-      .bind(id, employeeId, leaveType, startDate, endDate, units, reason, now, now).run();
+        approver_employee_id, decided_at, created_at, updated_at, deducts, source, recorded_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', '', NULL, ?, ?, ?, 'ERP', ?)`)
+      .bind(id, employeeId, leaveType, startDate, endDate, units, reason, now, now, deducts, authorization.principal.employeeId).run();
     try {
       await createApprovalRequest(db, authorization.principal, {
         module: "hr", requestType: "LEAVE_REQUEST", title: `${employeeId} 휴가 승인 요청`,
@@ -411,7 +447,8 @@ export async function PUT(request: Request) {
   const resource = String(body.resource ?? "");
   const id = String(body.id ?? "").trim();
   if (!id) return Response.json({ error: "수정할 항목 ID가 필요합니다." }, { status: 400 });
-  const authorization = await authorizeErpRequest(db, "hr", ["retirementChecklist", "retirementSettlement", "lifecycleTask", "severanceToPayroll"].includes(resource) ? "write" : "approve");
+  // 체크리스트·입사 과제는 write, 정산 금액 확정과 임금안 반영은 휴가·근태 승인과 같은 approve 권한이다.
+  const authorization = await authorizeErpRequest(db, "hr", ["retirementChecklist", "lifecycleTask"].includes(resource) ? "write" : "approve");
   if (authorization.response) return authorization.response;
   const now = Date.now();
 
@@ -427,8 +464,8 @@ export async function PUT(request: Request) {
     const period = context.period;
     if (!/^\d{4}-\d{2}$/.test(period)) return Response.json({ error: "퇴사일이 없어 반영할 급여월을 알 수 없습니다." }, { status: 409 });
 
-    const run = await db.prepare("SELECT status FROM hr_compensation_runs WHERE period = ?")
-      .bind(period).first<{ status: string }>();
+    const run = await db.prepare("SELECT status, version, settings_json FROM hr_compensation_runs WHERE period = ?")
+      .bind(period).first<{ status: string; version: number; settings_json: string }>();
     if (!run) return Response.json({ error: "급여 월이 비어 있습니다. 해당 급여월은 만들어 주세요", payrollMonthMissing: true }, { status: 409 });
     if (run.status !== "DRAFT") {
       return Response.json({ error: `${period} 임금안이 확정 상태입니다. 임금계산에서 수정하기를 누른 뒤 다시 시도해 주세요.` }, { status: 409 });
@@ -468,8 +505,34 @@ export async function PUT(request: Request) {
     // 예정일이라도 적혀 있어야 근무일수가 퇴직일까지로 잘려 일할 계산된다.
     const previousLeaveDate = String(snapshot.leaveDate ?? "");
     if (retirementDate) snapshot.leaveDate = retirementDate;
-    await db.prepare("UPDATE hr_compensation_lines SET snapshot_json = ?, updated_at = ? WHERE period = ? AND employee_id = ?")
-      .bind(JSON.stringify(snapshot), now, period, target.employee_id).run();
+    // 임금안 버전을 함께 올린다. 그래야 열려 있는 임금계산 화면의 자동 저장이 409 를 받고, 여기서 넣은 퇴직금·연차수당·퇴사일을
+    // 옛 스냅샷으로 덮어쓰지 못한다. 상태 검사와 저장 사이에 확정됐으면 한 행도 바뀌지 않아 409 로 돌려보낸다.
+    let rawSettings: unknown;
+    try { rawSettings = JSON.parse(run.settings_json || "{}"); } catch { rawSettings = {}; }
+    const settings = normalizeCompensationSettings(rawSettings);
+    settings.columns.severance = true;
+    if (Number.isFinite(annualLeave)) settings.columns.annualLeave = true;
+    if (Number.isFinite(deduction)) settings.columns.deduction = true;
+    const [year, month] = period.split("-").map(Number);
+    let recalculated: Array<{ employeeId: string; snapshot: CompensationEmployee; total: number }>;
+    try {
+      recalculated = lines.results.map((line) => {
+        const employee = (line.employee_id === target.employee_id ? snapshot : JSON.parse(line.snapshot_json)) as CompensationEmployee;
+        const total = calculateCompensation(employee, year, month, settings.rounding as "round" | "up" | "down",
+          settings.columns as Parameters<typeof calculateCompensation>[4]).total;
+        if (!Number.isFinite(total)) throw new Error("Invalid compensation total");
+        return { employeeId: line.employee_id, snapshot: employee, total };
+      });
+    } catch {
+      return Response.json({ error: "임금안 계산 자료를 확인해 주세요. 반영되지 않았습니다." }, { status: 409 });
+    }
+    const pushed = await db.batch([
+      ...recalculated.map((line) => db.prepare("UPDATE hr_compensation_lines SET snapshot_json = ?, gross_pay = ?, updated_at = ? WHERE period = ? AND employee_id = ? AND EXISTS (SELECT 1 FROM hr_compensation_runs WHERE period = ? AND status = 'DRAFT' AND version = ?)")
+        .bind(JSON.stringify(line.snapshot), line.total, now, period, line.employeeId, period, run.version)),
+      db.prepare("UPDATE hr_compensation_runs SET version = version + 1, gross_pay = ?, settings_json = ?, updated_at = ? WHERE period = ? AND status = 'DRAFT' AND version = ?")
+        .bind(recalculated.reduce((sum, line) => sum + line.total, 0), JSON.stringify(settings), now, period, run.version),
+    ]);
+    if ((pushed[pushed.length - 1].meta.changes ?? 0) < 1) return Response.json({ error: `${period} 임금안이 그 사이 변경되었습니다. 새로고침 후 다시 시도해 주세요.` }, { status: 409 });
     await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "SEVERANCE_APPLIED_TO_PAYROLL", entityType: "compensationLine", entityId: `${period}:${target.employee_id}`, before: { severance: previous, leaveDate: previousLeaveDate }, after: { severance: amount, leaveDate: retirementDate, retirementRequestId: id, employeeName: context.employeeName } });
     return Response.json({ applied: true, period, previous, amount,
       annualLeave: Number.isFinite(annualLeave) && annualLeave >= 0 ? Math.round(annualLeave) : null,

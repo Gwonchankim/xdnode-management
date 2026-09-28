@@ -2,7 +2,6 @@ $ErrorActionPreference = "Stop"
 
 $ProjectPath = Split-Path -Parent $PSScriptRoot
 $Port = 3000
-$AssistantPort = 3110
 $ResumeBridgePort = 3120
 $ClaudeAssistantPort = 3130
 $Url = "http://localhost:$Port"
@@ -42,6 +41,9 @@ function Remove-StaleDevLock {
 $LogDir = Join-Path $ProjectPath ".vinext\dev"
 $LogPath = Join-Path $LogDir "launcher.log"
 
+# Miniflare 로컬 explorer(D1 임의 SQL 실행 API)를 끈다. vite.config.ts 도 같은 값을 강제한다.
+$env:X_LOCAL_EXPLORER = "false"
+
 if (-not (Test-LocalPort $Port)) {
   Write-Host "Starting XD NODE ERP. The first launch may take up to a few minutes (longer if project files changed since the last run)..." -ForegroundColor Cyan
   Remove-StaleDevLock
@@ -50,7 +52,7 @@ if (-not (Test-LocalPort $Port)) {
   }
   $serverProcess = Start-Process `
     -FilePath "cmd.exe" `
-    -ArgumentList @("/c", "cd /d `"$ProjectPath`" && npm.cmd run dev -- --port $Port --hostname 0.0.0.0") `
+    -ArgumentList @("/c", "cd /d `"$ProjectPath`" && npm.cmd run dev -- --port $Port --hostname 127.0.0.1") `
     -WindowStyle Hidden `
     -RedirectStandardOutput $LogPath `
     -RedirectStandardError "$LogPath.err" `
@@ -68,15 +70,7 @@ if (-not (Test-LocalPort $Port)) {
   }
 }
 
-if (-not (Test-LocalPort $AssistantPort)) {
-  $assistantLogPath = Join-Path $LogDir "codex-assistant.log"
-  Start-Process `
-    -FilePath "cmd.exe" `
-    -ArgumentList @("/c", "cd /d `"$ProjectPath`" && npm.cmd run assistant:bridge") `
-    -WindowStyle Hidden `
-    -RedirectStandardOutput $assistantLogPath `
-    -RedirectStandardError "$assistantLogPath.err" | Out-Null
-}
+# Codex 어시스턴트 다리(3110)는 더 띄우지 않는다. 어시스턴트는 아래 Claude 다리(3130)가 맡는다.
 
 # 이력서 분석용 Claude CLI 다리. Worker 안에서는 프로세스를 띄울 수 없어 여기서 같이 올린다.
 if (-not (Test-LocalPort $ResumeBridgePort)) {
@@ -89,7 +83,7 @@ if (-not (Test-LocalPort $ResumeBridgePort)) {
     -RedirectStandardError "$resumeLogPath.err" | Out-Null
 }
 
-# HR·임금계산 보조 어시스턴트(Claude CLI). Codex 다리(3110)는 되돌릴 수 있도록 남겨 둔다.
+# HR·임금계산 보조 어시스턴트(Claude CLI). 저장소 파일은 읽지 않고 ERP 서버가 넘긴 자료로만 답한다.
 if (-not (Test-LocalPort $ClaudeAssistantPort)) {
   $claudeAssistantLogPath = Join-Path $LogDir "claude-assistant.log"
   Start-Process `

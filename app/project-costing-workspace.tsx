@@ -89,7 +89,7 @@ export default function ProjectCostingWorkspace() {
   const activeCenters = data?.centers.filter((center) => center.status === "ACTIVE") ?? [];
   const unallocated = data?.sources.filter((source) => source.remaining > 0) ?? [];
   return <div className="project-costing-workspace">
-    <section className="project-costing-hero"><div><p>PROJECT PROFITABILITY</p><h1>프로젝트·원가센터</h1><span>매출은 영업기회로 정확히 연결하고, 매입·지출·급여는 근거금액으로 배부해 손익을 확인합니다.</span></div><label>관리월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label></section>
+    <section className="project-costing-hero"><div data-korean-heading><h1>프로젝트·원가센터</h1><span>매출은 영업기회로 정확히 연결하고, 매입·지출·급여는 근거금액으로 배부해 손익을 확인합니다.</span></div><label>관리월<input type="month" min="2026-01" max={data?.currentPeriod} value={period} onChange={(event) => void load(event.target.value)} /></label></section>
     <div className="project-costing-guidance"><strong>추정 자동배부 금지</strong><span>{data?.summary.externalScopeNote}</span><em>{data?.locked ? "마감 잠금" : "ERP 원천 기준"}</em></div>
     {message && <div className="project-costing-message" role="status">{message}</div>}
     <section className="project-costing-metrics">
@@ -100,7 +100,7 @@ export default function ProjectCostingWorkspace() {
     </section>
 
     <section className="project-costing-grid">
-      <article className="panel project-center-form"><header><div><p>COST CENTER REGISTER</p><h2>원가센터 등록</h2></div><span>영업기회 연결은 프로젝트만</span></header>
+      <article className="panel project-center-form"><header><div data-korean-heading><h2>원가센터 등록</h2></div><span>영업기회 연결은 프로젝트만</span></header>
         <form onSubmit={createCenter}>
           <label>센터 코드<input value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value })} placeholder="PRJ-2026-001" required /></label>
           <label>센터명<input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} placeholder="고객·과업명" required /></label>
@@ -113,12 +113,12 @@ export default function ProjectCostingWorkspace() {
           <button type="submit" disabled={working}>원가센터 등록</button>
         </form>
       </article>
-      <article className="panel project-source-summary"><header><div><p>CLASSIFICATION QUEUE</p><h2>미분류 원천</h2></div><span>{unallocated.length}건</span></header>
+      <article className="panel project-source-summary"><header><div data-korean-heading><h2>미분류 원천</h2></div><span>{unallocated.length}건</span></header>
         <div><strong>{compact(data?.summary.unmappedAmount ?? 0)}</strong><p>월마감 전에 배부하거나 명확한 공통비 센터로 분류해야 합니다.</p><dl><div><dt>매출</dt><dd>{unallocated.filter((item) => item.direction === "REVENUE").length}건</dd></div><div><dt>원가</dt><dd>{unallocated.filter((item) => item.direction === "COST").length}건</dd></div></dl></div>
       </article>
     </section>
 
-    <section className="panel project-center-ledger"><header><div><p>PROJECT P&amp;L</p><h2>{period} 센터별 손익</h2></div><span>실적 · 예산 · 차이</span></header>
+    <section className="panel project-center-ledger"><header><div data-korean-heading><h2>{period} 센터별 손익</h2></div><span>실적 · 예산 · 차이</span></header>
       <div className="project-center-row head"><span>센터</span><span>담당·기간</span><span>매출/예산</span><span>원가/예산</span><span>손익·이익률</span><span>상태</span><span>관리</span></div>
       {data?.centers.map((center) => <div className={`project-center-row ${center.status.toLowerCase()}`} key={center.id}>
         <p><strong>{center.code} · {center.name}</strong><small>{typeLabel[center.center_type]}{center.client_name ? ` · ${center.client_name}` : ""}</small></p>
@@ -131,7 +131,7 @@ export default function ProjectCostingWorkspace() {
       </div>)}{!data?.centers.length && <p className="project-costing-empty">등록된 원가센터가 없습니다. 공통비도 명시적인 OVERHEAD 센터로 먼저 등록해 주세요.</p>}
     </section>
 
-    <section className="panel project-allocation-ledger"><header><div><p>SOURCE ALLOCATION</p><h2>확정 원천 배부</h2><span>원천 합계를 넘을 수 없으며 급여는 타임시트·관리자 확인 근거가 필요합니다.</span></div><em>{data?.locked ? "마감월 잠금" : `${data?.sources.length ?? 0}건`}</em></header>
+    <section className="panel project-allocation-ledger"><header><div data-korean-heading><h2>확정 원천 배부</h2><span>원천 합계를 넘을 수 없으며 급여는 타임시트·관리자 확인 근거가 필요합니다.</span></div><em>{data?.locked ? "마감월 잠금" : `${data?.sources.length ?? 0}건`}</em></header>
       <div className="project-source-row head"><span>원천</span><span>금액</span><span>배부 상태</span><span>원가센터</span><span>배부금액</span><span>배부 근거</span><span>처리</span></div>
       {data?.sources.map((source) => { const key = `${source.sourceType}:${source.sourceId}`; const entry = allocationDrafts[key] ?? { centerId: "", amount: String(source.remaining), note: "" }; return <div className={`project-source-row ${source.remaining ? "pending" : "complete"}`} key={key}>
         <p><em>{sourceLabel[source.sourceType] ?? source.sourceType}</em><strong>{source.label}</strong><small>{source.date} · {source.detail}</small></p>
@@ -144,7 +144,7 @@ export default function ProjectCostingWorkspace() {
       </div>; })}{!data?.sources.length && <p className="project-costing-empty">이 관리월에 확정된 ERP 원천이 없습니다.</p>}
     </section>
 
-    <section className="panel project-allocation-history"><header><div><p>ALLOCATION TRAIL</p><h2>배부 감사 이력</h2></div><span>{data?.allocations.length ?? 0}건</span></header>
+    <section className="panel project-allocation-history"><header><div data-korean-heading><h2>배부 감사 이력</h2></div><span>{data?.allocations.length ?? 0}건</span></header>
       {data?.allocations.map((item) => <div key={item.id}><p><strong>{item.center_code} · {item.center_name}</strong><small>{sourceLabel[item.source_type] ?? item.source_type} · {item.note}</small></p><span>{item.direction === "REVENUE" ? "매출" : "원가"}</span><strong>{won(item.amount)}</strong><time>{new Date(item.created_at).toLocaleString("ko-KR")}</time><button type="button" disabled={working || data.locked} onClick={() => { const reason = window.prompt("배부 삭제 사유", "원천 귀속 정정"); if (reason) void mutate({ action: "REMOVE_ALLOCATION", id: item.id, reason }, "배부 이력을 삭제하고 감사로그를 남겼습니다."); }}>삭제</button></div>)}{!data?.allocations.length && <p className="project-costing-empty">수동 배부 이력이 없습니다.</p>}
     </section>
   </div>;

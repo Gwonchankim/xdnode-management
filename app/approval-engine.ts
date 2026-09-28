@@ -115,7 +115,8 @@ async function resolveApprovers(db: D1Database, steps: ApprovalRouteStep[], requ
 // Scoped to an explicit allowlist (currently PAYROLL_RUN only) rather than every request type, since
 // each target entity's outcome side effects (buildApprovalOutcomeStatements) need to be safe to fire
 // immediately, unattended, at submit time.
-const AUTO_APPROVE_WHEN_SELF = new Set<string>(["hr:PAYROLL_RUN", "recruitment:REQUISITION"]);
+// 퇴직 요청도 결재선을 탄다. 결재선이 요청자 본인뿐인 소규모 운영에서는 즉시 승인되어 예전과 같은 흐름이 된다.
+const AUTO_APPROVE_WHEN_SELF = new Set<string>(["hr:PAYROLL_RUN", "hr:RETIREMENT", "recruitment:REQUISITION"]);
 
 // Lets a feature route find out, before it commits to a draft-then-submit flow, whether the request
 // would be auto-approved anyway because the requester is the only person on the resolved route. A

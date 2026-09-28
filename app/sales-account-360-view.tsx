@@ -92,7 +92,7 @@ export default function SalesAccount360View({ accountId, onClose, onChanged }: {
   if (!data) return <section className="panel sales-account-360 loading">{message || "고객 360도 원장을 불러오고 있습니다…"}</section>;
 
   return <section className="panel sales-account-360">
-    <header className="sales-account-360-heading"><div><p>CUSTOMER 360°</p><h2>{data.account.name}</h2><span>{data.account.businessNumber || "사업자번호 미입력"} · 담당 {data.account.ownerName || "미지정"}</span></div><button type="button" onClick={onClose}>닫기</button></header>
+    <header className="sales-account-360-heading"><div data-korean-heading><h2>{data.account.name}</h2><span>{data.account.businessNumber || "사업자번호 미입력"} · 담당 {data.account.ownerName || "미지정"}</span></div><button type="button" onClick={onClose}>닫기</button></header>
     {message && <div className="sales-account-360-message" role="status">{message}</div>}
     {data.alerts.length > 0 && <div className="sales-account-alerts">{data.alerts.map((alert) => <span className={alert.level.toLowerCase()} key={alert.code}>{alert.title}</span>)}</div>}
     <div className="sales-account-360-metrics">
