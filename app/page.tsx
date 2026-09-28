@@ -1,128 +1,127 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, type ReactNode } from "react";
 import HRWorkspace from "./hr-workspace";
 import CompensationCalculator from "./compensation-calculator";
 import AuditLogWorkspace from "./audit-log-workspace";
+import AdminAccountsWorkspace from "./admin-accounts-workspace";
 import LocalCodexAssistant from "./local-codex-assistant";
+import { ErpDialogProvider, useErpDialog } from "./erp-dialog";
+import { TAB_REGISTRY, type ResolvedTabs, type TabKey } from "./access-tabs";
+import ShellTopNav, { resolveActiveTab } from "./shell-top-nav";
+import { SessionGate, SessionNotice } from "./auth-screens";
+import { readScoped, writeScoped } from "./client-runtime";
+import { useSession, type SessionMe } from "./session-client";
 
-// R1(M1-3): 재무·영업 모듈과 워크벤치·데이터 통제·알림 센터를 셸에서 뺐다.
-// 'audit'는 data-governance-center 안에 있던 감사 로그를 탭으로 다시 마운트한 임시 키다(서버 게이트는 관리자 전용 audit:read).
-// R3에서 탭 레지스트리(app/access-tabs.ts)로 바뀐다.
-type ModuleKey = "hr" | "compensation" | "audit";
+// R3(r3-shell, Design §5.1~§5.3): 셸은 useSession() 상태기계와 탭 레지스트리(app/access-tabs.ts)로 그린다.
+// SSR 과 첫 렌더는 AuthLoadingShell(data-auth-gate="loading")뿐이고 탭 DOM 이 없다. 권한 없는 탭은 버튼도 패널도 없다.
+// 화면에서 숨기는 것은 보안 통제가 아니다. 모든 API 는 서버가 탭 권한으로 다시 검사한다.
 
-const modules: Array<{
-  key: ModuleKey;
-  label: string;
-  glyph: string;
-}> = [
-  { key: "hr", label: "인사관리", glyph: "◎" },
-  { key: "compensation", label: "임금 계산", glyph: "◫" },
-  { key: "audit", label: "감사 로그", glyph: "◇" },
-];
+const ACTIVE_TAB_KEY = "xdnode-active-tab";
+// 옛 셸이 쓰던 키. 범위 키가 없을 때 1회 읽고 지운다(§5.5).
+const LEGACY_ACTIVE_TAB_KEYS = [ACTIVE_TAB_KEY, "xdnode-active-module"];
 
-function ERPTopNavigation({ active, onChange }: { active: ModuleKey; onChange: (module: ModuleKey) => void }) {
-  return (
-    <header className="erp-top-nav">
-      <div className="erp-top-brand">
-        {/* eslint-disable-next-line @next/next/no-img-element -- 정적 로고. /_vinext/image 최적화가 필요 없다. */}
-        <img className="brand-mark brand-logo" src="/brand/xdnode-symbol.png" alt="XDNODE" width={48} height={48} />
-        <div>
-          <strong>XDnode management</strong>
+type PanelContext = {
+  me: SessionMe;
+  tabs: ResolvedTabs;
+  hrNavigation: { view: string; requestKey: number };
+  compensationAssistantModule: "compensation" | "incentive";
+  setCompensationAssistantModule: (module: "compensation" | "incentive") => void;
+};
 
-        </div>
-      </div>
+// 탭마다 패널 하나. Record<TabKey, …> 라서 레지스트리에 탭을 더하고 여기를 빠뜨리면 타입 오류가 되고,
+// 이 저장소에는 타입 검사 단계가 없으므로 tests/shell-tabs.test.mjs 가 소스로 한 번 더 확인한다(§10.7).
+const TAB_PANELS: Record<TabKey, (ctx: PanelContext) => ReactNode> = {
+  hr: (ctx) => (
+    <>
+      <HRWorkspace requestedView={ctx.hrNavigation.view} navigationRequestKey={ctx.hrNavigation.requestKey} access={{ canEdit: ctx.tabs.hr === "edit" }} />
+      <LocalCodexAssistant module="hr" tabs={ctx.tabs} />
+    </>
+  ),
+  compensation: (ctx) => (
+    <>
+      <CompensationCalculator onAssistantModuleChange={ctx.setCompensationAssistantModule} />
+      <LocalCodexAssistant module={ctx.compensationAssistantModule} tabs={ctx.tabs} />
+    </>
+  ),
+  audit: () => (
+    <main className="admin-page">
+      <AuditLogWorkspace />
+    </main>
+  ),
+  admin: (ctx) => (
+    <main className="admin-page">
+      <AdminAccountsWorkspace currentAccountId={ctx.me.user.accountId} />
+    </main>
+  ),
+};
 
-      <nav className="erp-module-tabs" aria-label="ERP 모듈">
-        {modules.map((module) => (
-          <button
-            type="button"
-            className={active === module.key ? "erp-module-tab active" : "erp-module-tab"}
-            key={module.key}
-            aria-current={active === module.key ? "page" : undefined}
-            onClick={() => onChange(module.key)}
-          >
-            <span className="module-glyph">{module.glyph}</span>
-            <span>
-              <strong>{module.label}</strong>
-
-            </span>
-          </button>
-        ))}
-      </nav>
-
-      <div className="erp-nav-spacer" />
-    </header>
-  );
-}
-
-const MODULE_STORAGE_KEY = "xdnode-active-module";
-const validModuleKeys: ModuleKey[] = ["hr", "compensation", "audit"];
-
-function readSavedModule(): ModuleKey {
-  try {
-    const saved = window.localStorage.getItem(MODULE_STORAGE_KEY);
-    // 저장값이 더 이상 없는 모듈(finance·sales 등)이면 'hr'로 돌아간다.
-    return validModuleKeys.includes(saved as ModuleKey) ? saved as ModuleKey : "hr";
-  } catch {
-    return "hr";
-  }
-}
-
-export default function Home() {
-  const [active, setActive] = useState<ModuleKey>("hr");
-  const [hrNavigation, setHrNavigation] = useState({ view: "dashboard", requestKey: 0 });
+function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChangePassword: () => void; onLogout: () => void }) {
+  // 저장된 탭은 계정 범위 키로 읽는다. 범위는 useSession 이 ready 로 가기 전에 정했다.
+  const [selected, setSelected] = useState<string | null>(() => readScoped(ACTIVE_TAB_KEY, LEGACY_ACTIVE_TAB_KEYS));
+  const [hrNavigation] = useState({ view: "dashboard", requestKey: 0 });
   const [compensationAssistantModule, setCompensationAssistantModule] = useState<"compensation" | "incentive">("compensation");
+  // 권한이 줄어 현재 탭이 사라지면(60초 재조회·FORBIDDEN 뒤) 첫 허용 탭으로 옮긴다.
+  const active = resolveActiveTab(me.tabs, selected);
 
-  useEffect(() => {
-    // 서버 렌더와 첫 하이드레이션은 'hr'로 맞추고, 저장된 탭은 마운트 뒤에 읽는다.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setActive(readSavedModule());
-  }, []);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(MODULE_STORAGE_KEY, active);
-    } catch {
-      // 저장소를 쓸 수 없으면 다음 방문에 'hr'로 시작한다.
-    }
-  }, [active]);
-
-  function openModule(module: ModuleKey, hrView?: string) {
-    if (hrView) {
-      setHrNavigation((current) => ({ view: hrView, requestKey: current.requestKey + 1 }));
-    }
-    setActive(module);
+  function select(tab: TabKey) {
+    setSelected(tab);
+    writeScoped(ACTIVE_TAB_KEY, tab);
   }
 
-  const navigation = <ERPTopNavigation active={active} onChange={(module) => openModule(module)} />;
+  const navigation = (
+    <ShellTopNav tabs={me.tabs} active={active} onSelect={select} userName={me.user.name} userEmail={me.user.email}
+      onChangePassword={onChangePassword} onLogout={onLogout} />
+  );
 
-  if (active === "compensation") {
-    return (
-      <div className="compensation-erp-shell">
-        {navigation}
-        <CompensationCalculator onAssistantModuleChange={setCompensationAssistantModule} />
-        <LocalCodexAssistant module={compensationAssistantModule} />
-      </div>
-    );
-  }
-
-  if (active === "audit") {
+  if (!active) {
     return (
       <div className="admin-module-shell">
         {navigation}
-        <main className="admin-page">
-          <AuditLogWorkspace />
+        <main className="shell-empty" data-shell="empty">
+          <p role="status">허용된 탭이 없습니다. 관리자에게 문의해 주세요.</p>
         </main>
       </div>
     );
   }
 
+  const definition = TAB_REGISTRY.find((tab) => tab.key === active) ?? TAB_REGISTRY[0];
   return (
-    <div className="hr-module-shell">
+    <div className={definition.shellClass}>
       {navigation}
-      <HRWorkspace requestedView={hrNavigation.view} navigationRequestKey={hrNavigation.requestKey} />
-      <LocalCodexAssistant module="hr" />
+      {TAB_PANELS[active]({ me, tabs: me.tabs, hrNavigation, compensationAssistantModule, setCompensationAssistantModule })}
     </div>
+  );
+}
+
+function Shell() {
+  const session = useSession();
+  const dialog = useErpDialog();
+
+  async function logout() {
+    const confirmed = await dialog.confirm("로그아웃하면 이 브라우저에 저장하지 않은 인센티브 입력(거래·조정·지급 결과·제외 인원)이 지워집니다. 로그아웃할까요?", {
+      title: "로그아웃", confirmLabel: "로그아웃",
+    });
+    if (confirmed) await session.logout();
+  }
+
+  if (session.state.status !== "ready") {
+    return <><SessionGate session={session} /><SessionNotice message={session.notice} /></>;
+  }
+  const me = session.state.me;
+  return (
+    <>
+      {/* 계정이 바뀌면 탭 선택·화면 상태를 새로 시작한다. */}
+      <ReadyShell key={me.user.accountId} me={me} onChangePassword={session.openPasswordChange} onLogout={() => void logout()} />
+      <SessionNotice message={session.notice} />
+    </>
+  );
+}
+
+export default function Home() {
+  return (
+    <ErpDialogProvider>
+      <Shell />
+    </ErpDialogProvider>
   );
 }

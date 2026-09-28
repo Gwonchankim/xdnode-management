@@ -59,70 +59,86 @@ test("worker adds the global security headers to pages and not-found responses",
   assert.equal(missing.headers.get("cache-control"), "no-store");
 });
 
-// R1(M1-3): 셸은 인사관리·임금 계산·감사 로그 세 탭만 둔다. 재무·영업 모듈, 오늘 업무(워크벤치),
-// 데이터 통제, 알림 센터는 셸에서 뺐다(Design §12.5). 첫 화면은 HR이다.
-test("renders the HR-first shell with only the hr, compensation and audit tabs", async () => {
+// R3(r3-shell, Design §5.2·§8.3 #5·#6): SSR 과 첫 렌더는 AuthLoadingShell(data-auth-gate="loading")뿐이다.
+// 탭 라벨·HR 데이터·재무/영업 문자열이 HTML 에 없고, 페이지는 D1 을 읽지 않는다(이 테스트는 DB 없이 worker 를 부른다).
+const TAB_LABELS = ["인사관리", "임금 계산", "감사 로그", "계정 관리", "메신저"];
+
+test("renders only the auth loading shell at / with no tab DOM and no business data", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>XDnode management · 경영지원실<\/title>/);
-  assert.match(html, /aria-label="ERP 모듈"/);
-  assert.match(html, /class="hr-module-shell"/);
+  assert.match(html, /data-auth-gate="loading"/);
   assert.match(html, /<strong>XDnode management<\/strong>/);
-  assert.match(html, /class="erp-module-tab active"[^>]*aria-current="page"[\s\S]*?<strong>인사관리<\/strong>/);
-  assert.match(html, /<strong>임금 계산<\/strong>/);
-  assert.match(html, /<strong>감사 로그<\/strong>/);
-  assert.equal((html.match(/class="erp-module-tab( active)?"/g) ?? []).length, 3);
-  assert.doesNotMatch(html, /<strong>재무회계<\/strong>|<strong>영업<\/strong>/);
+  assert.match(html, /src="\/brand\/xdnode-logo\.png"/);
+  // 설명 메타("인사 · 임금 계산 · 감사 기록")는 vinext 가 <body> 의 숨은 div 와 RSC 스크립트에도 싣는다.
+  // 탭 DOM 여부는 메타·title·스크립트를 뺀 화면 마크업으로 본다.
+  const body = html.slice(html.indexOf("<body"))
+    .replace(/<script\b[\s\S]*?<\/script>/g, "")
+    .replace(/<meta\b[^>]*>/g, "")
+    .replace(/<title>[\s\S]*?<\/title>/g, "");
+  for (const label of TAB_LABELS) assert.equal(body.includes(label), false, `tab label in SSR body: ${label}`);
+  assert.doesNotMatch(html, /class="erp-module-tab|aria-label="업무 탭"|erp-top-nav|hr-module-shell|peopleflow-host/);
+  assert.doesNotMatch(html, /<strong>재무회계<\/strong>|<strong>영업<\/strong>|재무|영업 인센티브 대시보드/);
   assert.doesNotMatch(html, /erp-alarm-button|erp-workbench-button|erp-data-governance-button|erp-sync-state/);
-  assert.doesNotMatch(html, /2024년부터 오늘까지, 하나의 재무 흐름으로|aria-label="재무회계 메뉴"|Clobe · 2026 데이터/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|codex-preview/);
+  assert.doesNotMatch(html, /\b01\d-\d{3,4}-\d{4}\b/, "no phone numbers in the SSR shell");
 });
 
-test("shell source keeps only the hr, compensation and audit modules", async () => {
-  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /type ModuleKey = "hr" \| "compensation" \| "audit";/);
-  assert.match(source, /const validModuleKeys: ModuleKey\[\] = \["hr", "compensation", "audit"\];/);
-  // 저장된 모듈이 더 이상 없으면(예: finance) 'hr'로 돌아간다.
-  assert.match(source, /validModuleKeys\.includes\(saved as ModuleKey\) \? saved as ModuleKey : "hr"/);
-  assert.match(source, /useState<ModuleKey>\("hr"\)/);
-  // 감사 로그는 data-governance-center 대신 셸의 탭으로 마운트한다. 서버 게이트는 R3부터 관리자 전용 audit:read 다.
-  assert.match(source, /import AuditLogWorkspace from "\.\/audit-log-workspace";/);
-  assert.match(source, /<main className="admin-page">\s*<AuditLogWorkspace \/>/);
-  const auditRoute = await readFile(new URL("../app/api/audit-log/route.ts", import.meta.url), "utf8");
-  assert.match(auditRoute, /authorizeErpRequest\(db, "audit", "read"\)/);
-  // HR 화면 이동 핸드셰이크는 남긴다.
-  assert.match(source, /<HRWorkspace requestedView=\{hrNavigation\.view\} navigationRequestKey=\{hrNavigation\.requestKey\} \/>/);
-  assert.doesNotMatch(source, /financeView|FinanceDashboard|SalesDashboard|HrDashboard|SalesWorkspace|OperationsWorkbench|DataGovernanceCenter|ApprovalCenter|finance-current-data|finance-decision-model|결재 대기/);
-  assert.doesNotMatch(source, /fetch\("\/api\/(operations|finance|sales)/);
-});
-
-test("renders the incentive calculator analysis workspace", async () => {
+test("renders only the auth loading shell at /incentive, without the calculator DOM", async () => {
   const response = await render("/incentive");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /인센티브 계산기/);
-  assert.match(html, /엑셀 또는 CSV 선택/);
-  assert.match(html, /개인별 예상 인센티브/);
-  assert.match(html, /각 거래의 인센티브를 먼저 계산하고 단수 처리한 뒤 개인별로 합산/);
-  assert.match(html, /케이블은 제품명만으로 제외하지 않으며 거래별 ‘인센 반영’ 설정/);
-  assert.match(html, /거래별 확정액 합계/);
-  assert.match(html, /인센티브 완전 제외 인원/);
-  assert.match(html, /엑셀 결과에서 모두 제외/);
-  assert.match(html, /월 인바운드 매출/);
-  assert.match(html, /개인 인센티브 대시보드/);
-  assert.match(html, /전체 인센티브 대시보드/);
-  assert.match(html, /인원별 전체 매출 비중/);
-  assert.match(html, /제품 · 거래 구분별 매출/);
-  assert.match(html, /인원별 전체 인센티브 비중/);
-  assert.match(html, /완전 제외 인원 설정과 무관하게 모든 원본 거래/);
-  assert.match(html, /제품별/);
-  assert.match(html, /거래 구분별/);
-  assert.match(html, /거래별 계산 내역/);
-  assert.match(html, /케이블 미반영 일괄 적용/);
-  assert.match(html, /마진 계산식/);
-  assert.match(html, /매출계산서일/);
+  assert.match(html, /<title>개인 인센티브 계산기 · XDnode management<\/title>/);
+  assert.match(html, /data-auth-gate="loading"/);
+  assert.doesNotMatch(html, /인센티브 계산기<\/h1>|엑셀 또는 CSV 선택|개인별 예상 인센티브|거래별 계산 내역/);
+});
+
+test("removed finance, sales and approval APIs are framework 404s", async () => {
+  for (const pathname of ["/api/finance/budget", "/api/sales", "/api/approvals"]) {
+    const response = await workerFetch(pathname);
+    assert.equal(response.status, 404, pathname);
+    assertSecurityHeaders(response, pathname);
+  }
+});
+
+test("shell source renders tabs from the registry through the session state machine", async () => {
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  assert.match(source, /const session = useSession\(\);/);
+  assert.match(source, /if \(session\.state\.status !== "ready"\)/);
+  assert.match(source, /<SessionGate session=\{session\} \/>/);
+  assert.match(source, /const TAB_PANELS: Record<TabKey, \(ctx: PanelContext\) => ReactNode> = \{/);
+  // 감사 로그와 계정 관리는 관리자 전용 탭이다(D23). 서버 게이트는 audit:read·admin:read.
+  assert.match(source, /import AuditLogWorkspace from "\.\/audit-log-workspace";/);
+  assert.match(source, /<main className="admin-page">\s*<AuditLogWorkspace \/>/);
+  assert.match(source, /<AdminAccountsWorkspace currentAccountId=\{ctx\.me\.user\.accountId\} \/>/);
+  const auditRoute = await readFile(new URL("../app/api/audit-log/route.ts", import.meta.url), "utf8");
+  assert.match(auditRoute, /authorizeErpRequest\(db, "audit", "read"\)/);
+  // HR 화면 이동 핸드셰이크와 보기 권한 배너(access.canEdit)를 넘긴다.
+  assert.match(source, /<HRWorkspace requestedView=\{ctx\.hrNavigation\.view\} navigationRequestKey=\{ctx\.hrNavigation\.requestKey\} access=\{\{ canEdit: ctx\.tabs\.hr === "edit" \}\} \/>/);
+  // 저장된 탭은 계정 범위 키로 읽고, 옛 키(xdnode-active-module)는 1회 읽은 뒤 지운다.
+  assert.match(source, /const ACTIVE_TAB_KEY = "xdnode-active-tab";/);
+  assert.match(source, /"xdnode-active-module"/);
+  assert.match(source, /readScoped\(ACTIVE_TAB_KEY, LEGACY_ACTIVE_TAB_KEYS\)/);
+  assert.doesNotMatch(source, /financeView|FinanceDashboard|SalesDashboard|HrDashboard|SalesWorkspace|OperationsWorkbench|DataGovernanceCenter|ApprovalCenter|finance-current-data|finance-decision-model|결재 대기/);
+  assert.doesNotMatch(source, /fetch\("\/api\/(operations|finance|sales)/);
+  assert.doesNotMatch(source, /localStorage/);
+});
+
+test("incentive calculator keeps its analysis workspace copy (rendered after the session gate)", async () => {
+  const source = await readFile(new URL("../app/incentive/incentive-calculator.tsx", import.meta.url), "utf8");
+  for (const text of [
+    "인센티브 계산기", "엑셀 또는 CSV 선택", "개인별 예상 인센티브", "각 거래의 인센티브를 먼저 계산하고 단수 처리한 뒤 개인별로 합산",
+    "케이블은 제품명만으로 제외하지 않으며 거래별 ‘인센 반영’ 설정", "거래별 확정액 합계", "인센티브 완전 제외 인원", "엑셀 결과에서 모두 제외",
+    "월 인바운드 매출", "개인 인센티브 대시보드", "전체 인센티브 대시보드", "인원별 전체 매출 비중", "제품 · 거래 구분별 매출",
+    "인원별 전체 인센티브 비중", "완전 제외 인원 설정과 무관하게 모든 원본 거래", "거래별 계산 내역", "케이블 미반영 일괄 적용", "마진 계산식", "매출계산서일",
+  ]) assert.ok(source.includes(text), text);
+  // R3(Design §4.2.7): 담당자 목록은 4필드 명부에서만 받는다. 인사기록(전화·주소·급여)은 부르지 않는다.
+  assert.match(source, /fetch\("\/api\/compensation\/roster", \{ cache: "no-store" \}\)/);
+  assert.doesNotMatch(source, /\/api\/hr\/employee-records"\)/);
+  assert.match(source, /if \(!response\.ok\) throw new Error/);
+  assert.doesNotMatch(source, /localStorage\./);
 });
 
 test("company sales dashboard includes every original deal before person exclusions", async () => {

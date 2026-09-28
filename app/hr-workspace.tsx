@@ -17,8 +17,10 @@ import { buildDashboardModel, koreanWon, type DashboardLeaveLedger, type Dashboa
 import { CompositionBar, FillMeter, HorizontalBars, MonthlyFlowChart, PayrollStepper } from "./hr-dashboard-charts";
 import LeaveManagementView, { LeaveLedgerPanel } from "./hr-leave-view";
 import { buildDefaultInterviewQuestions } from "./hr-interview-question-templates";
+import { copyText, secureContextAvailable } from "./client-runtime";
 
-export default function HRWorkspace({ requestedView = "dashboard", navigationRequestKey = 0 }: { requestedView?: string; navigationRequestKey?: number }) {
+// access.canEdit 는 화면 안내용이다(보기 권한 배너). 버튼은 숨기지 않고, 저장·승인·삭제는 서버가 403 으로 막는다(Design §5.4 HR 탭, §6.3).
+export default function HRWorkspace({ requestedView = "dashboard", navigationRequestKey = 0, access = { canEdit: true } }: { requestedView?: string; navigationRequestKey?: number; access?: { canEdit: boolean } }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [root, setRoot] = useState<ShadowRoot | null>(null);
 
@@ -35,7 +37,7 @@ export default function HRWorkspace({ requestedView = "dashboard", navigationReq
           {/* eslint-disable-next-line @next/next/no-css-tags */}
           <link rel="stylesheet" href="/hr-workspace.css" />
           <ErpDialogProvider>
-            <XdnodeHrApp requestedView={requestedView} navigationRequestKey={navigationRequestKey} />
+            <XdnodeHrApp requestedView={requestedView} navigationRequestKey={navigationRequestKey} canEdit={access.canEdit} />
           </ErpDialogProvider>
         </>,
         root,
@@ -881,7 +883,7 @@ function StatusPill({ value }: { value: string }) {
   return <span className={`status-pill ${kind}`}>{value}</span>;
 }
 
-function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: string; navigationRequestKey: number }) {
+function XdnodeHrApp({ requestedView, navigationRequestKey, canEdit }: { requestedView: string; navigationRequestKey: number; canEdit: boolean }) {
   const dialog = useErpDialog();
   const [active, setActive] = useState(requestedView);
   // 사이드바의 「준비 중」 그룹 펼침 여부.
@@ -1874,6 +1876,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       </aside>
 
       <main className="main-content">
+        {!canEdit && <p className="hr-view-only-banner" role="status">보기 권한만 있습니다. 저장·승인·삭제는 거부됩니다.</p>}
         {employeesLoading && EMPLOYEE_LIST_VIEWS.has(active) && <section className="panel hr-employees-loading" role="status" aria-live="polite"><strong>직원 정보를 불러오는 중입니다.</strong><span>잠시만 기다려 주세요.</span></section>}
         {!employeesLoading && active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} leaveLedgers={leaveLedgers} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
         {!employeesLoading && active === "schedule" && <TimeAndLeaveView employees={employees} onNotify={showToast} />}
@@ -2255,6 +2258,8 @@ function EmployeeInterviewLog({ employee }: { employee: Employee }) {
   const speechRef = useRef<SpeechRecognitionLike | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const recognizedTextRef = useRef("");
+  // http LAN(비보안 컨텍스트)에서는 getUserMedia 가 없다(Design §5.6). 이 화면은 섀도 루트 포털 안이라 마운트 뒤에만 그려진다.
+  const [insecureContext] = useState(() => !secureContextAvailable());
 
   useEffect(() => {
     let active = true;
@@ -2381,7 +2386,7 @@ function EmployeeInterviewLog({ employee }: { employee: Employee }) {
     <div className="detail-card-heading"><div data-korean-heading><h2>면담 기록</h2></div><span>{records.length}건</span></div>
     <form className="interview-log-form" onSubmit={saveRecord}>
       <label className="recording-consent"><input type="checkbox" checked={consentConfirmed} disabled={recording} onChange={(event) => setConsentConfirmed(event.target.checked)} /><span>면담 당사자에게 녹음 목적과 보관 사실을 안내하고 동의를 확인했습니다.</span></label>
-      <div className="interview-log-top"><label><span>면담일시</span><input required type="datetime-local" value={interviewAt} onChange={(event) => setInterviewAt(event.target.value)} /></label><div className="recording-controls"><span>음성녹음</span><button type="button" className={recording ? "recording" : ""} onClick={recording ? stopRecording : startRecording}>{recording ? "■ 녹음 종료" : "● 녹음 시작"}</button>{audioPreviewUrl && <InterviewAudio src={audioPreviewUrl} transcript={transcript} label="녹음 미리듣기" />}</div></div>
+      <div className="interview-log-top"><label><span>면담일시</span><input required type="datetime-local" value={interviewAt} onChange={(event) => setInterviewAt(event.target.value)} /></label><div className="recording-controls"><span>음성녹음</span><button type="button" className={recording ? "recording" : ""} onClick={recording ? stopRecording : startRecording}>{recording ? "■ 녹음 종료" : "● 녹음 시작"}</button>{insecureContext && <small className="recording-secure-note">면접 녹음은 서버 PC에서만 지원합니다.</small>}{audioPreviewUrl && <InterviewAudio src={audioPreviewUrl} transcript={transcript} label="녹음 미리듣기" />}</div></div>
       <div className="interview-text-grid"><label><span>실시간 전사 초안</span><textarea value={transcript} onChange={(event) => { setTranscript(event.target.value); recognizedTextRef.current = event.target.value; }} placeholder="지원되는 브라우저에서는 녹음 중 초안이 표시됩니다. 저장 후 서버 AI 전사와 사용자 검토본을 별도로 만들 수 있습니다." /></label><label><span>사용자 메모</span><textarea value={memo} onChange={(event) => setMemo(event.target.value)} placeholder="면담 요약, 후속 조치, 확인할 내용을 기록하세요." /></label></div>
       {message && <p className="interview-log-message">{message}</p>}
       <div className="interview-log-actions"><small>녹음 파일과 기록은 이 직원의 인사기록에 안전하게 저장됩니다.</small><button type="submit" className="primary-button" disabled={saving || recording}>{saving ? "저장 중…" : "면담 기록 저장"}</button></div>
@@ -3408,7 +3413,7 @@ function ApplicantDetail({ applicant, recruiters, requisitions, organizations, j
           <div className="offer-message-actions">
             <button type="button" className="primary-button" onClick={async () => {
               try {
-                await navigator.clipboard.writeText(message);
+                await copyText(message);
                 setOfferMessageNotice("메시지를 복사했습니다.");
               } catch {
                 setOfferMessageNotice("복사하지 못했습니다. 위 내용을 직접 선택해 복사해 주세요.");

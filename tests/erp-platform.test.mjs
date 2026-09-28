@@ -993,7 +993,8 @@ test("enterprise audit trail is admin-only, paginated, redacted and immutable", 
   assert.match(workspace, /보안 키 값은 서버에서 가려 표시/);
   // R1: data-governance-center 가 삭제되어 감사 로그는 셸의 '감사 로그' 탭으로 마운트된다(D2-c).
   assert.match(shell, /import AuditLogWorkspace from "\.\/audit-log-workspace"/);
-  assert.match(shell, /label: "감사 로그"/);
+  // R3: 탭 이름은 레지스트리(app/access-tabs.ts)에 있고, 셸은 레지스트리에서 탭을 그린다. 감사 로그는 관리자 전용 탭이다(D23).
+  assert.match(await read("app/access-tabs.ts"), /\{ key: "audit", label: "감사 로그", glyph: "[^"]+", adminOnly: true, modules: \["audit"\]/);
   for (const source of [platform, schema, migration]) assert.match(source, /idx_erp_audit_created_id/);
   assert.match(plan, /조회는 관리자 전용 `audit:read` 권한/);
   assert.match(plan, /수정·삭제 경로가 없다/);
@@ -1154,7 +1155,9 @@ test("연차관리 화면은 사이드바·인사기록카드에 연결되고, �
   assert.ok(workspace.includes("<LeaveLedgerPanel employeeId={employee.id} onNotify={onNotify} />"));
   // 기록 추가는 HR 대리 입력이라 결재 없이 바로 저장되고, 촉진 안내문은 복사해서 하이웍스 메일로 보낸다.
   assert.ok(view.includes('resource: "record", employeeId: ledger.employeeId'));
-  assert.ok(view.includes("navigator.clipboard.writeText(item.text)"));
+  // R3(Design §5.6): http LAN 은 보안 컨텍스트가 아니라 clipboard 가 없다. copyText() 가 execCommand 로 대신한다.
+  assert.ok(view.includes("void copyText(item.text).then("));
+  assert.ok(!view.includes("navigator.clipboard"));
   assert.ok(view.includes('resource: "adjustment", employeeId: ledger.employeeId, grantKey: grant.key, status: "EXCLUDED"'));
   assert.match(css, /\.leave-card-modal \{[^}]*direction: rtl;/);
   assert.match(css, /\.leave-card-modal\.condensed \.modal-header \{ min-height: 46px;/);

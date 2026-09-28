@@ -5,6 +5,7 @@ import Link from "next/link";
 import readXlsxFile from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
 import styles from "./incentive.module.css";
+import { randomId, readScoped, writeScoped } from "../client-runtime";
 
 type DealKind = "일반" | "인바운드" | "단독 RAM" | "케이블" | "온라인";
 type AdjustmentKind = "추가지급" | "차감" | "복지기금 전환";
@@ -52,7 +53,7 @@ const EXCLUDED_KINDS = new Set<DealKind>(["인바운드", "단독 RAM", "온라�
 const DEFAULT_CONFIG: IncentiveConfig = { hurdleRate: 5, payoutRate: 5, cableMode: "deduct", rounding: "none", fixCancelSign: true };
 
 const emptyDeal = (): Deal => ({
-  id: crypto.randomUUID(),
+  id: randomId(),
   person: "",
   personId: "",
   date: new Date().toISOString().slice(0, 10),
@@ -100,8 +101,8 @@ function inferKind(value: unknown, person: unknown, item: unknown): DealKind {
   return "일반";
 }
 
-// 담당자 목록은 /api/hr/employee-records 에서만 받는다. 이 라우트가 회사 명부를 hr_employee_records 에
-// 시드·병합해 주므로 정적 명부를 번들에 넣을 필요가 없다(R1 M1-3, Design §7.9: 클라이언트 번들 실데이터 0건).
+// 담당자 목록은 /api/compensation/roster 에서만 받는다(R3, Design §4.2.7). 필드는 employeeId·name·department·status
+// 4개뿐이라 임금 계산 전용 계정도 인사기록(전화·주소·급여)을 받지 않는다. 정적 명부는 번들에 넣지 않는다(§7.9).
 function mergeEmployeeOptions(records: Array<{ employeeId: string; name: string; department: string; status: string }>) {
   const merged = new Map<string, EmployeeOption>();
   for (const record of records) {
@@ -160,7 +161,7 @@ function parseRows(rows: ImportedCell[][], employees: EmployeeOption[]) {
     const unitSale = col.unitSale >= 0 ? asNumber(row[col.unitSale]) : salesTotal / quantity;
     const kind = inferKind(col.kind >= 0 ? row[col.kind] : "", person, item);
     return [{
-      id: crypto.randomUUID(),
+      id: randomId(),
       person,
       personId: resolvePersonId(person, employees),
       date: col.date >= 0 ? excelDate(row[col.date]) : "",
@@ -322,19 +323,19 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/hr/employee-records")
+    fetch("/api/compensation/roster", { cache: "no-store" })
       .then(async (response) => {
-        const data = await response.json().catch(() => ({})) as { records?: Array<{ employeeId: string; name: string; department: string; status: string }>; error?: string };
+        const data = await response.json().catch(() => ({})) as { employees?: Array<{ employeeId: string; name: string; department: string; status: string }>; error?: string };
         if (!response.ok) throw new Error(data.error || "직원 목록을 불러오지 못했습니다.");
         return data;
       })
       .then((data) => {
         if (cancelled) return;
-        setEmployees(mergeEmployeeOptions(data.records ?? []));
+        setEmployees(mergeEmployeeOptions(data.employees ?? []));
         setEmployeesError("");
       })
       .catch((error: unknown) => {
-        if (!cancelled) setEmployeesError(`${error instanceof Error ? error.message : "직원 목록을 불러오지 못했습니다."} 담당자를 지정하려면 새로고침하거나 인사 조회 권한을 확인해 주세요.`);
+        if (!cancelled) setEmployeesError(`${error instanceof Error ? error.message : "직원 목록을 불러오지 못했습니다."} 담당자를 지정하려면 새로고침하거나 임금 계산 탭 권한을 확인해 주세요.`);
       });
     return () => { cancelled = true; };
   }, []);
@@ -342,15 +343,16 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
-        const savedDeals = localStorage.getItem(DEAL_STORAGE);
-        const savedAdjustments = localStorage.getItem(ADJUSTMENT_STORAGE);
-        const savedConfig = localStorage.getItem(CONFIG_STORAGE);
-        const savedExcludedPeople = localStorage.getItem(EXCLUDED_PEOPLE_STORAGE);
+        // 계정 범위 키로 읽는다. 범위 키가 없으면 레거시 키를 1회 옮기고 지운다(Design §5.5).
+        const savedDeals = readScoped(DEAL_STORAGE);
+        const savedAdjustments = readScoped(ADJUSTMENT_STORAGE);
+        const savedConfig = readScoped(CONFIG_STORAGE);
+        const savedExcludedPeople = readScoped(EXCLUDED_PEOPLE_STORAGE);
         if (savedDeals) {
           const parsedDeals = JSON.parse(savedDeals) as Deal[];
-          const cableMigrationDone = localStorage.getItem(CABLE_EXCLUSION_MIGRATION) === "done";
+          const cableMigrationDone = readScoped(CABLE_EXCLUSION_MIGRATION) === "done";
           setDeals(cableMigrationDone ? parsedDeals : migrateCableExclusions(parsedDeals));
-          if (!cableMigrationDone) localStorage.setItem(CABLE_EXCLUSION_MIGRATION, "done");
+          if (!cableMigrationDone) writeScoped(CABLE_EXCLUSION_MIGRATION, "done");
         }
         if (savedAdjustments) setAdjustments(JSON.parse(savedAdjustments));
         if (savedConfig) setConfig({ ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) });
@@ -363,10 +365,10 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(DEAL_STORAGE, JSON.stringify(deals));
-    localStorage.setItem(ADJUSTMENT_STORAGE, JSON.stringify(adjustments));
-    localStorage.setItem(CONFIG_STORAGE, JSON.stringify(config));
-    localStorage.setItem(EXCLUDED_PEOPLE_STORAGE, JSON.stringify(excludedPeople));
+    writeScoped(DEAL_STORAGE, JSON.stringify(deals));
+    writeScoped(ADJUSTMENT_STORAGE, JSON.stringify(adjustments));
+    writeScoped(CONFIG_STORAGE, JSON.stringify(config));
+    writeScoped(EXCLUDED_PEOPLE_STORAGE, JSON.stringify(excludedPeople));
   }, [deals, adjustments, config, excludedPeople, hydrated]);
 
   const allPeople = useMemo(() => {
@@ -424,7 +426,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
 
   useEffect(() => {
     if (!hydrated) return;
-    localStorage.setItem(PAYROLL_RESULT_STORAGE, JSON.stringify({ savedAt: new Date().toISOString(), config, summaries }));
+    writeScoped(PAYROLL_RESULT_STORAGE, JSON.stringify({ savedAt: new Date().toISOString(), config, summaries }));
   }, [config, hydrated, summaries]);
 
   const totals = useMemo(() => summaries.reduce((acc, item) => {
@@ -502,7 +504,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
     const target = people.find((group) => group.key === adjustmentDraft.targetKey);
     if (!target || adjustmentDraft.amount <= 0) { setMessage("조정 대상과 금액을 입력해 주세요."); return; }
     const person = target.personId ? target.label : target.key.slice("unresolved:".length);
-    setAdjustments((current) => [...current, { id: crypto.randomUUID(), person, personId: target.personId, kind: adjustmentDraft.kind, amount: adjustmentDraft.amount, note: adjustmentDraft.note }]);
+    setAdjustments((current) => [...current, { id: randomId(), person, personId: target.personId, kind: adjustmentDraft.kind, amount: adjustmentDraft.amount, note: adjustmentDraft.note }]);
     setAdjustmentDraft((current) => ({ ...current, amount: 0, note: "" }));
     setMessage("지급 조정을 반영했습니다.");
   }

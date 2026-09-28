@@ -7,6 +7,7 @@ import IncentiveCalculator from "./incentive/incentive-calculator";
 import WonInput from "./won-input";
 import { useClientReady } from "./hr-ui";
 import { ErpDialogProvider, useErpDialog } from "./erp-dialog";
+import { randomId, readScoped, writeScoped } from "./client-runtime";
 import {
   calculateCompensation,
   compensationMonthKey,
@@ -58,7 +59,7 @@ const dateString = (value: unknown) => {
 };
 
 function blankEmployee(year: number, month: number): Employee {
-  return { id: crypto.randomUUID(), name: "", department: "", title: "", birthDate: "", joinDate: `${year}-${String(month).padStart(2, "0")}-01`, leaveDate: "", probationMonths: 0, annualSalary: 0, basePay: 0, manualBasic: false, meal: 200_000, car: 0, child: 0, monthly: {} };
+  return { id: randomId(), name: "", department: "", title: "", birthDate: "", joinDate: `${year}-${String(month).padStart(2, "0")}-01`, leaveDate: "", probationMonths: 0, annualSalary: 0, basePay: 0, manualBasic: false, meal: 200_000, car: 0, child: 0, monthly: {} };
 }
 
 const calculatePay = calculateCompensation;
@@ -97,7 +98,7 @@ function parseRoster(rows: ImportedCell[][], year: number, month: number) {
     const monthly: Record<string, MonthlyPay> = {};
     const current = { incentive: numberValue(get(row, "incentive")), bonus: numberValue(get(row, "bonus")), extra: numberValue(get(row, "extra")), research: numberValue(get(row, "research")), severance: numberValue(get(row, "severance")), welfare: numberValue(get(row, "welfare")), note: String(get(row, "note") ?? "") };
     if (Object.values(current).some(Boolean)) monthly[monthKey(year, month)] = current;
-    result.push({ id: crypto.randomUUID(), name, department: String(get(row, "department") ?? "").trim(), title: String(get(row, "title") ?? "").trim(), birthDate: dateString(get(row, "birthDate")), joinDate: dateString(get(row, "joinDate")), leaveDate: dateString(get(row, "leaveDate")), probationMonths: probationValue === true || /90|true/i.test(String(probationValue ?? "")) ? 3 : 0, annualSalary, basePay: basic, manualBasic: annualSalary <= 0 && basic > 0, meal: numberValue(get(row, "meal")) || (annualSalary ? 200_000 : 0), car: numberValue(get(row, "car")), child: numberValue(get(row, "child")), monthly });
+    result.push({ id: randomId(), name, department: String(get(row, "department") ?? "").trim(), title: String(get(row, "title") ?? "").trim(), birthDate: dateString(get(row, "birthDate")), joinDate: dateString(get(row, "joinDate")), leaveDate: dateString(get(row, "leaveDate")), probationMonths: probationValue === true || /90|true/i.test(String(probationValue ?? "")) ? 3 : 0, annualSalary, basePay: basic, manualBasic: annualSalary <= 0 && basic > 0, meal: numberValue(get(row, "meal")) || (annualSalary ? 200_000 : 0), car: numberValue(get(row, "car")), child: numberValue(get(row, "child")), monthly });
   }
   return result;
 }
@@ -110,7 +111,7 @@ function WageCalculator() {
 function WageCalculatorClient() {
   const [preferences] = useState(() => {
     try {
-      const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+      const value = JSON.parse(readScoped(STORAGE_KEY) || "{}");
       return (value && typeof value === "object" && !Array.isArray(value) ? value : {}) as Partial<CompensationSettings> & { columnWidths?: Record<string, number>; hiddenColumns?: string[] };
     }
     catch { return {}; }
@@ -148,7 +149,7 @@ function WageCalculatorClient() {
   const fileRef = useRef<HTMLInputElement>(null);
   const rosterRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify({ columns, standards, rounding, columnWidths, hiddenColumns })); }, [columns, standards, rounding, columnWidths, hiddenColumns, hydrated]);
+  useEffect(() => { if (hydrated) writeScoped(STORAGE_KEY, JSON.stringify({ columns, standards, rounding, columnWidths, hiddenColumns })); }, [columns, standards, rounding, columnWidths, hiddenColumns, hydrated]);
 
   const key = monthKey(year, month);
   const currentSettings = useEffectEvent(() => ({ rounding, columns, standards }));
@@ -368,9 +369,9 @@ function WageCalculatorClient() {
   }
   function loadExample() {
     setEmployees([
-      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "예시 직원A", department: "영업팀", title: "팀장", birthDate: "1988-04-12", joinDate: "2024-03-11", annualSalary: 60_300_000, meal: 200_000, car: 200_000, child: 200_000 },
-      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "예시 직원B", department: "경영지원팀", title: "대리", birthDate: "1994-07-03", joinDate: `${year}-${String(month).padStart(2, "0")}-15`, annualSalary: 39_300_000, meal: 200_000, car: 0, child: 0 },
-      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "예시 직원C", department: "기술팀", title: "사원", birthDate: "1998-01-21", joinDate: `${year}-${String(Math.max(1, month - 1)).padStart(2, "0")}-06`, probationMonths: 3, annualSalary: 30_300_000, meal: 200_000, car: 0, child: 0 },
+      { ...blankEmployee(year, month), id: randomId(), name: "예시 직원A", department: "영업팀", title: "팀장", birthDate: "1988-04-12", joinDate: "2024-03-11", annualSalary: 60_300_000, meal: 200_000, car: 200_000, child: 200_000 },
+      { ...blankEmployee(year, month), id: randomId(), name: "예시 직원B", department: "경영지원팀", title: "대리", birthDate: "1994-07-03", joinDate: `${year}-${String(month).padStart(2, "0")}-15`, annualSalary: 39_300_000, meal: 200_000, car: 0, child: 0 },
+      { ...blankEmployee(year, month), id: randomId(), name: "예시 직원C", department: "기술팀", title: "사원", birthDate: "1998-01-21", joinDate: `${year}-${String(Math.max(1, month - 1)).padStart(2, "0")}-06`, probationMonths: 3, annualSalary: 30_300_000, meal: 200_000, car: 0, child: 0 },
     ]);
     setMessage("예시 명부 3명을 불러왔습니다.");
   }
@@ -402,7 +403,7 @@ function WageCalculatorClient() {
   }
   function importIncentive() {
     try {
-      const savedResult = JSON.parse(localStorage.getItem("xdnode-incentive-payroll-v1") || "null") as { summaries?: Array<{ personId?: string; payroll: number }> } | null;
+      const savedResult = JSON.parse(readScoped("xdnode-incentive-payroll-v1") || "null") as { summaries?: Array<{ personId?: string; payroll: number }> } | null;
       if (Array.isArray(savedResult?.summaries)) {
         const byPersonId = new Map(savedResult.summaries.filter((item) => item.personId).map((item) => [item.personId as string, numberValue(item.payroll)]));
         const unresolvedCount = savedResult.summaries.filter((item) => !item.personId).length;
@@ -418,8 +419,8 @@ function WageCalculatorClient() {
           : "직원 ID가 일치하는 인센티브 결과를 찾지 못했습니다. 인센티브 계산기에서 담당자를 직원으로 지정했는지 확인해 주세요.");
         return;
       }
-      const deals = JSON.parse(localStorage.getItem("xdnode-incentive-deals-v1") || "[]") as Array<{ personId?: string; quantity: number; unitCost: number; unitSale: number; expense: number; excluded: boolean }>;
-      const adjustments = JSON.parse(localStorage.getItem("xdnode-incentive-adjustments-v1") || "[]") as Array<{ personId?: string; kind: string; amount: number }>;
+      const deals = JSON.parse(readScoped("xdnode-incentive-deals-v1") || "[]") as Array<{ personId?: string; quantity: number; unitCost: number; unitSale: number; expense: number; excluded: boolean }>;
+      const adjustments = JSON.parse(readScoped("xdnode-incentive-adjustments-v1") || "[]") as Array<{ personId?: string; kind: string; amount: number }>;
       const byPersonId = new Map<string, number>();
       for (const deal of deals) { if (!deal.personId) continue; const sales = deal.quantity * deal.unitSale; const margin = sales - deal.quantity * deal.unitCost - deal.expense; const incentive = deal.excluded ? 0 : Math.max((margin - sales * 0.05) * 0.05, 0); byPersonId.set(deal.personId, (byPersonId.get(deal.personId) ?? 0) + incentive); }
       for (const adjustment of adjustments) { if (!adjustment.personId) continue; const sign = adjustment.kind === "추가지급" ? 1 : adjustment.kind === "차감" || adjustment.kind === "복지기금 전환" ? -1 : 0; byPersonId.set(adjustment.personId, Math.max(0, (byPersonId.get(adjustment.personId) ?? 0) + adjustment.amount * sign)); }

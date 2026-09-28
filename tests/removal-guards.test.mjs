@@ -207,3 +207,21 @@ test("R3 r3-tabs: the role-name harness shim, principal.roles and the old access
     assert.equal(existsSync(path.join(root, file)), false, `${file} should be gone`);
   }
 });
+
+// ── R3(r3-shell, Design §5.6·§7.8·§8.6 removal-guards R3 행 중 r3-shell 몫) ─────────────────
+test("R3 r3-shell: client files use the insecure-context helpers and never inject HTML", async () => {
+  const offenders = [];
+  for (const file of await listSources()) {
+    if (!file.startsWith("app/") || !/\.(?:ts|tsx)$/.test(file)) continue;
+    const raw = await read(file);
+    const source = stripComments(raw);
+    const client = /^\s*["']use client["']/.test(raw);
+    // http LAN PC 는 보안 컨텍스트가 아니다: randomUUID·clipboard 대신 app/client-runtime.ts 의 randomId()·copyText().
+    if (client && /crypto\.randomUUID\(/.test(source)) offenders.push(`${file}: crypto.randomUUID(`);
+    if (file !== "app/client-runtime.ts" && /navigator\.clipboard/.test(source)) offenders.push(`${file}: navigator.clipboard`);
+    // localStorage 는 계정 범위 키(scopedKey)를 거친다. 직접 접근은 client-runtime 한 곳뿐이다.
+    if (file !== "app/client-runtime.ts" && /\blocalStorage\b/.test(source)) offenders.push(`${file}: localStorage`);
+    if (/dangerouslySetInnerHTML|\.innerHTML\b/.test(source)) offenders.push(`${file}: HTML injection`);
+  }
+  assert.deepEqual(offenders, []);
+});

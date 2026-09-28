@@ -41,14 +41,20 @@ test("local Codex assistant is mounted for HR, payroll and incentive while its b
     read("scripts/claude-assistant-bridge.mjs"),
     read("scripts/Start-XDNodeManagement.ps1"), read("scripts/codex-assistant-response-schema.json"),
   ]);
-  assert.match(page, /<LocalCodexAssistant module="hr"\s*\/>/);
-  assert.match(page, /<LocalCodexAssistant module=\{compensationAssistantModule\}\s*\/>/);
+  assert.match(page, /<LocalCodexAssistant module="hr" tabs=\{ctx\.tabs\} \/>/);
+  assert.match(page, /<LocalCodexAssistant module=\{ctx\.compensationAssistantModule\} tabs=\{ctx\.tabs\} \/>/);
   assert.match(page, /setCompensationAssistantModule/);
   // R1(D1): 인센티브 계산기의 어시스턴트 모드는 sales 에서 incentive 로 이름만 바꿨다. 영업 화면 마운트와 /api/sales 조회는 없다.
   assert.doesNotMatch(page, /<LocalCodexAssistant module="sales"/);
   assert.match(page, /useState<"compensation" \| "incentive">\("compensation"\)/);
   assert.match(component, /type AssistantModule = "hr" \| "compensation" \| "incentive"/);
-  assert.match(component, /module === "incentive"\) return \{ incentiveCalculator: incentiveCalculatorContext\(\) \}/);
+  assert.match(component, /if \(module === "incentive"\) return \{ \.\.\.base, incentiveCalculator: incentiveCalculatorContext\(\) \};/);
+  // R3(Design §2.2 (4)): 임금 계산·인센티브 모드는 4필드 명부와 include=hr 만 읽는다. 인사기록은 HR 모드만 읽는다.
+  assert.match(component, /fetch\("\/api\/compensation\/roster", \{ cache: "no-store" \}\)/);
+  assert.match(component, /fetch\(`\/api\/compensation\?period=\$\{encodeURIComponent\(period\)\}&include=hr`/);
+  // 적용 버튼은 대상 탭이 편집일 때만 보인다.
+  assert.match(component, /const canApply = \(action: AssistantAction\) => tabs\?\.\[ACTION_TARGET_TAB\[action\.type\]\] === "edit";/);
+  assert.match(component, /\{canApply\(action\)\s*\? <button type="button" onClick=\{\(\) => void applyAction\(action\)\}/);
   assert.doesNotMatch(component, /\/api\/sales|salesIncentiveContext|"sales"/);
   const calculator = await read("app/compensation-calculator.tsx");
   assert.match(calculator, /mode === "incentive" \? "incentive" : "compensation"/);

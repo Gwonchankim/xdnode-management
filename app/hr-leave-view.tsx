@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LEAVE_KINDS, type LeaveGrant, type LeaveKind, type PromotionNotice } from "./hr-leave-accrual";
 import { useErpDialog } from "./erp-dialog";
+import { copyText } from "./client-runtime";
 
 /** 연차관리 화면. 계산은 서버(/api/hr/leave → app/hr-leave-accrual.ts)가 하고 여기서는 그리기와 입력만 한다.
  *  기획: docs/hr-leave-management-plan.md 4.3절. 스타일: public/hr-workspace.css 의 .leave-* 규칙. */
@@ -85,7 +86,7 @@ export function LeaveLedgerBody({ ledger, onChange, onNotify }: { ledger: Ledger
     {ledger.overdraft > 0 && <p className="contract-warning">발생한 일수보다 {days(ledger.overdraft)} 더 썼습니다. 다음 발생분에서 차감되거나 무급 처리해야 합니다.</p>}
     {ledger.promotions.length > 0 && <div className="leave-promotions">{ledger.promotions.map((item) => (
       <div key={item.grantKey}><span className={`renewal-state ${item.stage === "SECOND" ? "overdue" : "due"}`}>{item.stage === "SECOND" ? "2차 촉진" : "1차 촉진"}</span><strong>{item.label} 잔여 {days(item.remaining)}</strong><small>{item.expiresAt} 소멸 (D-{item.daysLeft})</small>
-        <button type="button" onClick={() => { void navigator.clipboard.writeText(item.text).then(() => onNotify("안내문을 복사했습니다. 하이웍스 메일에 붙여 넣으세요.")); }}>안내문 복사</button></div>
+        <button type="button" onClick={() => { void copyText(item.text).then(() => onNotify("안내문을 복사했습니다. 하이웍스 메일에 붙여 넣으세요."), () => onNotify("복사하지 못했습니다. 안내문을 직접 선택해 복사해 주세요.")); }}>안내문 복사</button></div>
     ))}</div>}
 
     <form className="leave-form" onSubmit={(event) => { event.preventDefault(); void send({ resource: "record", employeeId: ledger.employeeId, date: draft.date, leaveType: draft.leaveType, units: Number(draft.units), note: draft.note }, "휴가 기록을 저장했습니다."); }}>
@@ -211,7 +212,7 @@ export default function LeaveManagementView({ onNotify }: { onNotify: (message: 
         <tbody>{promotions.sort((a, b) => a.expiresAt.localeCompare(b.expiresAt)).map((item) => <tr key={`${item.employee.employeeId}-${item.grantKey}`}>
           <td><button type="button" className="name-link" onClick={() => void open(item.employee.employeeId)}>{item.employee.name}</button></td><td>{item.label}</td><td>{days(item.remaining)}</td><td>{item.expiresAt} <em className="renewal-dday">D-{item.daysLeft}</em></td>
           <td><span className={`renewal-state ${item.stage === "SECOND" ? "overdue" : "due"}`}>{item.stage === "SECOND" ? "2차" : "1차"}</span></td>
-          <td><button type="button" className="leave-link" onClick={() => { void navigator.clipboard.writeText(item.text).then(() => onNotify(`${item.employee.name}님 안내문을 복사했습니다.`)); }}>안내문 복사</button></td>
+          <td><button type="button" className="leave-link" onClick={() => { void copyText(item.text).then(() => onNotify(`${item.employee.name}님 안내문을 복사했습니다.`), () => onNotify("복사하지 못했습니다. 안내문을 직접 선택해 복사해 주세요.")); }}>안내문 복사</button></td>
         </tr>)}</tbody></table>
     </section>}
 

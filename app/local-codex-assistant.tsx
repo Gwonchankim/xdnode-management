@@ -6,6 +6,8 @@ import { calculateCompensation, type CompensationColumns, type CompensationEmplo
 import { compactLeaveContext, hrAssistantTopics, recentAssistantConversation, type AssistantExchange, type HrAssistantTopic } from "./hr-assistant-context";
 import { emptyRecruitmentInterview, formatRecruitmentQuestions, recruitmentHelperRequest, validateRecruitmentInterview } from "./assistant-recruitment";
 import { HrModalBackdrop } from "./hr-ui";
+import type { ResolvedTabs, TabKey } from "./access-tabs";
+import { copyText, randomId, readScopedJson } from "./client-runtime";
 
 type AssistantModule = "hr" | "compensation" | "incentive";
 type MoneyField = "annualSalary" | "basePay" | "mealAllowance" | "childcareAllowance" | "vehicleAllowance";
@@ -201,13 +203,23 @@ function compactCompensationRun(run: CompensationRun | null, period: string) {
   };
 }
 
+// 인센티브 계산기 자료는 계정 범위 키(scopedKey)에 있다(Design §5.5).
 function localJson<T>(key: string, fallback: T): T {
-  try {
-    if (typeof window === "undefined") return fallback;
-    const value = window.localStorage.getItem(key);
-    return value ? JSON.parse(value) as T : fallback;
-  } catch { return fallback; }
+  if (typeof window === "undefined") return fallback;
+  return readScopedJson<T>(key, fallback);
 }
+
+type RosterEmployee = { employeeId: string; name: string; department: string; status: string };
+
+/** 변경안의 적용 버튼은 대상 탭이 편집일 때만 보인다(Design §5.3, §7.10). 적용은 대상 API가 edit 를 다시 검사한다. */
+const ACTION_TARGET_TAB: Record<AssistantAction["type"], TabKey> = {
+  UPDATE_HR_COMPENSATION_DEFAULTS: "hr",
+  CREATE_COMPENSATION_DRAFT: "compensation",
+  CREATE_RECRUITMENT_APPLICANT: "hr",
+  RECORD_INTERVIEW_REJECTION: "hr",
+  CREATE_RECRUITMENT_OFFER: "hr",
+  APPLY_RETIREMENT_PAY: "compensation",
+};
 
 function incentiveCalculatorContext() {
   const deals = localJson<IncentiveDeal[]>("xdnode-incentive-deals-v1", []);
@@ -240,7 +252,8 @@ function incentiveCalculatorContext() {
   };
 }
 
-export default function LocalCodexAssistant({ module }: { module: AssistantModule }) {
+export default function LocalCodexAssistant({ module, tabs }: { module: AssistantModule; tabs?: ResolvedTabs }) {
+  const canApply = (action: AssistantAction) => tabs?.[ACTION_TARGET_TAB[action.type]] === "edit";
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState("");
   const [response, setResponse] = useState<AssistantResponse | null>(null);
@@ -275,67 +288,76 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
   function close() { if (!applying) setOpen(false); }
 
   async function loadContext() {
-    // 인센티브 모드는 브라우저에 있는 인센티브 계산기 자료만 넘긴다. 영업 모듈 조회는 없어졌다(D1·D2).
-    if (module === "incentive") return { incentiveCalculator: incentiveCalculatorContext() };
+    // 모드별 맥락 경로(Design §2.2 (4), §4.2.7). HR 모드만 인사기록(/api/hr/employee-records)을 읽는다.
+    // 임금 계산·인센티브 모드는 4필드 명부(/api/compensation/roster)와 임금 API(include=hr, 생년월일 없음)만 읽는다.
+    if (module !== "hr") {
+      const prior = previousPeriod(period);
+      const [rosterResponse, payrollResponse, priorPayrollResponse] = await Promise.all([
+        fetch("/api/compensation/roster", { cache: "no-store" }),
+        fetch(`/api/compensation?period=${encodeURIComponent(period)}&include=hr`, { cache: "no-store" }),
+        module === "compensation" ? fetch(`/api/compensation?period=${encodeURIComponent(prior)}`, { cache: "no-store" }) : Promise.resolve(null),
+      ]);
+      const rosterPayload = await rosterResponse.json().catch(() => ({})) as { employees?: RosterEmployee[]; error?: string };
+      if (!rosterResponse.ok) throw new Error(rosterPayload.error || "직원 명부를 불러오지 못했습니다.");
+      const roster = Array.isArray(rosterPayload.employees) ? rosterPayload.employees : [];
+      const payrollPayload = await payrollResponse.json().catch(() => ({})) as { run?: CompensationRun; hrEmployees?: unknown[]; error?: string };
+      if (!payrollResponse.ok && payrollResponse.status !== 404) throw new Error(payrollPayload.error || "임금 계산 초안을 불러오지 못했습니다.");
+      const base = {
+        roster: roster.slice(0, 200), employeeCount: roster.length,
+        hrPayrollSnapshots: Array.isArray(payrollPayload.hrEmployees) ? payrollPayload.hrEmployees.slice(0, 200) : [],
+      };
+      if (module === "incentive") return { ...base, incentiveCalculator: incentiveCalculatorContext() };
+      const priorPayrollPayload = (priorPayrollResponse ? await priorPayrollResponse.json().catch(() => ({})) : {}) as { run?: CompensationRun; error?: string };
+      if (priorPayrollResponse && !priorPayrollResponse.ok && priorPayrollResponse.status !== 404) throw new Error(priorPayrollPayload.error || "전월 임금안을 불러오지 못했습니다.");
+      return {
+        ...base,
+        payrollRun: compactCompensationRun(payrollPayload.run ?? null, period),
+        priorPayrollRun: compactCompensationRun(priorPayrollPayload.run ?? null, prior),
+      };
+    }
     const employeeResponse = await fetch("/api/hr/employee-records", { cache: "no-store" });
     const employeePayload = await employeeResponse.json().catch(() => ({})) as { records?: EmployeeRecord[]; error?: string };
     if (!employeeResponse.ok) throw new Error(employeePayload.error || "HR 인사기록을 불러오지 못했습니다.");
     const records = Array.isArray(employeePayload.records) ? employeePayload.records : [];
     setEmployees(records);
     const base = { employeeRecords: records.slice(0, 200).map(compactEmployee), employeeCount: records.length };
-    if (module === "hr") {
-      const [operationsResponse, recruitmentResponse, leaveResponse] = await Promise.all([
-        fetch("/api/hr/operations", { cache: "no-store" }),
-        fetch("/api/hr/recruitment", { cache: "no-store" }),
-        fetch("/api/hr/leave", { cache: "no-store" }),
-      ]);
-      const operationsPayload = await operationsResponse.json().catch(() => ({})) as Record<string, unknown>;
-      const recruitmentPayload = await recruitmentResponse.json().catch(() => ({})) as { applicants?: RecruitmentApplicant[]; recruiterIds?: string[]; requisitions?: Array<{ id: string; title: string; role: string; organizationId: string; requestedHeadcount: number; status: string }>; error?: string };
-      if (!recruitmentResponse.ok) throw new Error(recruitmentPayload.error || "채용 지원자 데이터를 불러오지 못했습니다.");
-      const applicants = Array.isArray(recruitmentPayload.applicants) ? recruitmentPayload.applicants : [];
-      const leavePayload = await leaveResponse.json().catch(() => ({}));
-      const leave = leaveResponse.ok ? compactLeaveContext(leavePayload) : { unavailable: true, reason: "연차 원장을 조회하지 못했습니다. 연차 수치를 추정하지 마세요." };
-      const sources = [
-        `인사기록 ${records.length}명`,
-        operationsResponse.ok ? "입·퇴사 운영 기록" : "입·퇴사 기록 조회 실패",
-        `채용 지원자 ${applicants.length}명`,
-        leaveResponse.ok ? `연차 원장 · ${leavePayload.today ?? "기준일 미확인"}` : "연차 원장 조회 실패",
-      ];
-      const currentRecruiterIds = Array.isArray(recruitmentPayload.recruiterIds) ? recruitmentPayload.recruiterIds : [];
-      setRecruitmentApplicants(applicants);
-      setRecruiterIds(currentRecruiterIds);
-      return {
-        ...base,
-        sources,
-        leave,
-        asOf: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
-        operations: operationsResponse.ok ? operationsPayload : { unavailable: true },
-        recruitment: {
-          applicantCount: applicants.length,
-          recruiters: currentRecruiterIds.map((id) => ({ id, name: records.find((employee) => employee.employeeId === id)?.name ?? "미지정" })),
-          requisitions: (recruitmentPayload.requisitions ?? []).filter((item) => item.status === "OPEN"),
-          applicants: applicants.slice(0, 200).map((applicant) => ({
-            id: applicant.id, name: applicant.name, role: applicant.role, stage: applicant.stage,
-            experience: applicant.experience, email: applicant.email, phone: applicant.phone, source: applicant.source,
-            summary: applicant.summary, ownerId: applicant.ownerId, owner: applicant.owner, requisitionId: applicant.requisitionId,
-            interview: applicant.interview, interviewMemos: applicant.interviewMemos.slice(0, 5), offer: applicant.offer,
-          })),
-        },
-      };
-    }
-    const prior = previousPeriod(period);
-    const [payrollResponse, priorPayrollResponse] = await Promise.all([
-      fetch(`/api/compensation?period=${encodeURIComponent(period)}`, { cache: "no-store" }),
-      fetch(`/api/compensation?period=${encodeURIComponent(prior)}`, { cache: "no-store" }),
+    const [operationsResponse, recruitmentResponse, leaveResponse] = await Promise.all([
+      fetch("/api/hr/operations", { cache: "no-store" }),
+      fetch("/api/hr/recruitment", { cache: "no-store" }),
+      fetch("/api/hr/leave", { cache: "no-store" }),
     ]);
-    const payrollPayload = await payrollResponse.json().catch(() => ({})) as { run?: CompensationRun; error?: string };
-    const priorPayrollPayload = await priorPayrollResponse.json().catch(() => ({})) as { run?: CompensationRun; error?: string };
-    if (!payrollResponse.ok && payrollResponse.status !== 404) throw new Error(payrollPayload.error || "임금 계산 초안을 불러오지 못했습니다.");
-    if (!priorPayrollResponse.ok && priorPayrollResponse.status !== 404) throw new Error(priorPayrollPayload.error || "전월 임금안을 불러오지 못했습니다.");
+    const operationsPayload = await operationsResponse.json().catch(() => ({})) as Record<string, unknown>;
+    const recruitmentPayload = await recruitmentResponse.json().catch(() => ({})) as { applicants?: RecruitmentApplicant[]; recruiterIds?: string[]; requisitions?: Array<{ id: string; title: string; role: string; organizationId: string; requestedHeadcount: number; status: string }>; error?: string };
+    if (!recruitmentResponse.ok) throw new Error(recruitmentPayload.error || "채용 지원자 데이터를 불러오지 못했습니다.");
+    const applicants = Array.isArray(recruitmentPayload.applicants) ? recruitmentPayload.applicants : [];
+    const leavePayload = await leaveResponse.json().catch(() => ({}));
+    const leave = leaveResponse.ok ? compactLeaveContext(leavePayload) : { unavailable: true, reason: "연차 원장을 조회하지 못했습니다. 연차 수치를 추정하지 마세요." };
+    const sources = [
+      `인사기록 ${records.length}명`,
+      operationsResponse.ok ? "입·퇴사 운영 기록" : "입·퇴사 기록 조회 실패",
+      `채용 지원자 ${applicants.length}명`,
+      leaveResponse.ok ? `연차 원장 · ${leavePayload.today ?? "기준일 미확인"}` : "연차 원장 조회 실패",
+    ];
+    const currentRecruiterIds = Array.isArray(recruitmentPayload.recruiterIds) ? recruitmentPayload.recruiterIds : [];
+    setRecruitmentApplicants(applicants);
+    setRecruiterIds(currentRecruiterIds);
     return {
       ...base,
-      payrollRun: compactCompensationRun(payrollPayload.run ?? null, period),
-      priorPayrollRun: compactCompensationRun(priorPayrollPayload.run ?? null, prior),
+      sources,
+      leave,
+      asOf: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      operations: operationsResponse.ok ? operationsPayload : { unavailable: true },
+      recruitment: {
+        applicantCount: applicants.length,
+        recruiters: currentRecruiterIds.map((id) => ({ id, name: records.find((employee) => employee.employeeId === id)?.name ?? "미지정" })),
+        requisitions: (recruitmentPayload.requisitions ?? []).filter((item) => item.status === "OPEN"),
+        applicants: applicants.slice(0, 200).map((applicant) => ({
+          id: applicant.id, name: applicant.name, role: applicant.role, stage: applicant.stage,
+          experience: applicant.experience, email: applicant.email, phone: applicant.phone, source: applicant.source,
+          summary: applicant.summary, ownerId: applicant.ownerId, owner: applicant.owner, requisitionId: applicant.requisitionId,
+          interview: applicant.interview, interviewMemos: applicant.interviewMemos.slice(0, 5), offer: applicant.offer,
+        })),
+      },
     };
   }
 
@@ -399,7 +421,7 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         if (creates.length > 1) throw new Error("지원자 등록안이 여러 개 반환되었습니다. 한 명의 이력서로 다시 요청해 주세요.");
         payload.proposedActions = creates.map(action => ({ ...action, applicant: action.applicant ? { ...action.applicant, role: targetPosition.trim() } : null }));
       }
-      payload.proposedActions = (payload.proposedActions ?? []).map(action => action.type === "CREATE_RECRUITMENT_APPLICANT" ? { ...action, id: `AP-${crypto.randomUUID()}` } : action);
+      payload.proposedActions = (payload.proposedActions ?? []).map(action => action.type === "CREATE_RECRUITMENT_APPLICANT" ? { ...action, id: `AP-${randomId()}` } : action);
       if (module === "hr") setConversation(priorConversation);
       setAnsweredQuestion(request);
       setResponseIncludedData(includeServerData);
@@ -429,7 +451,7 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         ...group.map((item, index) => `${index + 1}. ${item.question}\n   → 확인 포인트: ${item.checkpoint}`)].join("\n"))
       .join("\n\n");
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       setNotice("면접 질문을 복사했습니다.");
     } catch {
       setError("복사하지 못했습니다. 질문을 직접 선택해 복사해 주세요.");
@@ -473,7 +495,16 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
     setApplying(action.id); setError(""); setNotice("");
     try {
       if (action.type === "UPDATE_HR_COMPENSATION_DEFAULTS") {
-        const target = employees.find((employee) => employee.employeeId === action.employeeId);
+        let target = employees.find((employee) => employee.employeeId === action.employeeId);
+        if (!target && module !== "hr") {
+          // 임금 계산 모드는 맥락에 인사기록을 싣지 않는다. 적용 버튼은 HR 편집 권한자에게만 보이므로 그때 읽는다.
+          const recordsResponse = await fetch("/api/hr/employee-records", { cache: "no-store" });
+          const recordsPayload = await recordsResponse.json().catch(() => ({})) as { records?: EmployeeRecord[]; error?: string };
+          if (!recordsResponse.ok) throw new Error(recordsPayload.error || "HR 인사기록을 불러오지 못했습니다.");
+          const records = Array.isArray(recordsPayload.records) ? recordsPayload.records : [];
+          setEmployees(records);
+          target = records.find((employee) => employee.employeeId === action.employeeId);
+        }
         if (!target) throw new Error("적용할 직원을 현재 인사기록카드에서 찾지 못했습니다. 최신 자료로 다시 요청해 주세요.");
         const values = Object.fromEntries(moneyFields.flatMap((field) => {
           const amount = action.values[field];
@@ -525,7 +556,7 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         const target = recruitmentApplicants.find((item) => item.id === result.applicantId);
         if (!target) throw new Error("현재 지원자 목록에서 면접 결과를 반영할 대상을 찾지 못했습니다. 최신 자료로 다시 요청해 주세요.");
         const note = `${result.outcome === "NO_SHOW" ? "면접 불참(탈락)" : "면접 결과(탈락)"}${result.memo?.trim() ? `: ${result.memo.trim()}` : ""}`;
-        const updated: RecruitmentApplicant = { ...target, stage: result.outcome === "NO_SHOW" ? "면접 불참 탈락" : "면접 후 탈락", interviewMemos: [{ id: `IN-${crypto.randomUUID()}`, text: note, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() }, ...(target.interviewMemos ?? [])] };
+        const updated: RecruitmentApplicant = { ...target, stage: result.outcome === "NO_SHOW" ? "면접 불참 탈락" : "면접 후 탈락", interviewMemos: [{ id: `IN-${randomId()}`, text: note, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() }, ...(target.interviewMemos ?? [])] };
         const update = await fetch("/api/hr/recruitment", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
         const payload = await update.json().catch(() => ({})) as { error?: string };
         if (!update.ok) throw new Error(payload.error || "면접 탈락 결과를 저장하지 못했습니다.");
@@ -540,7 +571,7 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
         const create = await fetch("/api/hr/recruitment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource: "offer", applicantId: offer.applicantId, proposedTitle: offer.proposedTitle.trim(), department: offer.department.trim(), employmentType: offer.employmentType.trim(), startDate: offer.startDate, annualSalary: Math.round(Number(offer.annualSalary)), probationMonths: Number(offer.probationMonths), notes: offer.notes?.trim() ?? "" }) });
         const payload = await create.json().catch(() => ({})) as { offer?: { id: string; status: string }; error?: string };
         if (!create.ok || !payload.offer) throw new Error(payload.error || "처우 오퍼를 저장하지 못했습니다.");
-        const interviewMemo = { id: `IN-${crypto.randomUUID()}`, text: `면접 결과(합격) · 처우 오퍼 생성: ${offer.proposedTitle.trim()} / 연봉 ${Number(offer.annualSalary).toLocaleString("ko-KR")}원${offer.notes?.trim() ? ` · ${offer.notes.trim()}` : ""}`, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() };
+        const interviewMemo = { id: `IN-${randomId()}`, text: `면접 결과(합격) · 처우 오퍼 생성: ${offer.proposedTitle.trim()} / 연봉 ${Number(offer.annualSalary).toLocaleString("ko-KR")}원${offer.notes?.trim() ? ` · ${offer.notes.trim()}` : ""}`, author: target.owner || "담당자 미지정", createdAt: new Date().toISOString() };
         const updated: RecruitmentApplicant = { ...target, stage: "면접 합격", interviewMemos: [interviewMemo, ...(target.interviewMemos ?? [])], offer: payload.offer };
         const memoUpdate = await fetch("/api/hr/recruitment", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(updated) });
         const memoPayload = await memoUpdate.json().catch(() => ({})) as { error?: string };
@@ -627,7 +658,9 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
                 </div>}
                 {action.type === "RECORD_INTERVIEW_REJECTION" && action.interviewResult && <small>{recruitmentApplicants.find((item) => item.id === action.interviewResult?.applicantId)?.name ?? "지원자"} · {action.interviewResult.outcome === "NO_SHOW" ? "면접 불참 탈락" : "면접 후 탈락"}</small>}
                 {action.type === "CREATE_RECRUITMENT_OFFER" && action.offer && <small>{recruitmentApplicants.find((item) => item.id === action.offer?.applicantId)?.name ?? "지원자"} · {action.offer.proposedTitle} · 연봉 {Number(action.offer.annualSalary ?? 0).toLocaleString("ko-KR")}원<br />{action.offer.department} · {action.offer.startDate}</small>}
-              </div><button type="button" onClick={() => void applyAction(action)} disabled={submitting || Boolean(applying) || appliedActionIds.includes(action.id)}>{appliedActionIds.includes(action.id) ? "반영 완료" : applying === action.id ? "반영 중…" : action.type === "CREATE_RECRUITMENT_APPLICANT" && recruitmentReview ? "지원자 · 일정 · 질문지 저장" : "내용 확인 후 반영"}</button></article>)}
+              </div>{canApply(action)
+                ? <button type="button" onClick={() => void applyAction(action)} disabled={submitting || Boolean(applying) || appliedActionIds.includes(action.id)}>{appliedActionIds.includes(action.id) ? "반영 완료" : applying === action.id ? "반영 중…" : action.type === "CREATE_RECRUITMENT_APPLICANT" && recruitmentReview ? "지원자 · 일정 · 질문지 저장" : "내용 확인 후 반영"}</button>
+                : <small className="local-codex-action-readonly">편집 권한이 있는 사용자만 반영할 수 있습니다.</small>}</article>)}
             </div>}
           </article>}
         </div>
