@@ -1399,22 +1399,6 @@ test("budget-versus-actual uses versioned plans, explicit sources and accountabl
   assert.match(page, /"budget", "예산·실적"/);
 });
 
-test("shared approval engine persists request, ordered steps and immutable events", async () => {
-  const [schema, platform, engine, migration] = await Promise.all([
-    read("db/schema.ts"), read("app/erp-platform.ts"), read("app/approval-engine.ts"),
-    read("drizzle/0012_ancient_the_order.sql"),
-  ]);
-  for (const table of ["erp_approval_requests", "erp_approval_steps", "erp_approval_events"]) {
-    assert.match(schema, new RegExp(table));
-    assert.match(platform, new RegExp(table));
-    assert.match(migration, new RegExp(table));
-  }
-  assert.match(schema, /idx_erp_approval_step_request_order/);
-  assert.match(engine, /step_order/);
-  assert.match(engine, /source_type, source_id/);
-  assert.match(engine, /'APPROVAL'/);
-});
-
 test("approval transitions require module approval rights and optimistic concurrency", async () => {
   const api = await read("app/api/approvals/route.ts");
   assert.match(api, /authorizeErpRequest\(db, before\.module as ErpModule, "approve"\)/);
@@ -1454,26 +1438,6 @@ test("approval center replaces fixed mock approvals with server-backed workflow 
   assert.match(center, /fetch\("\/api\/approvals"/);
   assert.match(center, /기안·검토·승인·반려/);
   assert.match(center, /보완 후 재제출/);
-});
-
-test("approval policies and delegations are durable, audited and server-authorized", async () => {
-  const [schema, platform, api, engine, migration, workspace] = await Promise.all([
-    read("db/schema.ts"), read("app/erp-platform.ts"), read("app/api/approval-settings/route.ts"),
-    read("app/approval-engine.ts"), read("drizzle/0013_fine_luke_cage.sql"), read("app/hr-workspace.tsx"),
-  ]);
-  for (const table of ["erp_approval_policies", "erp_approval_policy_steps", "erp_approval_delegations"]) {
-    assert.match(schema, new RegExp(table));
-    assert.match(platform, new RegExp(table));
-    assert.match(migration, new RegExp(table));
-  }
-  assert.match(api, /authorizeErpRequest\(db, "settings", "admin"\)/);
-  assert.match(api, /겹치는 금액 구간/);
-  assert.match(api, /기간과 업무 범위가 겹치는 대결 설정/);
-  assert.match(api, /writeErpAudit/);
-  assert.match(engine, /configuredRouteFor/);
-  assert.match(engine, /delegatedFromEmployeeId/);
-  // R1(r1-decouple): HR 설정의 '전자결재 규칙' 절과 ApprovalSettings 는 지웠다.
-  assert.doesNotMatch(workspace, /전자결재 규칙|ApprovalSettings|\/api\/approval-settings/);
 });
 
 test("delegated approvals remain scoped to the assigned step and are visible in the route", async () => {

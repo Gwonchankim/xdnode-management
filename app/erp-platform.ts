@@ -1,7 +1,7 @@
 import { companyEmployees } from "./hr-company-data";
 import { getChatGPTUser } from "./chatgpt-auth";
 
-export type ErpRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "HR_ADMIN" | "RECRUITER" | "SALES_ADMIN" | "VIEWER";
+export type ErpRole = "SUPER_ADMIN" | "HR_ADMIN" | "RECRUITER" | "VIEWER";
 export type ErpModule = "operations" | "finance" | "hr" | "recruitment" | "sales" | "settings";
 export type ErpAction = "read" | "write" | "approve" | "delete" | "admin";
 
@@ -23,11 +23,9 @@ type AccessRow = {
 
 const rolePermissions: Record<ErpRole, Set<string>> = {
   SUPER_ADMIN: new Set(["*"]),
-  FINANCE_ADMIN: new Set(["operations:read", "operations:write", "finance:read", "finance:write", "finance:approve", "finance:delete"]),
   HR_ADMIN: new Set(["operations:read", "operations:write", "hr:read", "hr:write", "hr:approve", "hr:delete", "recruitment:read", "recruitment:write", "recruitment:approve", "recruitment:delete"]),
   RECRUITER: new Set(["operations:read", "recruitment:read", "recruitment:write"]),
-  SALES_ADMIN: new Set(["operations:read", "operations:write", "sales:read", "sales:write", "sales:approve", "sales:delete", "finance:read"]),
-  VIEWER: new Set(["operations:read", "finance:read", "hr:read", "recruitment:read", "sales:read"]),
+  VIEWER: new Set(["operations:read", "hr:read", "recruitment:read"]),
 };
 
 const administratorEmployeeId = "gc.kim";
@@ -68,102 +66,8 @@ export async function ensureErpPlatformSchema(db: D1Database) {
       ON erp_audit_logs (entity_type, entity_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_audit_created_id
       ON erp_audit_logs (created_at, id)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_tasks (
-      id TEXT PRIMARY KEY NOT NULL,
-      module TEXT NOT NULL,
-      category TEXT NOT NULL,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
-      owner_employee_id TEXT NOT NULL DEFAULT '',
-      due_date TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'OPEN',
-      priority TEXT NOT NULL DEFAULT 'NORMAL',
-      destination TEXT NOT NULL DEFAULT '',
-      source_type TEXT NOT NULL DEFAULT 'MANUAL',
-      source_id TEXT NOT NULL DEFAULT '',
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      completed_at INTEGER,
-      deleted_at INTEGER
-    )`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_tasks_owner_status_due
-      ON erp_tasks (owner_employee_id, status, due_date)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_tasks_module_status
-      ON erp_tasks (module, status)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_approval_requests (
-      id TEXT PRIMARY KEY NOT NULL, module TEXT NOT NULL, request_type TEXT NOT NULL,
-      title TEXT NOT NULL, description TEXT NOT NULL DEFAULT '', requester_employee_id TEXT NOT NULL,
-      target_entity_type TEXT NOT NULL DEFAULT '', target_entity_id TEXT NOT NULL DEFAULT '',
-      amount INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT 'KRW', priority TEXT NOT NULL DEFAULT 'NORMAL',
-      status TEXT NOT NULL DEFAULT 'SUBMITTED', current_step INTEGER NOT NULL DEFAULT 1,
-      due_date TEXT NOT NULL DEFAULT '', metadata_json TEXT NOT NULL DEFAULT '{}', version INTEGER NOT NULL DEFAULT 1,
-      transition_token TEXT NOT NULL DEFAULT '',
-      submitted_at INTEGER NOT NULL, decided_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_approval_policies (
-      id TEXT PRIMARY KEY NOT NULL, module TEXT NOT NULL, request_type TEXT NOT NULL, name TEXT NOT NULL,
-      min_amount INTEGER NOT NULL DEFAULT 0, max_amount INTEGER, priority INTEGER NOT NULL DEFAULT 0,
-      active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_policy_match
-      ON erp_approval_policies (module, request_type, active, min_amount)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_approval_policy_steps (
-      id TEXT PRIMARY KEY NOT NULL, policy_id TEXT NOT NULL, step_order INTEGER NOT NULL,
-      step_name TEXT NOT NULL, approver_role TEXT NOT NULL DEFAULT '', approver_employee_id TEXT NOT NULL DEFAULT '',
-      created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_erp_approval_policy_step_order
-      ON erp_approval_policy_steps (policy_id, step_order)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_approval_delegations (
-      id TEXT PRIMARY KEY NOT NULL, delegator_employee_id TEXT NOT NULL, delegate_employee_id TEXT NOT NULL,
-      module TEXT NOT NULL DEFAULT 'all', starts_on TEXT NOT NULL, ends_on TEXT NOT NULL, reason TEXT NOT NULL,
-      active INTEGER NOT NULL DEFAULT 1, created_by TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_delegation_active_dates
-      ON erp_approval_delegations (delegator_employee_id, active, starts_on, ends_on)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_delegation_delegate
-      ON erp_approval_delegations (delegate_employee_id, active, ends_on)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_requester_status
-      ON erp_approval_requests (requester_employee_id, status, updated_at)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_module_status
-      ON erp_approval_requests (module, status, updated_at)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_target
-      ON erp_approval_requests (target_entity_type, target_entity_id)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_approval_steps (
-      id TEXT PRIMARY KEY NOT NULL, request_id TEXT NOT NULL, step_order INTEGER NOT NULL,
-      step_name TEXT NOT NULL, approver_role TEXT NOT NULL, approver_employee_id TEXT NOT NULL DEFAULT '',
-      delegated_from_employee_id TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'WAITING', comment TEXT NOT NULL DEFAULT '', acted_by TEXT NOT NULL DEFAULT '',
-      acted_at INTEGER, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_erp_approval_step_request_order
-      ON erp_approval_steps (request_id, step_order)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_step_approver_status
-      ON erp_approval_steps (approver_employee_id, status)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_approval_events (
-      id TEXT PRIMARY KEY NOT NULL, request_id TEXT NOT NULL, step_order INTEGER NOT NULL DEFAULT 0,
-      action TEXT NOT NULL, actor_employee_id TEXT NOT NULL, comment TEXT NOT NULL DEFAULT '',
-      snapshot_json TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_approval_event_request_created
-      ON erp_approval_events (request_id, created_at)`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_sync_runs (
-      id TEXT PRIMARY KEY NOT NULL,
-      source TEXT NOT NULL,
-      scope TEXT NOT NULL,
-      snapshot_date TEXT NOT NULL,
-      status TEXT NOT NULL,
-      record_count INTEGER NOT NULL DEFAULT 0,
-      metrics_json TEXT NOT NULL DEFAULT '{}',
-      error_message TEXT NOT NULL DEFAULT '',
-      started_at INTEGER NOT NULL,
-      completed_at INTEGER,
-      created_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_sync_source_snapshot
-      ON erp_sync_runs (source, snapshot_date)`),
-    db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_sync_status_created
-      ON erp_sync_runs (status, created_at)`),
+    // 결재(erp_approval_*)·업무(erp_tasks)·동기화(erp_sync_runs) 테이블은 더 만들지 않는다(D2-개정, Design §12.4).
+    // 기존 DB 의 테이블은 지우지 않는다(D4).
   ];
   if (administrator?.email && administrator.email !== "미입력") {
     statements.push(db.prepare(`INSERT OR IGNORE INTO erp_user_access
@@ -172,10 +76,6 @@ export async function ensureErpPlatformSchema(db: D1Database) {
       .bind(administrator.id, administrator.email.toLowerCase(), JSON.stringify(["SUPER_ADMIN"]), now, now));
   }
   await db.batch(statements);
-  const approvalStepColumns = await db.prepare("PRAGMA table_info(erp_approval_steps)").all<{ name: string }>();
-  if (!approvalStepColumns.results.some((column) => column.name === "delegated_from_employee_id")) {
-    await db.prepare("ALTER TABLE erp_approval_steps ADD COLUMN delegated_from_employee_id TEXT NOT NULL DEFAULT ''").run();
-  }
 }
 
 function parseRoles(value: string): ErpRole[] {

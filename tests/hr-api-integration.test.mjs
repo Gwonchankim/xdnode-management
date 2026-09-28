@@ -432,7 +432,9 @@ const PAST = '2026-01-02';
 const FUTURE = '2099-12-31';
 // 같은 요청 안의 감사 행은 created_at 이 같을 수 있어 순서 대신 이름 집합으로 비교한다.
 const auditActions = (sql, entityId) => sql.prepare('SELECT action FROM erp_audit_logs WHERE entity_id=?').all(entityId).map(row => row.action).sort();
+// 결재·업무 테이블은 더 만들지 않는다(Design §12.4). 없는 테이블은 0건으로 센다.
 const approvalRows = sql => ['erp_approval_requests', 'erp_approval_steps', 'erp_approval_events', 'erp_tasks']
+  .filter(table => sql.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))
   .reduce((sum, table) => sum + sql.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
 const expectConflict = result => {
   const body = expectStatus(result, 409);
@@ -853,4 +855,12 @@ test('R1 authorized users no longer grant the finance or sales administrator rol
     const saved = (await callRoute('authorized-users', 'POST', { employeeId: target.id, roles: [role] })).body;
     assert.deepEqual(saved.user.roles, ['VIEWER'], role);
   }
+});
+
+test('R1 platform: a fresh database no longer creates approval, task or sync tables (Design §12.4, D4)', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  expectStatus(await callRoute('employee-records'), 200);
+  const tables = sql.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(row => row.name);
+  assert.ok(tables.includes('erp_audit_logs'));
+  assert.deepEqual(tables.filter(name => /^erp_approval_|^erp_tasks$|^erp_sync_runs$/.test(name)), []);
 });

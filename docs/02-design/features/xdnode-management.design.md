@@ -3061,6 +3061,8 @@ export const LEGACY_PENDING = {
 - `safeJson`은 남긴다(audit-log, hr/analytics, hr/authorized-users, hr/compensation, hr/payroll, hr/recruitment, hr-workspace가 사용).
 - 검증: 결재·재무 테이블이 없는 새 DB 하니스에서 휴가 삭제·결정, 급여 승인, 채용요청 삭제가 500 없이 성공한다(§8.2 #37).
 
+**실행 결과 (2026-09-28)**: DDL 중단(결재 6개·`erp_tasks`·`erp_sync_runs`와 인덱스, `erp_approval_steps` PRAGMA/ALTER)과 `FINANCE_ADMIN`·`SALES_ADMIN` 삭제(VIEWER의 `finance:read`·`sales:read`도 삭제)는 완료했다. **순서 조정**: 재무 헬퍼 `blockedFinancePeriods`·`isFinancePeriodLocked`와 `ErpModule`의 `operations|finance|sales` 삭제는 `r1-delete`로 옮긴다. 이 둘을 쓰는 재무·영업 라우트가 아직 남아 있어, 먼저 지우면 빌드가 깨진다. 라우트와 같은 커밋에서 지운다. 결재 엔진 테스트 2건(`erp-platform.test.mjs`)과 `hr-local-permissions`의 approval-settings 단언은 삭제했다. 새 DB가 결재·업무·동기화 테이블을 만들지 않는다는 테스트를 추가했다. `npm test` 428/428.
+
 ### 12.5 셸 정리와 PII 분리 (`r1-shell-pii`, M1-3)
 
 - `app/page.tsx`(1,561줄)
