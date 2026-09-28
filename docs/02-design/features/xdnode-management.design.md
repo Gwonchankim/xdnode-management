@@ -2986,6 +2986,14 @@ docs/
    - `payroll:%` 재무 행이 모두 미지급·미전기인지. 조사 시점 20건 모두 UNPOSTED.
 6. 결과로 정적 목록을 정한다(§12.3). 조사 시점 기준 둘 다 `[]`다. 1건 이상이면 그 월을 목록에 넣고 처리 방법을 사용자와 정한 뒤 진행한다.
 
+**실행 결과 (2026-09-28, `r1-preflight` 완료)**
+- 커밋 `02f6ba5`, 태그 `erp-final-20260923`, 브랜치 `archive/erp-finance-sales-20260923`
+- 스냅샷 `C:\xdm\snapshots\r1-pre-20260928-1109\`(188.6MB, 서버 정지 후 복사). `verify-report.json`: integrity 모두 ok, 테이블 167개, R2 본문 151개(183,769,314바이트), 앱 DB `faaf2b…sqlite`
+- 레거시 대기 행: 6개 조건 모두 0건
+- `sales_incentive_payroll_links`: 0건 → `LEGACY_SALES_INCENTIVE_PERIODS = []`
+- `payroll:%` 재무 행: 20건, 모두 `status=APPROVED`·`journal_status=UNPOSTED`·`paid_at` 없음 → `LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS = []`
+- `erp_approval_requests`: 20건 모두 `APPROVED`(대기 없음)
+
 ### 12.2 HR 즉시 반영 (`r1-decouple`, `app/hr-transitions.ts`)
 
 **공통 규칙**
