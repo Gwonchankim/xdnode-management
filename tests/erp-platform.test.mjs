@@ -29,7 +29,13 @@ test("every mutating API route calls the authorization helper and writes an audi
     const source = await read(`app/api/${route}`);
     if (!/export\s+(?:async\s+)?(?:function|const)\s+(?:POST|PUT|PATCH|DELETE)\b/.test(source)) continue;
     mutating += 1;
-    assert.match(source, /authorizeErpRequest\(/, `${route}: missing authorizeErpRequest`);
+    if (route.startsWith("auth/")) {
+      // R3(Design §4.3.2): 인증 라우트는 authorizeErpRequest 대신 게이트와 교차 출처 검사를 직접 부른다.
+      assert.match(source, /platformSchemaReady\(db\)/, `${route}: missing platformSchemaReady`);
+      assert.match(source, /crossSiteViolation\(requestHeaders\)/, `${route}: missing crossSiteViolation`);
+    } else {
+      assert.match(source, /authorizeErpRequest\(/, `${route}: missing authorizeErpRequest`);
+    }
     assert.match(source, /writeErpAudit\(/, `${route}: missing writeErpAudit`);
   }
   assert.ok(mutating >= 20, `only ${mutating} mutating routes found`);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resetDatabase, callRoute, callApi, setIdentity, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
+import { resetDatabase, callRoute, callApi, setIdentity, setAccess, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
 import { calculateCompensation } from '../app/compensation-calculation.ts';
 
 const reads = {
@@ -819,8 +819,9 @@ test('R1 documents POST authorizes before reading the form, then requires hr:wri
     form.set('file', new File(['Audit document'], 'audit.txt', { type: 'text/plain' }));
     return callApi('documents', 'POST', form);
   };
+  // R3(r3-auth, D12): 권한은 탭 단위라 'recruitment 전용' 계정이 없다. setIdentity 호환 shim 은 RECRUITER 를 hr 편집으로 옮기므로
+  // (Design §8.5) 채용 문서 업로드만 확인한다. hr 보기 계정의 거부는 위 VIEWER 403 이 확인한다.
   setIdentity(['RECRUITER']);
-  expectStatus(await upload('hr'), 403);
   expectStatus(await upload('recruitment'), 201);
   assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM erp_documents WHERE module='hr'").get().n, 0);
   assert.equal(sql.prepare("SELECT action FROM erp_audit_logs WHERE action='DOCUMENT_UPLOADED'").get().action, 'DOCUMENT_UPLOADED');
@@ -833,7 +834,8 @@ test('R1 assistant: the incentive mode authorizes as hr and the old sales mode i
   expectStatus(await callApi('assistant', 'POST', { module: 'sales', question: 'audit' }), 400);
   setIdentity(null);
   expectStatus(await callApi('assistant', 'POST', { module: 'sales', question: 'audit' }), 400);
-  setIdentity(['RECRUITER']);
+  // R3(r3-auth, D12): 'recruitment 전용' 역할이 없어졌다. 탭 권한이 하나도 없는 계정으로 브리지 호출 전 403 을 확인한다.
+  setAccess({});
   expectStatus(await callApi('assistant', 'POST', { module: 'incentive', question: 'audit' }), 403);
   expectStatus(await callApi('assistant', 'POST', { module: 'compensation', question: 'audit' }), 403);
 });

@@ -13,6 +13,52 @@ async function render(pathname = "/") {
   );
 }
 
+async function workerFetch(pathname, init = {}) {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-${pathname}-${init.method ?? "GET"}`);
+  const { default: worker } = await import(workerUrl.href);
+  return worker.fetch(
+    new Request(`http://localhost${pathname}`, init),
+    { ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+}
+
+function assertSecurityHeaders(response, label) {
+  assert.equal(response.headers.get("x-content-type-options"), "nosniff", label);
+  assert.equal(response.headers.get("x-frame-options"), "DENY", label);
+  assert.equal(response.headers.get("referrer-policy"), "same-origin", label);
+  assert.equal(response.headers.get("permissions-policy"), "microphone=(self)", label);
+}
+
+// R3(r3-auth, Design §7.3·§7.7·§8.3 #8·#9): worker 가 /api/* 비GET 교차 출처 요청을 DB 없이 먼저 막고,
+// 모든 응답에 보안 헤더 3종을, /api/* 에는 기본 no-store 를 붙인다.
+test("worker refuses cross-origin and header-less API writes before any handler runs", async () => {
+  const json = { "content-type": "application/json" };
+  const cases = [
+    ["/api/auth/login", { method: "POST", headers: { ...json, origin: "http://evil.invalid" }, body: "{}" }],
+    ["/api/auth/login", { method: "POST", headers: json, body: "{}" }],
+    ["/api/hr/payroll", { method: "PUT", headers: json, body: "{}" }],
+    ["/api/auth/bootstrap", { method: "POST", headers: { ...json, origin: "null" }, body: "{}" }],
+  ];
+  for (const [pathname, init] of cases) {
+    const response = await workerFetch(pathname, init);
+    assert.equal(response.status, 403, `${init.method} ${pathname}`);
+    assert.deepEqual(await response.json(), { error: "다른 사이트에서 보낸 요청은 처리하지 않습니다.", code: "CROSS_ORIGIN" });
+    assertSecurityHeaders(response, pathname);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  }
+});
+
+test("worker adds the global security headers to pages and not-found responses", async () => {
+  const page = await render("/");
+  assertSecurityHeaders(page, "/");
+  const missing = await workerFetch("/api/finance/budget");
+  assert.equal(missing.status, 404);
+  assertSecurityHeaders(missing, "/api/finance/budget");
+  assert.equal(missing.headers.get("cache-control"), "no-store");
+});
+
 // R1(M1-3): 셸은 인사관리·임금 계산·감사 로그 세 탭만 둔다. 재무·영업 모듈, 오늘 업무(워크벤치),
 // 데이터 통제, 알림 센터는 셸에서 뺐다(Design §12.5). 첫 화면은 HR이다.
 test("renders the HR-first shell with only the hr, compensation and audit tabs", async () => {

@@ -1,51 +1,29 @@
-import { companyEmployees } from "./hr-company-data";
-import { getChatGPTUser } from "./chatgpt-auth";
+import { headers } from "next/headers";
+import { crossSiteViolation, CROSS_ORIGIN_ERROR } from "./request-guard";
+import {
+  authSchemaStatements, resolveSession, toPrincipal,
+  type AccountPrincipal, type ErpRole as SessionErpRole, type TabKey, type TabLevel,
+} from "./auth-session";
 
-export type ErpRole = "SUPER_ADMIN" | "HR_ADMIN" | "RECRUITER" | "VIEWER";
+// R3(r3-auth, Design §3·§4.3.1): 신원은 세션 쿠키로 정한다. 인사기록 연결은 선택이다(D14).
+// 권한 판정은 탭 수준(none·view·edit)이다. 모듈→탭 대응과 canAccess 는 r3-tabs 에서 app/access-tabs.ts 로 옮긴다.
+
+/** @deprecated 임시 호환(r3-tabs 에서 삭제). */
+export type ErpRole = SessionErpRole;
 export type ErpModule = "hr" | "recruitment" | "settings";
+/** 가드가 받는 모듈. r3-tabs 에서 레지스트리 파생 ErpModule 하나로 합친다. */
+export type GuardModule = ErpModule | "compensation" | "audit" | "admin";
 export type ErpAction = "read" | "write" | "approve" | "delete" | "admin";
+export type ErpPrincipal = AccountPrincipal;
+/** writeErpAudit 의 행위자. 인증 전 이벤트는 anonymousActor(email). */
+export type AuditActor = Pick<ErpPrincipal, "userId" | "email" | "employeeId">;
 
-export type ErpPrincipal = {
-  userId: string;
-  email: string;
-  displayName: string;
-  employeeId: string;
-  employeeName: string;
-  roles: ErpRole[];
-};
+export function anonymousActor(email = ""): AuditActor {
+  return { userId: "anonymous", email: email.slice(0, 200), employeeId: "anonymous" };
+}
 
-type AccessRow = {
-  employee_id: string;
-  email: string;
-  roles_json: string;
-  active: number;
-};
-
-const rolePermissions: Record<ErpRole, Set<string>> = {
-  SUPER_ADMIN: new Set(["*"]),
-  HR_ADMIN: new Set(["hr:read", "hr:write", "hr:approve", "hr:delete", "recruitment:read", "recruitment:write", "recruitment:approve", "recruitment:delete"]),
-  RECRUITER: new Set(["recruitment:read", "recruitment:write"]),
-  VIEWER: new Set(["hr:read", "recruitment:read"]),
-};
-
-const administratorEmployeeId = "gc.kim";
-const administrator = companyEmployees.find((employee) => employee.id === administratorEmployeeId);
-
-export async function ensureErpPlatformSchema(db: D1Database) {
-  const now = Date.now();
-  const statements = [
-    db.prepare(`CREATE TABLE IF NOT EXISTS hr_authorized_users (
-      employee_id TEXT PRIMARY KEY NOT NULL,
-      created_at INTEGER NOT NULL
-    )`),
-    db.prepare(`CREATE TABLE IF NOT EXISTS erp_user_access (
-      employee_id TEXT PRIMARY KEY NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      roles_json TEXT NOT NULL DEFAULT '[]',
-      active INTEGER NOT NULL DEFAULT 1,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    )`),
+function auditStatements(db: D1Database) {
+  return [
     db.prepare(`CREATE TABLE IF NOT EXISTS erp_audit_logs (
       id TEXT PRIMARY KEY NOT NULL,
       actor_user_id TEXT NOT NULL,
@@ -66,93 +44,94 @@ export async function ensureErpPlatformSchema(db: D1Database) {
       ON erp_audit_logs (entity_type, entity_id)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_erp_audit_created_id
       ON erp_audit_logs (created_at, id)`),
-    // 결재(erp_approval_*)·업무(erp_tasks)·동기화(erp_sync_runs) 테이블은 더 만들지 않는다(D2-개정, Design §12.4).
-    // 기존 DB 의 테이블은 지우지 않는다(D4).
   ];
-  if (administrator?.email && administrator.email !== "미입력") {
-    statements.push(db.prepare(`INSERT OR IGNORE INTO erp_user_access
-      (employee_id, email, roles_json, active, created_at, updated_at)
-      VALUES (?, ?, ?, 1, ?, ?)`)
-      .bind(administrator.id, administrator.email.toLowerCase(), JSON.stringify(["SUPER_ADMIN"]), now, now));
+}
+
+/**
+ * 공용 스키마. 조건 없이, 멱등으로 한 batch 에서 만든다. 추가만 하고 DROP 은 하지 않는다(D4).
+ * 결재(erp_approval_*)·업무(erp_tasks)·동기화(erp_sync_runs)는 R1, hr_authorized_users·erp_user_access 와 gc.kim 시드는
+ * R3 에서 더 만들지 않는다(Design §3.4). 기존 DB 의 테이블과 행은 그대로 남는다.
+ */
+export async function ensureErpPlatformSchema(db: D1Database) {
+  await db.batch([...auditStatements(db), ...authSchemaStatements(db)]);
+}
+
+let schemaGate: Promise<void> | null = null;
+/** 프로세스당 한 번만 스키마를 만든다. 실패하면 게이트를 비워 다음 요청에서 다시 시도한다. */
+export function platformSchemaReady(db: D1Database) {
+  if (!schemaGate) {
+    schemaGate = ensureErpPlatformSchema(db).catch((error) => {
+      schemaGate = null;
+      throw error;
+    });
   }
-  await db.batch(statements);
+  return schemaGate;
 }
 
-function parseRoles(value: string): ErpRole[] {
-  try {
-    const parsed = JSON.parse(value);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((role): role is ErpRole => typeof role === "string" && role in rolePermissions);
-  } catch {
-    return [];
-  }
+/** 하니스 전용: 새 메모리 DB 를 만들 때 게이트를 비운다(Design §8.5). */
+export function resetPlatformSchemaGate() {
+  schemaGate = null;
 }
 
-function hasPermission(roles: ErpRole[], module: ErpModule, action: ErpAction) {
-  return roles.some((role) => rolePermissions[role].has("*") || rolePermissions[role].has(`${module}:${action}`));
+export function erpError(status: number, code: string, error: string, extra: Record<string, unknown> = {}, init: ResponseInit = {}) {
+  return Response.json({ error, code, ...extra }, { ...init, status });
 }
 
-export async function authorizeErpRequest(db: D1Database, module: ErpModule, action: ErpAction): Promise<
+// ── 권한 판정(임시, r3-tabs 에서 access-tabs.canAccess 로 교체) ──────
+const MODULE_TAB: ReadonlyMap<string, TabKey> = new Map<string, TabKey>([
+  ["hr", "hr"],
+  ["recruitment", "hr"],
+  ["compensation", "compensation"],
+  // settings 는 R1까지의 관리자 전용 모듈 이름이다(audit-log, authorized-users). r3-tabs 에서 audit·admin 으로 바뀐다.
+  ["settings", "audit"],
+  ["audit", "audit"],
+  ["admin", "admin"],
+]);
+const ADMIN_ONLY_TABS: ReadonlySet<TabKey> = new Set<TabKey>(["audit", "admin"]);
+const LEVEL_RANK: Record<TabLevel, number> = { none: 0, view: 1, edit: 2 };
+const REQUIRED_LEVEL: Record<string, "view" | "edit" | "admin"> = { read: "view", write: "edit", approve: "edit", delete: "edit", admin: "admin" };
+
+function accessDecision(principal: ErpPrincipal, module: string, action: string) {
+  const tab = MODULE_TAB.get(module) ?? null;
+  const required = Object.hasOwn(REQUIRED_LEVEL, action) ? REQUIRED_LEVEL[action] : null;
+  const granted: TabLevel = tab ? principal.tabs[tab] : "none";
+  let allowed: boolean;
+  if (!tab || !required) allowed = false;                         // 모르는 모듈·action 은 관리자에게도 거부(fail closed)
+  else if (required === "admin" || ADMIN_ONLY_TABS.has(tab)) allowed = principal.isAdmin;
+  else if (principal.isAdmin) allowed = true;
+  else allowed = LEVEL_RANK[granted] >= LEVEL_RANK[required];
+  return { allowed, tab, required, granted };
+}
+
+/**
+ * 순서(Design §4.3.1): 게이트 → headers() → 교차 출처 403 → 세션 401 → 비밀번호 변경 필요 403 → principal → 권한 403(+ACCESS_DENIED 감사).
+ * 시그니처는 R1과 같다. 메서드를 모르므로 비GET 교차 출처 차단은 worker/index.ts 가 먼저 한다.
+ */
+export async function authorizeErpRequest(db: D1Database, module: GuardModule, action: ErpAction): Promise<
   { principal: ErpPrincipal; response?: never } | { principal?: never; response: Response }
 > {
-  await ensureErpPlatformSchema(db);
-  const user = await getChatGPTUser();
-  if (!user) {
-    return { response: Response.json({ error: "로그인이 필요합니다." }, { status: 401 }) };
+  await platformSchemaReady(db);
+  const requestHeaders = await headers();
+  if (crossSiteViolation(requestHeaders)) return { response: Response.json(CROSS_ORIGIN_ERROR, { status: 403 }) };
+  const session = await resolveSession(db, requestHeaders.get("cookie"));
+  if (!session) return { response: erpError(401, "UNAUTHENTICATED", "로그인이 필요합니다.") };
+  if (session.account.must_change_password === 1) {
+    return { response: erpError(403, "PASSWORD_CHANGE_REQUIRED", "비밀번호를 먼저 변경해 주세요.") };
   }
-
-  const normalizedEmail = user.email.trim().toLowerCase();
-  const companyEmployee = companyEmployees.find((item) => item.email.toLowerCase() === normalizedEmail);
-  let employee: { id: string; name: string } | undefined = companyEmployee;
-  if (!employee) {
-    try {
-      const storedEmployee = await db.prepare(`SELECT employee_id, name FROM hr_employee_records
-        WHERE lower(email) = ? LIMIT 1`).bind(normalizedEmail).first<{ employee_id: string; name: string }>();
-      if (storedEmployee) employee = { id: storedEmployee.employee_id, name: storedEmployee.name };
-    } catch {
-      // The static company directory remains the fallback before the HR migration is applied.
-    }
+  const principal = toPrincipal(session.account);
+  const decision = accessDecision(principal, module, action);
+  if (!decision.allowed) {
+    await writeErpAudit(db, {
+      principal,
+      module: decision.tab ? module : "auth",
+      action: "ACCESS_DENIED",
+      entityType: "ACCESS",
+      entityId: `${module}:${action}`.slice(0, 120),
+      after: { module, action, tab: decision.tab, required: decision.required, granted: decision.granted },
+    });
+    return { response: erpError(403, "FORBIDDEN", "이 작업을 수행할 권한이 없습니다.") };
   }
-  if (!employee) {
-    return { response: Response.json({ error: "회사 인사기록과 연결되지 않은 계정입니다." }, { status: 403 }) };
-  }
-
-  let access = await db.prepare(`SELECT employee_id, email, roles_json, active
-    FROM erp_user_access WHERE lower(email) = ? LIMIT 1`)
-    .bind(normalizedEmail).first<AccessRow>();
-
-  if (!access) {
-    const legacy = await db.prepare(`SELECT employee_id FROM hr_authorized_users
-      WHERE employee_id = ? LIMIT 1`).bind(employee.id).first<{ employee_id: string }>();
-    if (legacy) {
-      const now = Date.now();
-      await db.prepare(`INSERT OR IGNORE INTO erp_user_access
-        (employee_id, email, roles_json, active, created_at, updated_at)
-        VALUES (?, ?, ?, 1, ?, ?)`)
-        .bind(employee.id, normalizedEmail, JSON.stringify(["VIEWER"]), now, now).run();
-      access = { employee_id: employee.id, email: normalizedEmail, roles_json: JSON.stringify(["VIEWER"]), active: 1 };
-    }
-  }
-
-  if (!access || !access.active) {
-    return { response: Response.json({ error: "ERP 사용 권한이 없습니다." }, { status: 403 }) };
-  }
-
-  const roles = parseRoles(access.roles_json);
-  if (!hasPermission(roles, module, action)) {
-    return { response: Response.json({ error: "이 작업을 수행할 권한이 없습니다." }, { status: 403 }) };
-  }
-
-  return {
-    principal: {
-      userId: user.userId,
-      email: normalizedEmail,
-      displayName: user.displayName,
-      employeeId: employee.id,
-      employeeName: employee.name,
-      roles,
-    },
-  };
+  return { principal };
 }
 
 function auditJson(value: unknown) {
@@ -162,8 +141,8 @@ function auditJson(value: unknown) {
 }
 
 export async function writeErpAudit(db: D1Database, input: {
-  principal: ErpPrincipal;
-  module: ErpModule;
+  principal: AuditActor;
+  module: GuardModule | "auth";
   action: string;
   entityType: string;
   entityId: string;
@@ -171,7 +150,7 @@ export async function writeErpAudit(db: D1Database, input: {
   after?: unknown;
   reason?: string;
 }) {
-  await ensureErpPlatformSchema(db);
+  await platformSchemaReady(db);
   await db.prepare(`INSERT INTO erp_audit_logs
     (id, actor_user_id, actor_email, actor_employee_id, module, action, entity_type,
       entity_id, before_json, after_json, reason, created_at)

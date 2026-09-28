@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { companyEmployees } from "../../../hr-company-data";
-import { authorizeErpRequest, ensureErpPlatformSchema, safeJson, writeErpAudit } from "../../../erp-platform";
+import { authorizeErpRequest, safeJson, writeErpAudit } from "../../../erp-platform";
 import type { ErpRole } from "../../../erp-platform";
 
 type Bindings = { DB: D1Database };
@@ -26,6 +26,25 @@ async function employeeById(employeeId: string) {
   return stored ? { id: stored.employee_id, name: stored.name, email: stored.email } : undefined;
 }
 
+// R3(r3-auth): 공용 스키마는 이 두 테이블을 더 만들지 않는다(Design §3.4). 이 라우트는 r3-tabs 에서 /api/admin/accounts 로
+// 대체되어 삭제되므로, 그때까지만 자기 테이블을 스스로 만든다. 여기 행은 로그인·권한 판정에 쓰이지 않는다.
+async function ensureLegacyAccessTables() {
+  await db.batch([
+    db.prepare(`CREATE TABLE IF NOT EXISTS hr_authorized_users (
+      employee_id TEXT PRIMARY KEY NOT NULL,
+      created_at INTEGER NOT NULL
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS erp_user_access (
+      employee_id TEXT PRIMARY KEY NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      roles_json TEXT NOT NULL DEFAULT '[]',
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )`),
+  ]);
+}
+
 function normalizedRoles(value: unknown): ErpRole[] {
   if (!Array.isArray(value)) return ["VIEWER"];
   const roles = value.filter((role): role is ErpRole => typeof role === "string" && allowedRoles.has(role as ErpRole));
@@ -35,7 +54,7 @@ function normalizedRoles(value: unknown): ErpRole[] {
 export async function GET() {
   const auth = await authorizeErpRequest(db, "settings", "admin");
   if (auth.response) return auth.response;
-  await ensureErpPlatformSchema(db);
+  await ensureLegacyAccessTables();
   const result = await db.prepare(`SELECT employee_id, email, roles_json, active, created_at, updated_at
     FROM erp_user_access WHERE active = 1 ORDER BY created_at ASC`).all<AccessRow>();
   const users = result.results.map((row) => ({
@@ -52,6 +71,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await authorizeErpRequest(db, "settings", "admin");
   if (auth.response) return auth.response;
+  await ensureLegacyAccessTables();
   const payload = await request.json() as { employeeId?: string; roles?: unknown };
   const employeeId = payload.employeeId?.trim() ?? "";
   const employee = await employeeById(employeeId);
@@ -91,6 +111,7 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const auth = await authorizeErpRequest(db, "settings", "admin");
   if (auth.response) return auth.response;
+  await ensureLegacyAccessTables();
   const payload = await request.json() as { employeeId?: string; reason?: string };
   const employeeId = payload.employeeId?.trim() ?? "";
   if (employeeId === currentAdministratorId) {
