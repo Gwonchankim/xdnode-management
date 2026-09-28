@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
-import { createApprovalRequest } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
+import { LEGACY_PENDING, changedRows, finalizePerformanceCycleStatements, hrConflictResponse } from "../../../hr-transitions";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
@@ -246,25 +246,18 @@ export async function POST(request: Request) {
     return Response.json({ transitioned: true, status: target });
   }
 
+  // UI 가 보내는 이름은 그대로 SUBMIT_FINALIZATION 이지만, 결재 없이 곧바로 최종 확정한다(Design §12.2 흐름 5).
   if (action === "SUBMIT_FINALIZATION") {
-    if (!privileged(principal)) return Response.json({ error: "HR 관리자만 최종 확정 결재를 제출할 수 있습니다." }, { status: 403 });
+    if (!privileged(principal)) return Response.json({ error: "HR 관리자만 평가를 최종 확정할 수 있습니다." }, { status: 403 });
     const cycleId = String(body.cycleId ?? "").trim();
     const cycle = await db.prepare("SELECT * FROM hr_performance_cycles WHERE id = ?").bind(cycleId).first<CycleRow>();
-    if (!cycle || cycle.status !== "CALIBRATION") return Response.json({ error: "보정 단계의 평가주기만 최종 확정 결재를 제출할 수 있습니다." }, { status: 409 });
+    if (!cycle || (cycle.status !== "CALIBRATION" && cycle.status !== LEGACY_PENDING.performanceCycle)) return Response.json({ error: "보정 단계의 평가주기만 최종 확정할 수 있습니다." }, { status: 409 });
     const incomplete = await db.prepare("SELECT COUNT(*) AS count FROM hr_performance_participants WHERE cycle_id = ? AND status <> 'CALIBRATED'").bind(cycleId).first<{ count: number }>();
     if ((incomplete?.count ?? 0) > 0) return Response.json({ error: "모든 평가 대상자의 보정평가를 완료해 주세요." }, { status: 409 });
-    await db.prepare("UPDATE hr_performance_cycles SET status = 'FINALIZATION_SUBMITTED', updated_at = ? WHERE id = ? AND status = 'CALIBRATION'").bind(now, cycleId).run();
-    try {
-      const approval = await createApprovalRequest(db, principal, { module: "hr", requestType: "PERFORMANCE_CYCLE",
-        title: `${cycle.period} ${cycle.name} 최종 확정`, description: "목표·자기평가·관리자평가·보정평가 완료 결과의 최종 확정",
-        targetEntityType: "HR_PERFORMANCE_CYCLE", targetEntityId: cycleId, priority: "HIGH",
-        metadata: { period: cycle.period, name: cycle.name } });
-      await writeErpAudit(db, { principal, module: "hr", action: "PERFORMANCE_FINALIZATION_SUBMITTED", entityType: "hrPerformanceCycle", entityId: cycleId, before: { status: cycle.status }, after: { status: "FINALIZATION_SUBMITTED", approvalId: approval.id } });
-      return Response.json({ submitted: true, approvalId: approval.id }, { status: 202 });
-    } catch (error) {
-      await db.prepare("UPDATE hr_performance_cycles SET status = 'CALIBRATION', updated_at = ? WHERE id = ? AND status = 'FINALIZATION_SUBMITTED'").bind(Date.now(), cycleId).run();
-      return Response.json({ error: error instanceof Error ? error.message : "최종 확정 결재선을 만들지 못했습니다." }, { status: 409 });
-    }
+    const result = await db.batch(finalizePerformanceCycleStatements(db, { cycleId, actorEmployeeId: principal.employeeId, now }));
+    if (changedRows(result, 0) !== 1) return hrConflictResponse();
+    await writeErpAudit(db, { principal, module: "hr", action: "PERFORMANCE_CYCLE_FINALIZED", entityType: "hrPerformanceCycle", entityId: cycleId, before: { status: cycle.status }, after: { status: "FINALIZED", finalizedParticipants: changedRows(result, 1) } });
+    return Response.json({ finalized: true, status: "FINALIZED" });
   }
 
   const participantId = String(body.participantId ?? "").trim();

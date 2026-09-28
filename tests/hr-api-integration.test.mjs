@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resetDatabase, callRoute, callApi, setIdentity, beforeBatch, objects } from './helpers/hr-api-harness.mjs';
+import { resetDatabase, callRoute, callApi, setIdentity, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
 import { calculateCompensation } from '../app/compensation-calculation.ts';
 
 const reads = {
@@ -421,5 +421,436 @@ for (const concurrent of [false, true]) test(`retirement transfer recalculates t
     assert.equal(line.gross_pay, expected);
     assert.equal(sql.prepare('SELECT gross_pay FROM hr_compensation_runs WHERE period=?').get(draft.period).gross_pay, expected);
     expectStatus(await postWage({ ...draft, action: 'SAVE', version: 1 }), 409);
+  }
+});
+
+// ── R1 r1-decouple (Design §12.2·§12.3, §8.2 #31~#38): HR 결재 7흐름의 즉시 반영 ─────────────────
+// 전자결재가 없어진 뒤로 편집 권한자가 누르면 곧바로 반영된다. 결재 시절 대기 상태(SUBMITTED·PENDING·
+// FINALIZATION_SUBMITTED)도 같은 전이의 from-state 로 받고, 같은 전이가 두 번이면 뒤의 것은 409 CONFLICT 다.
+
+const PAST = '2026-01-02';
+const FUTURE = '2099-12-31';
+// 같은 요청 안의 감사 행은 created_at 이 같을 수 있어 순서 대신 이름 집합으로 비교한다.
+const auditActions = (sql, entityId) => sql.prepare('SELECT action FROM erp_audit_logs WHERE entity_id=?').all(entityId).map(row => row.action).sort();
+const approvalRows = sql => ['erp_approval_requests', 'erp_approval_steps', 'erp_approval_events', 'erp_tasks']
+  .reduce((sum, table) => sum + sql.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n, 0);
+const expectConflict = result => {
+  const body = expectStatus(result, 409);
+  assert.equal(body.code, 'CONFLICT');
+  assert.equal(body.error, '다른 사용자가 먼저 상태를 바꿨습니다. 새로고침해 주세요.');
+};
+const APPROVAL_AND_FINANCE_TABLES = /erp_approval_|erp_tasks|finance_|sales_/;
+
+test('R1 flow 1: personnel actions are registered as approved and applied through applyDuePersonnelActions', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const base = { resource: 'personnelAction', employeeId: employee.id, actionType: '인사이동(전보)', fromDepartment: employee.department, fromPosition: '', toPosition: '사원', reason: 'Audit transfer' };
+  const due = expectStatus(await callRoute('operations', 'POST', { ...base, effectiveDate: PAST, toDepartment: 'Moved Team' }), 201).item;
+  const dueRow = sql.prepare('SELECT status, approved_by, approved_at FROM hr_personnel_actions WHERE id=?').get(due.id);
+  assert.equal(dueRow.status, 'EFFECTIVE'); assert.equal(dueRow.approved_by, 'gc.kim'); assert.ok(dueRow.approved_at);
+  assert.equal(sql.prepare('SELECT department FROM hr_employee_records WHERE employee_id=?').get(employee.id).department, 'Moved Team');
+  assert.deepEqual(auditActions(sql, due.id), ['PERSONNEL_ACTION_APPROVED', 'PERSONNEL_ACTION_EFFECTIVE']);
+  const future = expectStatus(await callRoute('operations', 'POST', { ...base, effectiveDate: FUTURE, toDepartment: 'Future Team' }), 201).item;
+  assert.equal(future.status, 'APPROVED');
+  assert.equal(sql.prepare('SELECT department FROM hr_employee_records WHERE employee_id=?').get(employee.id).department, 'Moved Team');
+  forbidTableAccess(null);
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 flow 2: retirement starts IN_PROGRESS with its settlement draft and one "퇴직 예정" history entry', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const body = { resource: 'retirement', employeeId: employee.id, eventDate: FUTURE, reason: 'Audit retirement', tasks: [{ id: 'handover', title: 'Audit handover', ownerType: 'HR' }] };
+  const item = expectStatus(await callRoute('operations', 'POST', body), 201).item;
+  assert.equal(item.status, 'IN_PROGRESS');
+  const request = sql.prepare('SELECT status, approved_by, approved_at FROM hr_retirement_requests WHERE id=?').get(item.id);
+  assert.equal(request.status, 'IN_PROGRESS'); assert.equal(request.approved_by, 'gc.kim'); assert.ok(request.approved_at);
+  assert.equal(sql.prepare('SELECT status FROM hr_retirement_settlements WHERE request_id=?').get(item.id).status, 'DRAFT');
+  const record = sql.prepare('SELECT status, retirement_json, history_json FROM hr_employee_records WHERE employee_id=?').get(employee.id);
+  assert.equal(record.status, '퇴직 예정');
+  assert.equal(JSON.parse(record.retirement_json).status, 'IN_PROGRESS');
+  assert.equal(JSON.parse(record.retirement_json).requestId, item.id);
+  const history = JSON.parse(record.history_json);
+  assert.equal(history.filter(entry => entry.type === '퇴직 예정').length, 1);
+  assert.ok(!record.history_json.includes('결재 승인'));
+  assert.deepEqual(auditActions(sql, item.id), ['RETIREMENT_APPROVED']);
+  // 진행 중인 요청이 있으면 같은 직원의 두 번째 퇴직 등록은 막힌다.
+  expectStatus(await callRoute('operations', 'POST', body), 409);
+  forbidTableAccess(null);
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 flow 3: legacy leave form saves an approved request and legacy PENDING rows are decided directly', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const item = expectStatus(await callRoute('operations', 'POST', { resource: 'leaveRequest', employeeId: employee.id, leaveType: 'ANNUAL', startDate: '2026-08-20', endDate: '2026-08-20', units: 100, reason: 'Audit leave' }), 201).item;
+  assert.equal(item.status, 'APPROVED');
+  const row = sql.prepare('SELECT status, approver_employee_id, decided_at FROM hr_leave_requests WHERE id=?').get(item.id);
+  assert.equal(row.status, 'APPROVED'); assert.equal(row.approver_employee_id, 'gc.kim'); assert.ok(row.decided_at);
+  assert.deepEqual(auditActions(sql, item.id), ['LEAVE_REQUEST_APPROVED']);
+  sql.prepare(`INSERT INTO hr_leave_requests (id, employee_id, leave_type, start_date, end_date, units, reason, status, approver_employee_id, decided_at, created_at, updated_at)
+    VALUES ('legacy-leave', ?, 'ANNUAL', '2026-08-21', '2026-08-21', 100, 'Legacy', 'PENDING', '', NULL, 1, 1)`).run(employee.id);
+  expectStatus(await callRoute('operations', 'PUT', { resource: 'leaveRequest', id: 'legacy-leave', status: 'APPROVED' }), 200);
+  assert.equal(sql.prepare("SELECT status FROM hr_leave_requests WHERE id='legacy-leave'").get().status, 'APPROVED');
+  forbidTableAccess(null);
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 flow 4: payroll approval, lock and reopen stay inside HR on a database without approval or finance tables', async () => {
+  const sql = await resetDatabase(); const draft = draftFor();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  expectStatus(await postWage({ ...draft, action: 'CREATE' }), 201);
+  expectStatus(await postWage({ ...draft, action: 'CONFIRM', version: 1 }), 200);
+  const put = body => callRoute('payroll', 'PUT', { period: draft.period, ...body });
+  expectStatus(await put({ status: 'REVIEW' }), 200);
+  const approved = expectStatus(await put({ status: 'APPROVED' }), 200).item;
+  assert.equal(approved.status, 'APPROVED'); assert.equal(approved.approved_by, 'gc.kim'); assert.equal(approved.reviewed_by, 'gc.kim');
+  const locked = expectStatus(await put({ status: 'LOCKED' }), 200).item;
+  assert.equal(locked.status, 'LOCKED'); assert.ok(locked.locked_at);
+  const reopened = expectStatus(await put({ status: 'DRAFT', reopenedReason: 'Audit correction of payroll details' }), 200).item;
+  assert.equal(reopened.status, 'DRAFT'); assert.equal(reopened.approved_by, ''); assert.equal(reopened.locked_at, null);
+  assert.equal(reopened.reopened_reason, 'Audit correction of payroll details');
+  forbidTableAccess(null);
+  assert.deepEqual(auditActions(sql, draft.period).filter(action => action.startsWith('PAYROLL_RUN')),
+    ['PAYROLL_RUN_LOCKED', 'PAYROLL_RUN_REOPENED', 'PAYROLL_RUN_STATUS_UPDATED', 'PAYROLL_RUN_STATUS_UPDATED']);
+  assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name LIKE 'finance_%'").get().n, 0);
+  assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM erp_audit_logs WHERE module='finance'").get().n, 0);
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 flow 4: a concurrent payroll transition loses with 409 CONFLICT', async () => {
+  const sql = await resetDatabase(); const draft = draftFor();
+  expectStatus(await postWage({ ...draft, action: 'CREATE' }), 201);
+  expectStatus(await postWage({ ...draft, action: 'CONFIRM', version: 1 }), 200);
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'REVIEW' }), 200);
+  beforeBatch(statements => {
+    if (statements.some(statement => statement.sql.startsWith('UPDATE hr_payroll_runs SET status'))) {
+      sql.prepare("UPDATE hr_payroll_runs SET status='LOCKED' WHERE period=?").run(draft.period);
+      beforeBatch(null);
+    }
+  });
+  expectConflict(await callRoute('payroll', 'PUT', { period: draft.period, status: 'APPROVED' }));
+  assert.equal(sql.prepare('SELECT status FROM hr_payroll_runs WHERE period=?').get(draft.period).status, 'LOCKED');
+  // 두 번째 재오픈도 같은 규칙이다.
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'DRAFT', reopenedReason: 'First reopen' }), 200);
+  beforeBatch(statements => {
+    if (statements.some(statement => statement.sql.startsWith('UPDATE hr_payroll_runs SET status'))) {
+      sql.prepare("UPDATE hr_payroll_runs SET status='DRAFT' WHERE period=?").run(draft.period);
+      beforeBatch(null);
+    }
+  });
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'LOCKED' }), 200);
+  sql.prepare("UPDATE hr_payroll_runs SET status='LOCKED' WHERE period=?").run(draft.period);
+  beforeBatch(statements => {
+    if (statements.some(statement => statement.sql.startsWith('UPDATE hr_payroll_runs SET status'))) {
+      sql.prepare("UPDATE hr_payroll_runs SET status='DRAFT' WHERE period=?").run(draft.period);
+      beforeBatch(null);
+    }
+  });
+  expectConflict(await callRoute('payroll', 'PUT', { period: draft.period, status: 'DRAFT', reopenedReason: 'Second reopen' }));
+});
+
+test('R1 flow 5: performance finalization finalizes the cycle and calibrated participants in one batch', async () => {
+  const sql = await resetDatabase();
+  expectStatus(await callRoute('performance', 'GET', undefined, '?year=2026'), 200);
+  const seedCycle = (id, status) => {
+    sql.prepare(`INSERT INTO hr_performance_cycles (id, name, period, description, status, goal_due_date, self_due_date, manager_due_date,
+      calibration_due_date, created_by, opened_at, finalized_by, finalized_at, created_at, updated_at)
+      VALUES (?, ?, '2026-H2', '', ?, '2026-09-01', '2026-10-01', '2026-11-01', '2026-12-01', 'gc.kim', 1, '', NULL, 1, 1)`).run(id, `Audit ${id}`, status);
+    sql.prepare(`INSERT INTO hr_performance_participants (id, cycle_id, employee_id, organization_id, manager_employee_id, status, final_score,
+      final_rating, calibration_note, finalized_by, finalized_at, created_at, updated_at)
+      VALUES (?, ?, 'gc.kim', '', '', 'CALIBRATED', 90, 'A', 'Audit', '', NULL, 1, 1)`).run(`${id}-p`, id);
+  };
+  seedCycle('cycle-new', 'CALIBRATION');
+  seedCycle('cycle-legacy', 'FINALIZATION_SUBMITTED');
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  for (const cycleId of ['cycle-new', 'cycle-legacy']) {
+    expectStatus(await callRoute('performance', 'POST', { action: 'SUBMIT_FINALIZATION', cycleId }), 200);
+    const cycle = sql.prepare('SELECT status, finalized_by, finalized_at FROM hr_performance_cycles WHERE id=?').get(cycleId);
+    assert.equal(cycle.status, 'FINALIZED'); assert.equal(cycle.finalized_by, 'gc.kim'); assert.ok(cycle.finalized_at);
+    assert.equal(sql.prepare('SELECT status FROM hr_performance_participants WHERE cycle_id=?').get(cycleId).status, 'FINALIZED');
+    assert.deepEqual(auditActions(sql, cycleId), ['PERFORMANCE_CYCLE_FINALIZED']);
+  }
+  forbidTableAccess(null);
+  seedCycle('cycle-race', 'CALIBRATION');
+  beforeBatch(statements => {
+    if (statements.some(statement => statement.sql.startsWith("UPDATE hr_performance_cycles SET status = 'FINALIZED'"))) {
+      sql.prepare("UPDATE hr_performance_cycles SET status='FINALIZED' WHERE id='cycle-race'").run();
+      beforeBatch(null);
+    }
+  });
+  expectConflict(await callRoute('performance', 'POST', { action: 'SUBMIT_FINALIZATION', cycleId: 'cycle-race' }));
+  assert.equal(sql.prepare("SELECT status FROM hr_performance_participants WHERE cycle_id='cycle-race'").get().status, 'CALIBRATED');
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 performance appeal "accept" is RESOLVED on the server (ACCEPTED is still rejected)', async () => {
+  const sql = await resetDatabase();
+  expectStatus(await callRoute('performance', 'GET', undefined, '?year=2026'), 200);
+  const now = Date.now();
+  sql.prepare(`INSERT INTO hr_performance_cycles (id, name, period, description, status, goal_due_date, self_due_date, manager_due_date,
+    calibration_due_date, created_by, opened_at, finalized_by, finalized_at, created_at, updated_at)
+    VALUES ('cycle-final', 'Audit Final', '2026-H1', '', 'FINALIZED', '2026-01-01', '2026-02-01', '2026-03-01', '2026-04-01', 'gc.kim', 1, 'gc.kim', ?, 1, 1)`).run(now);
+  sql.prepare(`INSERT INTO hr_performance_participants (id, cycle_id, employee_id, organization_id, manager_employee_id, status, final_score,
+    final_rating, calibration_note, finalized_by, finalized_at, created_at, updated_at)
+    VALUES ('participant-final', 'cycle-final', 'gc.kim', '', '', 'FINALIZED', 80, 'B', '', 'gc.kim', ?, 1, 1)`).run(now);
+  sql.prepare(`INSERT INTO hr_performance_appeals (id, participant_id, reason, status, response, submitted_by, submitted_at, resolved_by, resolved_at, created_at, updated_at)
+    VALUES ('appeal-1', 'participant-final', 'Audit appeal reason for the final rating', 'SUBMITTED', '', 'gc.kim', ?, '', NULL, ?, ?)`).run(now, now, now);
+  const resolve = outcome => callRoute('performance', 'POST', { action: 'RESOLVE_APPEAL', participantId: 'participant-final', appealId: 'appeal-1', outcome, response: 'Accepted after review of evidence' });
+  expectStatus(await resolve('ACCEPTED'), 400);
+  expectStatus(await resolve('RESOLVED'), 200);
+  assert.equal(sql.prepare("SELECT status FROM hr_performance_appeals WHERE id='appeal-1'").get().status, 'RESOLVED');
+});
+
+test('R1 flow 6: workforce plan approval supersedes the previous approved version in the same batch', async () => {
+  const sql = await resetDatabase();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const assumptions = 'Audit plan assumptions and basis';
+  const firstId = expectStatus(await callRoute('workforce-plans', 'POST', { action: 'CREATE_PLAN', period: '2026-H2', title: 'Audit Plan' }), 201).id;
+  expectStatus(await callRoute('workforce-plans', 'POST', { action: 'SAVE_PLAN', planId: firstId, title: 'Audit Plan', assumptions }), 200);
+  expectStatus(await callRoute('workforce-plans', 'POST', { action: 'SUBMIT_PLAN', planId: firstId }), 200);
+  const first = sql.prepare('SELECT status, approved_by, approved_at, submitted_at FROM hr_workforce_plans WHERE id=?').get(firstId);
+  assert.equal(first.status, 'APPROVED'); assert.equal(first.approved_by, 'gc.kim'); assert.ok(first.approved_at); assert.ok(first.submitted_at);
+  const secondId = expectStatus(await callRoute('workforce-plans', 'POST', { action: 'CREATE_REVISION', planId: firstId, reason: 'Audit revision' }), 201).id;
+  // 결재 시절에 SUBMITTED 로 남은 계획도 같은 버튼으로 확정된다.
+  sql.prepare("UPDATE hr_workforce_plans SET status='SUBMITTED' WHERE id=?").run(secondId);
+  expectStatus(await callRoute('workforce-plans', 'POST', { action: 'SUBMIT_PLAN', planId: secondId }), 200);
+  assert.equal(sql.prepare('SELECT status FROM hr_workforce_plans WHERE id=?').get(firstId).status, 'SUPERSEDED');
+  assert.equal(sql.prepare('SELECT status FROM hr_workforce_plans WHERE id=?').get(secondId).status, 'APPROVED');
+  assert.deepEqual(auditActions(sql, secondId).filter(action => action === 'WORKFORCE_PLAN_APPROVED'), ['WORKFORCE_PLAN_APPROVED']);
+  forbidTableAccess(null);
+  const thirdId = expectStatus(await callRoute('workforce-plans', 'POST', { action: 'CREATE_REVISION', planId: secondId, reason: 'Audit race' }), 201).id;
+  beforeBatch(statements => {
+    if (statements.some(statement => statement.sql.startsWith("UPDATE hr_workforce_plans SET status = 'APPROVED'"))) {
+      sql.prepare("UPDATE hr_workforce_plans SET status='CANCELLED' WHERE id=?").run(thirdId);
+      beforeBatch(null);
+    }
+  });
+  expectConflict(await callRoute('workforce-plans', 'POST', { action: 'SUBMIT_PLAN', planId: thirdId }));
+  // 대상 전이가 실패하면 이전 승인본도 SUPERSEDED 로 바뀌지 않는다.
+  assert.equal(sql.prepare('SELECT status FROM hr_workforce_plans WHERE id=?').get(secondId).status, 'APPROVED');
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 flow 7: requisitions open at registration, legacy SUBMITTED rows open directly, deletion needs no approval tables', async () => {
+  const sql = await resetDatabase();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const organizationId = expectStatus(await callRoute('recruitment-requisitions'), 200).organizations[0].id;
+  const create = role => callRoute('recruitment-requisitions', 'POST', { action: 'CREATE_DRAFT', organizationId, role, requestedHeadcount: 1, targetStartDate: '2026-12-01' });
+  const created = expectStatus(await create('Audit Role'), 201);
+  assert.equal(created.opened, true);
+  const opened = sql.prepare('SELECT status, approved_by, approved_at FROM hr_recruitment_requisitions WHERE id=?').get(created.id);
+  assert.equal(opened.status, 'OPEN'); assert.equal(opened.approved_by, 'gc.kim'); assert.ok(opened.approved_at);
+  assert.deepEqual(auditActions(sql, created.id), ['REQUISITION_CREATED', 'REQUISITION_OPENED']);
+  const legacy = expectStatus(await create('Legacy Role'), 201).id;
+  sql.prepare("UPDATE hr_recruitment_requisitions SET status='SUBMITTED' WHERE id=?").run(legacy);
+  expectStatus(await callRoute('recruitment-requisitions', 'POST', { action: 'SUBMIT', id: legacy }), 200);
+  assert.equal(sql.prepare('SELECT status FROM hr_recruitment_requisitions WHERE id=?').get(legacy).status, 'OPEN');
+  expectStatus(await callRoute('recruitment-requisitions', 'POST', { action: 'SUBMIT', id: legacy }), 409);
+  expectStatus(await callRoute('recruitment-requisitions', 'POST', { action: 'DELETE', id: legacy, reason: 'Audit deletion' }), 200);
+  assert.equal(sql.prepare('SELECT COUNT(*) AS n FROM hr_recruitment_requisitions WHERE id=?').get(legacy).n, 0);
+  forbidTableAccess(null);
+  const race = expectStatus(await create('Race Role'), 201).id;
+  sql.prepare("UPDATE hr_recruitment_requisitions SET status='DRAFT' WHERE id=?").run(race);
+  beforeBatch(statements => {
+    if (statements.some(statement => statement.sql.startsWith("UPDATE hr_recruitment_requisitions SET status = 'OPEN'"))) {
+      sql.prepare("UPDATE hr_recruitment_requisitions SET status='CANCELLED' WHERE id=?").run(race);
+      beforeBatch(null);
+    }
+  });
+  expectConflict(await callRoute('recruitment-requisitions', 'POST', { action: 'SUBMIT', id: race }));
+  assert.equal(approvalRows(sql), 0);
+});
+
+test('R1 legacy decisions: stranded SUBMITTED personnel actions are approved once, then conflict', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  expectStatus(await callRoute('operations', 'GET'), 200);
+  const seed = (id, effectiveDate) => sql.prepare(`INSERT INTO hr_personnel_actions (id, employee_id, action_type, effective_date, order_number, before_json, after_json,
+    reason, status, approved_by, approved_at, created_at, updated_at)
+    VALUES (?, ?, '인사이동(전보)', ?, '', '{}', '{"department":"Legacy Team","position":"사원"}', 'Legacy', 'SUBMITTED', '', NULL, 1, 1)`).run(id, employee.id, effectiveDate);
+  seed('legacy-action', PAST); seed('legacy-reject', PAST);
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const decide = (id, decision) => callRoute('operations', 'PUT', { resource: 'personnelActionDecision', id, decision, reason: 'Audit legacy decision' });
+  expectStatus(await decide('legacy-action', 'MAYBE'), 400);
+  expectStatus(await decide('missing', 'APPROVED'), 404);
+  const approved = expectStatus(await decide('legacy-action', 'APPROVED'), 200).item;
+  assert.equal(approved.status, 'EFFECTIVE'); assert.equal(approved.approved_by, 'gc.kim');
+  assert.equal(sql.prepare('SELECT department FROM hr_employee_records WHERE employee_id=?').get(employee.id).department, 'Legacy Team');
+  expectConflict(await decide('legacy-action', 'APPROVED'));
+  assert.equal(expectStatus(await decide('legacy-reject', 'REJECTED'), 200).item.status, 'REJECTED');
+  expectConflict(await decide('legacy-reject', 'APPROVED'));
+  forbidTableAccess(null);
+  assert.deepEqual(auditActions(sql, 'legacy-action'), ['PERSONNEL_ACTION_APPROVED', 'PERSONNEL_ACTION_EFFECTIVE']);
+  assert.deepEqual(auditActions(sql, 'legacy-reject'), ['PERSONNEL_ACTION_REJECTED']);
+  assert.equal(sql.prepare("SELECT reason FROM erp_audit_logs WHERE entity_id='legacy-reject'").get().reason, 'Audit legacy decision');
+  setIdentity(['VIEWER']);
+  expectStatus(await decide('legacy-reject', 'APPROVED'), 403);
+});
+
+test('R1 legacy decisions: a stranded SUBMITTED retirement can be approved or rejected so it no longer blocks a new one', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  expectStatus(await callRoute('operations', 'GET'), 200);
+  const seed = id => {
+    sql.prepare(`INSERT INTO hr_retirement_requests (id, employee_id, retirement_date, reason, status, checklist_json, total_tasks, completed_tasks,
+      requested_by, approved_by, approved_at, completed_at, created_at, updated_at)
+      VALUES (?, ?, ?, 'Legacy retirement', 'SUBMITTED', '[]', 1, 0, 'gc.kim', '', NULL, NULL, 1, 1)`).run(id, employee.id, FUTURE);
+    sql.prepare(`INSERT INTO hr_lifecycle_tasks (id, employee_id, lifecycle_type, task_group, title, owner_employee_id, due_date, status, completed_at, created_at, updated_at)
+      VALUES (?, ?, 'RETIREMENT', 'HR', 'Legacy handover', '', ?, 'OPEN', NULL, 1, 1)`).run(`${id}:handover`, employee.id, FUTURE);
+  };
+  const decide = (id, decision) => callRoute('operations', 'PUT', { resource: 'retirementDecision', id, decision, reason: 'Audit legacy retirement' });
+  const newRetirement = { resource: 'retirement', employeeId: employee.id, eventDate: FUTURE, reason: 'New retirement', tasks: [{ id: 'handover', title: 'Audit handover' }] };
+  seed('legacy-retirement-reject');
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  // SUBMITTED 요청은 같은 직원의 새 퇴직 등록을 막는다. 반려하면 풀린다.
+  expectStatus(await callRoute('operations', 'POST', newRetirement), 409);
+  assert.equal(expectStatus(await decide('legacy-retirement-reject', 'REJECTED'), 200).item.status, 'REJECTED');
+  assert.equal(sql.prepare("SELECT status FROM hr_lifecycle_tasks WHERE id='legacy-retirement-reject:handover'").get().status, 'CANCELLED');
+  expectConflict(await decide('legacy-retirement-reject', 'REJECTED'));
+  forbidTableAccess(null);
+  sql.prepare('DELETE FROM hr_retirement_requests').run();
+  seed('legacy-retirement-approve');
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const approved = expectStatus(await decide('legacy-retirement-approve', 'APPROVED'), 200).item;
+  assert.equal(approved.status, 'IN_PROGRESS'); assert.equal(approved.approved_by, 'gc.kim');
+  assert.equal(sql.prepare("SELECT status FROM hr_retirement_settlements WHERE request_id='legacy-retirement-approve'").get().status, 'DRAFT');
+  const record = sql.prepare('SELECT status, retirement_json FROM hr_employee_records WHERE employee_id=?').get(employee.id);
+  assert.equal(record.status, '퇴직 예정'); assert.equal(JSON.parse(record.retirement_json).status, 'IN_PROGRESS');
+  expectConflict(await decide('legacy-retirement-approve', 'APPROVED'));
+  forbidTableAccess(null);
+  assert.deepEqual(auditActions(sql, 'legacy-retirement-reject'), ['RETIREMENT_REJECTED']);
+  assert.deepEqual(auditActions(sql, 'legacy-retirement-approve'), ['RETIREMENT_APPROVED']);
+});
+
+test('R1 HR direct-apply flows stay behind the existing write/approve gates', async () => {
+  await resetDatabase(); await seedAuditEmployee(); setIdentity(['VIEWER']);
+  const denied = [
+    ['operations', 'POST', { resource: 'personnelAction', employeeId: employee.id }],
+    ['operations', 'POST', { resource: 'retirement', employeeId: employee.id }],
+    ['operations', 'POST', { resource: 'leaveRequest', employeeId: employee.id }],
+    ['operations', 'PUT', { resource: 'personnelActionDecision', id: 'x', decision: 'APPROVED' }],
+    ['operations', 'PUT', { resource: 'retirementDecision', id: 'x', decision: 'APPROVED' }],
+    ['payroll', 'PUT', { period: '2026-09', status: 'APPROVED' }],
+    ['performance', 'POST', { action: 'SUBMIT_FINALIZATION', cycleId: 'x' }],
+    ['workforce-plans', 'POST', { action: 'SUBMIT_PLAN', planId: 'x' }],
+    ['recruitment-requisitions', 'POST', { action: 'SUBMIT', id: 'x' }],
+  ];
+  for (const [name, method, body] of denied) assert.equal((await callRoute(name, method, body)).status, 403, `${method} ${name} ${JSON.stringify(body)}`);
+});
+
+test('R1 static legacy period lists block re-confirming and reopening those months', async () => {
+  const sql = await resetDatabase(); const draft = draftFor();
+  const compensationRoute = await import('../app/api/hr/compensation/route.ts');
+  const payrollRoute = await import('../app/api/hr/payroll/route.ts');
+  assert.deepEqual([...compensationRoute.LEGACY_SALES_INCENTIVE_PERIODS], []);
+  assert.deepEqual([...payrollRoute.LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS], []);
+  expectStatus(await postWage({ ...draft, action: 'CREATE' }), 201);
+  compensationRoute.LEGACY_SALES_INCENTIVE_PERIODS.push(draft.period);
+  try {
+    const blocked = expectStatus(await postWage({ ...draft, action: 'CONFIRM', version: 1 }), 409);
+    assert.equal(blocked.code, 'LEGACY_PERIOD_LOCKED'); assert.equal(blocked.period, draft.period);
+    assert.equal(blocked.error, '영업 인센티브가 반영된 과거 급여월은 다시 확정할 수 없습니다.');
+  } finally { compensationRoute.LEGACY_SALES_INCENTIVE_PERIODS.pop(); }
+  expectStatus(await postWage({ ...draft, action: 'CONFIRM', version: 1 }), 200);
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'LOCKED' }), 200);
+  payrollRoute.LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS.push(draft.period);
+  try {
+    const blocked = expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'DRAFT', reopenedReason: 'Audit reopen' }), 409);
+    assert.equal(blocked.code, 'LEGACY_PERIOD_LOCKED'); assert.equal(blocked.period, draft.period);
+    assert.equal(blocked.error, '재무에서 지급·전기된 과거 급여월은 다시 열 수 없습니다.');
+  } finally { payrollRoute.LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS.pop(); }
+  assert.equal(sql.prepare('SELECT status FROM hr_payroll_runs WHERE period=?').get(draft.period).status, 'LOCKED');
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'DRAFT', reopenedReason: 'Audit reopen' }), 200);
+});
+
+test('R1 compensation CONFIRM no longer adds sales incentive links to payroll records', async () => {
+  const sql = await resetDatabase(); const draft = draftFor({ incentive: 50000 });
+  sql.exec(`CREATE TABLE sales_incentive_payroll_links (payroll_record_id TEXT, payroll_period TEXT, applied_amount INTEGER)`);
+  sql.prepare('INSERT INTO sales_incentive_payroll_links VALUES (?, ?, 777777)').run(`compensation:${draft.period}:${employee.id}`, draft.period);
+  expectStatus(await postWage({ ...draft, action: 'CREATE' }), 201);
+  forbidTableAccess(/sales_/);
+  expectStatus(await postWage({ ...draft, action: 'CONFIRM', version: 1 }), 200);
+  forbidTableAccess(null);
+  const record = sql.prepare('SELECT incentive FROM hr_payroll_records WHERE employee_id=?').get(employee.id);
+  assert.equal(record.incentive, 50000);
+});
+
+test('R1 fresh database: leave deletion and decision, payroll approval and requisition deletion never read approval tables', async () => {
+  const sql = await resetDatabase(); await seedAuditEmployee();
+  forbidTableAccess(APPROVAL_AND_FINANCE_TABLES);
+  const recorded = expectStatus(await callRoute('leave', 'POST', { employeeId: employee.id, leaveType: 'ANNUAL', date: '2026-08-20', units: 1 }), 201);
+  expectStatus(await callRoute('leave', 'DELETE', undefined, `?id=${recorded.id}`), 200);
+  sql.prepare(`INSERT INTO hr_leave_requests (id, employee_id, leave_type, start_date, end_date, units, reason, status, approver_employee_id, decided_at, created_at, updated_at)
+    VALUES ('fresh-leave', ?, 'ANNUAL', '2026-08-22', '2026-08-22', 100, '', 'PENDING', '', NULL, 1, 1)`).run(employee.id);
+  expectStatus(await callRoute('operations', 'PUT', { resource: 'leaveRequest', id: 'fresh-leave', status: 'REJECTED' }), 200);
+  const draft = draftFor();
+  expectStatus(await postWage({ ...draft, action: 'CREATE' }), 201);
+  expectStatus(await postWage({ ...draft, action: 'CONFIRM', version: 1 }), 200);
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'REVIEW' }), 200);
+  expectStatus(await callRoute('payroll', 'PUT', { period: draft.period, status: 'APPROVED' }), 200);
+  const organizationId = expectStatus(await callRoute('recruitment-requisitions'), 200).organizations[0].id;
+  const requisition = expectStatus(await callRoute('recruitment-requisitions', 'POST', { action: 'CREATE_DRAFT', organizationId, role: 'Fresh Role', requestedHeadcount: 1, targetStartDate: '2026-12-01' }), 201).id;
+  expectStatus(await callRoute('recruitment-requisitions', 'POST', { action: 'DELETE', id: requisition, reason: 'Fresh deletion' }), 200);
+});
+
+test('R1 documents: legacy finance/sales rows are 404 even for administrators, and only hr·recruitment modules are accepted', async () => {
+  const sql = await resetDatabase();
+  expectStatus(await callApi('documents', 'GET', undefined, '?module=hr&entityType=employee&entityId=audit'), 200);
+  sql.prepare(`INSERT INTO erp_documents (id, module, entity_type, entity_id, category, version, file_name, content_type, storage_key, uploaded_by, created_at, deleted_at)
+    VALUES ('legacy-finance-doc', 'finance', 'financeExpense', 'payroll:2026-08', '증빙', 1, 'legacy.pdf', 'application/pdf', 'erp-documents/finance/legacy.pdf', 'gc.kim', 1, NULL)`).run();
+  const download = await callApi('documents', 'GET', undefined, '?downloadId=legacy-finance-doc');
+  assert.equal(download.status, 404); assert.equal(download.body, '문서를 찾을 수 없습니다.');
+  expectStatus(await callApi('documents', 'PATCH', { id: 'legacy-finance-doc', category: 'moved' }), 404);
+  expectStatus(await callApi('documents', 'DELETE', { id: 'legacy-finance-doc' }), 404);
+  expectStatus(await callApi('documents', 'GET', undefined, '?module=finance&entityType=financeExpense&entityId=payroll:2026-08'), 400);
+  expectStatus(await callApi('documents', 'GET', undefined, '?module=sales&entityType=salesContract&entityId=x'), 400);
+  assert.equal(sql.prepare("SELECT deleted_at FROM erp_documents WHERE id='legacy-finance-doc'").get().deleted_at, null);
+  const form = new FormData();
+  for (const [key, value] of Object.entries({ module: 'finance', entityType: 'financeExpense', entityId: 'x', category: 'Audit' })) form.set(key, value);
+  form.set('file', new File(['Audit'], 'audit.txt', { type: 'text/plain' }));
+  expectStatus(await callApi('documents', 'POST', form), 400);
+  assert.equal(objects.size, 0);
+});
+
+test('R1 documents POST authorizes before reading the form, then requires hr:write for hr uploads', async () => {
+  const sql = await resetDatabase();
+  const broken = { rawBody: 'this is not multipart', contentType: 'multipart/form-data; boundary=audit' };
+  setIdentity(['VIEWER']);
+  expectStatus(await callApi('documents', 'POST', undefined, '', broken), 403);
+  setIdentity(null);
+  expectStatus(await callApi('documents', 'POST', undefined, '', broken), 401);
+  setIdentity(['SUPER_ADMIN']);
+  expectStatus(await callApi('documents', 'POST', undefined, '', broken), 400);
+  const upload = module => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ module, entityType: 'applicant', entityId: 'audit-applicant', category: 'Audit' })) form.set(key, value);
+    form.set('file', new File(['Audit document'], 'audit.txt', { type: 'text/plain' }));
+    return callApi('documents', 'POST', form);
+  };
+  setIdentity(['RECRUITER']);
+  expectStatus(await upload('hr'), 403);
+  expectStatus(await upload('recruitment'), 201);
+  assert.equal(sql.prepare("SELECT COUNT(*) AS n FROM erp_documents WHERE module='hr'").get().n, 0);
+  assert.equal(sql.prepare("SELECT action FROM erp_audit_logs WHERE action='DOCUMENT_UPLOADED'").get().action, 'DOCUMENT_UPLOADED');
+  setIdentity(['HR_ADMIN']);
+  expectStatus(await upload('hr'), 201);
+});
+
+test('R1 assistant: the incentive mode authorizes as hr and the old sales mode is rejected before authorization', async () => {
+  await resetDatabase();
+  expectStatus(await callApi('assistant', 'POST', { module: 'sales', question: 'audit' }), 400);
+  setIdentity(null);
+  expectStatus(await callApi('assistant', 'POST', { module: 'sales', question: 'audit' }), 400);
+  setIdentity(['RECRUITER']);
+  expectStatus(await callApi('assistant', 'POST', { module: 'incentive', question: 'audit' }), 403);
+  expectStatus(await callApi('assistant', 'POST', { module: 'compensation', question: 'audit' }), 403);
+});
+
+test('R1 authorized users no longer grant the finance or sales administrator roles', async () => {
+  await resetDatabase();
+  const { companyEmployees } = await import('../app/hr-company-data.ts');
+  const target = companyEmployees.find(item => item.id !== 'gc.kim' && item.email && item.email !== '미입력');
+  for (const role of ['FINANCE_ADMIN', 'SALES_ADMIN']) {
+    const saved = (await callRoute('authorized-users', 'POST', { employeeId: target.id, roles: [role] })).body;
+    assert.deepEqual(saved.user.roles, ['VIEWER'], role);
   }
 });

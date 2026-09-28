@@ -7,7 +7,7 @@ import { compactLeaveContext, hrAssistantTopics, recentAssistantConversation, ty
 import { emptyRecruitmentInterview, formatRecruitmentQuestions, recruitmentHelperRequest, validateRecruitmentInterview } from "./assistant-recruitment";
 import { HrModalBackdrop } from "./hr-ui";
 
-type AssistantModule = "hr" | "compensation" | "sales";
+type AssistantModule = "hr" | "compensation" | "incentive";
 type MoneyField = "annualSalary" | "basePay" | "mealAllowance" | "childcareAllowance" | "vehicleAllowance";
 
 type EmployeeRecord = {
@@ -60,11 +60,11 @@ const assistantEndpoint = "/api/assistant";
 const moneyFields: MoneyField[] = ["annualSalary", "basePay", "mealAllowance", "childcareAllowance", "vehicleAllowance"];
 const moneyLabels: Record<MoneyField, string> = { annualSalary: "연봉", basePay: "기본급", mealAllowance: "식대", childcareAllowance: "육아수당", vehicleAllowance: "자가운전수당" };
 
-const workspaceLabel: Record<AssistantModule, string> = { hr: "HR", compensation: "임금 계산", sales: "영업·인센티브" };
+const workspaceLabel: Record<AssistantModule, string> = { hr: "HR", compensation: "임금 계산", incentive: "인센티브" };
 const suggestedQuestions: Record<AssistantModule, string[]> = {
   hr: ["면접 예정자를 확인해줘.", "첨부한 이력서와 지원 포지션을 바탕으로 맞춤 면접 질문 리스트를 만들어줘.", "첨부한 이력서를 분석해 지원자 등록 변경안을 만들어줘.", "면접 결과를 탈락으로 기록할 변경안을 만들어줘.", "면접 합격자의 처우 오퍼 변경안을 만들어줘."],
   compensation: ["급여 확정 전에 누락 수당과 퇴직자 반영 여부를 점검해줘.", "전월 대비 지급액이 크게 바뀐 인원을 확인해줘.", "HR 기본값으로 이번 달 임금 초안을 만들어줘."],
-  sales: ["현재 인센티브 거래에서 확인이 필요한 항목을 보여줘.", "담당자별 매출·마진·인센티브 차이를 분석해줘.", "인센티브 미반영 및 마진율 기준 미달 거래를 정리해줘."],
+  incentive: ["현재 인센티브 거래에서 확인이 필요한 항목을 보여줘.", "담당자별 매출·마진·인센티브 차이를 분석해줘.", "인센티브 미반영 및 마진율 기준 미달 거래를 정리해줘."],
 };
 
 const companyInterviewContext = {
@@ -209,7 +209,7 @@ function localJson<T>(key: string, fallback: T): T {
   } catch { return fallback; }
 }
 
-function salesIncentiveContext() {
+function incentiveCalculatorContext() {
   const deals = localJson<IncentiveDeal[]>("xdnode-incentive-deals-v1", []);
   const config = localJson<{ hurdleRate?: number; payoutRate?: number; cableMode?: string; rounding?: string }>("xdnode-incentive-config-v1", {});
   const excludedPeople = new Set(localJson<string[]>("xdnode-incentive-excluded-people-v1", []));
@@ -275,20 +275,8 @@ export default function LocalCodexAssistant({ module }: { module: AssistantModul
   function close() { if (!applying) setOpen(false); }
 
   async function loadContext() {
-    if (module === "sales") {
-      const salesResponse = await fetch("/api/sales", { cache: "no-store" });
-      const salesPayload = await salesResponse.json().catch(() => ({})) as { accounts?: unknown[]; opportunities?: unknown[]; documents?: unknown[]; incentiveRules?: unknown[]; error?: string };
-      if (!salesResponse.ok) throw new Error(salesPayload.error || "영업 데이터를 불러오지 못했습니다.");
-      return {
-        sales: {
-          accountCount: salesPayload.accounts?.length ?? 0,
-          opportunities: (salesPayload.opportunities ?? []).slice(0, 200),
-          documents: (salesPayload.documents ?? []).slice(0, 200),
-          incentiveRules: salesPayload.incentiveRules ?? [],
-        },
-        incentiveCalculator: salesIncentiveContext(),
-      };
-    }
+    // 인센티브 모드는 브라우저에 있는 인센티브 계산기 자료만 넘긴다. 영업 모듈 조회는 없어졌다(D1·D2).
+    if (module === "incentive") return { incentiveCalculator: incentiveCalculatorContext() };
     const employeeResponse = await fetch("/api/hr/employee-records", { cache: "no-store" });
     const employeePayload = await employeeResponse.json().catch(() => ({})) as { records?: EmployeeRecord[]; error?: string };
     if (!employeeResponse.ok) throw new Error(employeePayload.error || "HR 인사기록을 불러오지 못했습니다.");

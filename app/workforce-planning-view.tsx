@@ -17,7 +17,8 @@ type WorkforceData = {
 };
 type ApiResult = WorkforceData & { error?: string };
 
-const statusLabels: Record<string, string> = { DRAFT: "작성 중", SUBMITTED: "결재 중", APPROVED: "승인", SUPERSEDED: "대체됨" };
+// SUBMITTED 는 전자결재 시절에 제출돼 남은 계획이다. 결재가 없어져 '승인·확정'으로 바로 확정한다.
+const statusLabels: Record<string, string> = { DRAFT: "작성 중", SUBMITTED: "확정 대기", APPROVED: "승인", SUPERSEDED: "대체됨" };
 const periodOptions = Array.from({ length: 10 }, (_, index) => {
   const year = 2026 + Math.floor((index + 1) / 2);
   return `${year}-${index % 2 === 0 ? "H2" : "H1"}`;
@@ -61,9 +62,9 @@ function PlanEditor({ plan, busy, onSave, onSubmit, onRevision }: { plan: Plan; 
     </div>
     <div className="workforce-plan-actions">
       {editable && <button type="button" disabled={busy} onClick={() => onSave(title, assumptions)}>기본정보 저장</button>}
-      {editable && <button type="button" className="primary" disabled={busy} onClick={onSubmit}>결재 제출</button>}
+      {(editable || plan.status === "SUBMITTED") && <button type="button" className="primary" disabled={busy} onClick={onSubmit}>승인·확정</button>}
       {["APPROVED", "SUPERSEDED"].includes(plan.status) && <button type="button" className="primary" disabled={busy} onClick={onRevision}>개정본 만들기</button>}
-      {plan.status === "SUBMITTED" && <span>결재센터에서 승인 결과를 확정합니다.</span>}
+      {plan.status === "SUBMITTED" && <span>전자결재 시절에 제출된 계획입니다. 승인·확정을 누르면 바로 확정됩니다.</span>}
     </div>
   </section>;
 }
@@ -140,7 +141,7 @@ export default function WorkforcePlanningView({ onNotify }: { onNotify: (message
       <section className="panel workforce-version-strip"><div><span>{selected.period}</span><strong>{selected.title}</strong><small>v{selected.version} · {selected.revisionReason || "최초 계획"}</small></div><em className={selected.status.toLowerCase()}>{statusLabels[selected.status] ?? selected.status}</em></section>
       <PlanEditor key={`${selected.id}:${selected.updatedAt}`} plan={selected} busy={busy}
         onSave={(title, assumptions) => void mutate({ action: "SAVE_PLAN", planId: selected.id, title, assumptions }, "인력계획의 기본정보를 저장했습니다.")}
-        onSubmit={() => void mutate({ action: "SUBMIT_PLAN", planId: selected.id }, "인력계획 결재를 제출했습니다.")}
+        onSubmit={() => void mutate({ action: "SUBMIT_PLAN", planId: selected.id }, "인력계획을 승인·확정했습니다.")}
         onRevision={() => { const reason = window.prompt("개정 사유를 5자 이상 입력하세요.", "사업계획 변경 반영"); if (reason) void mutate({ action: "CREATE_REVISION", planId: selected.id, reason }, "인력계획 개정본을 만들었습니다."); }} />
 
       <section className="panel workforce-ledger">

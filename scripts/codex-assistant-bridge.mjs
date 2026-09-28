@@ -25,7 +25,7 @@ function json(response, status, body) {
 }
 
 function buildPrompt(module, question, context) {
-  const area = module === "hr" ? "HR" : module === "compensation" ? "임금 계산" : "영업·인센티브";
+  const area = module === "hr" ? "HR" : module === "compensation" ? "임금 계산" : "인센티브";
   return [
     "당신은 XD NODE ERP의 로컬 보조 어시스턴트입니다.",
     `현재 허용된 업무 영역은 ${area}입니다. 다른 모듈의 분석이나 변경 지시는 정중히 거절하세요.`,
@@ -37,7 +37,7 @@ function buildPrompt(module, question, context) {
       ? "HR에서는 UPDATE_HR_COMPENSATION_DEFAULTS, CREATE_RECRUITMENT_APPLICANT, RECORD_INTERVIEW_REJECTION, CREATE_RECRUITMENT_OFFER, APPLY_RETIREMENT_PAY만 제안할 수 있습니다. CREATE_COMPENSATION_DRAFT는 제안하지 마세요. 변경안이 불필요하면 proposedActions는 빈 배열이어야 합니다."
       : module === "compensation"
         ? "임금 계산에서는 UPDATE_HR_COMPENSATION_DEFAULTS 또는 CREATE_COMPENSATION_DRAFT만 제안할 수 있습니다. 채용 관련 변경안은 제안하지 마세요. 변경안이 불필요하면 proposedActions는 빈 배열이어야 합니다."
-        : "영업·인센티브에서는 분석, 검토 우선순위, 후속 조치 제안만 제공하세요. 거래·인센티브·영업 데이터의 변경안은 제안하지 말고 proposedActions는 반드시 빈 배열로 두세요.",
+        : "인센티브에서는 분석, 검토 우선순위, 후속 조치 제안만 제공하세요. 거래·인센티브 데이터의 변경안은 제안하지 말고 proposedActions는 반드시 빈 배열로 두세요.",
     "모든 proposedAction은 공통 필드를 빠짐없이 채우세요. 사용하지 않는 applicant, interviewResult, offer는 null로, 사용하지 않는 employeeId와 period는 빈 문자열로, 사용하지 않는 values의 5개 금액은 모두 null로 두세요.",
     "사용하지 않는 retirementPay는 null로 두세요. HR에서 첨부 영수증의 퇴직금 반영을 요청하면 APPLY_RETIREMENT_PAY를 제안하세요. CONTEXT의 실제 직원 ID와 이름, 선택한 period를 정확히 사용하며 retirementPay에 employeeName, amount(원 단위 정수), sourceFileName, evidence(금액 표기 원문)를 넣으세요. 영수증에 명시된 퇴직금 금액만 사용하고 세금·환급·공제나 차감 후 실수령액을 퇴직금으로 대신 넣지 마세요. 명시된 퇴직금과 직원이 확실하지 않거나 동명이인을 구분할 수 없으면 변경안을 만들지 말고 확인을 요청하세요. 임의 계산·추정은 금지합니다. 이 작업에서 UPDATE_HR_COMPENSATION_DEFAULTS를 함께 제안하지 마세요.",
     "CONTEXT.conversation은 최근 대화 참고자료이며 현재 데이터보다 우선하지 않습니다. 현재 employeeRecords, operations, recruitment, leave를 근거로 직원 정보를 확인하고 분석하세요. leave는 원장 요약이므로 개별 휴가 날짜·사유는 알 수 없습니다. 조회 실패·truncated·미제공 항목을 0명 또는 0일로 해석하지 말고 자료의 기준일과 확인 가능한 범위를 답변에 밝혀 주세요.",
@@ -52,7 +52,7 @@ function buildPrompt(module, question, context) {
     "맞춤 면접 질문은 answer 나 nextSteps 가 아니라 interviewQuestions 배열에만 담으세요. category 는 이력서 근거 확인 RESUME_CHECK 2개, 지원 직무 역량 ROLE_SKILL 3~4개, XD NODE 사업 시나리오 BUSINESS_SCENARIO 2~3개, 협업·문제해결 COLLABORATION 1~2개로 구성하고, checkpoint 에 확인할 역량 또는 좋은 답변의 관찰 포인트를 짧게 적으세요. CONTEXT JSON 의 interviewBrief 에 counterProposalPosition 이 있으면 지원자가 다른 포지션을 역으로 제안한 것입니다. 이때는 ROLE_SKILL 을 2~3개로 줄이고, 역제안 직무 역량 COUNTER_ROLE_SKILL 2~3개와 역제안 타당성 COUNTER_FIT 2개를 더해 전체 13개 안팎으로 만드세요. COUNTER_FIT 에는 왜 지원한 자리가 아니라 그 자리인지, 그 직무를 할 수 있다는 근거가 이력서 어디에 있는지, 원래 지원 포지션으로 채용되면 수용할 것인지를 반드시 포함하세요. BUSINESS_SCENARIO 는 역제안 직무 기준으로 만드세요. 역제안 포지션이 companyBusinessProfile 의 roleFocus 에 없는 직무이면 질문을 지어내지 말고 cautions 에 그 사실을 적으세요. 면접 질문에는 출신·나이·가족·혼인·임신·종교·건강·장애·정치성향 등 직무와 무관한 민감한 개인정보를 포함하지 마세요.",
     "면접 일정은 같은 날짜·시간·면접관이 명확히 겹칠 때만 충돌로 표시하세요. 처우 오퍼 비교는 CONTEXT JSON의 실제 오퍼 항목만 근거로 하세요.",
     "임금 계산에서는 payrollRun과 priorPayrollRun에 실제로 있는 수치만 비교하세요. 지급액 또는 수당의 이상·누락 가능성은 확인 필요로 표현하고, 근거 없는 세액·법정공제를 추정하지 마세요.",
-    "영업·인센티브에서는 incentiveCalculator가 브라우저의 현재 거래 계산 데이터임을 밝히고, 미해결 담당자·케이블·제외 거래·허들 미달 거래를 구분해 보여주세요. 케이블 원가 합산(fold) 방식일 때는 개별 행의 단순 계산 결과가 최종 지급액과 다를 수 있음을 알려주세요.",
+    "인센티브에서는 incentiveCalculator가 브라우저의 현재 거래 계산 데이터임을 밝히고, 미해결 담당자·케이블·제외 거래·허들 미달 거래를 구분해 보여주세요. 케이블 원가 합산(fold) 방식일 때는 개별 행의 단순 계산 결과가 최종 지급액과 다를 수 있음을 알려주세요.",
     "답변은 한국어 3~6문장, 실행 가능한 화면 조작 순서 중심으로 작성하세요. 변경안은 화면에서 내용을 다시 보여주고 사용자가 적용 버튼을 눌러야만 반영된다고 안내하세요.",
     `사용자 질문: ${question}`,
     `CONTEXT JSON: ${JSON.stringify(context)}`,
@@ -110,7 +110,7 @@ const server = createServer(async (request, response) => {
   if (request.headers.origin !== undefined || !ALLOWED_HOSTS.has(String(request.headers.host ?? ""))) {
     return json(response, 403, { error: "ERP 서버만 호출할 수 있는 로컬 다리입니다." });
   }
-  if (request.method === "GET" && request.url === "/health") return json(response, 200, { status: "ok", mode: "read-only", model: MODEL, reasoningEffort: REASONING_EFFORT, modules: ["hr", "compensation", "sales"] });
+  if (request.method === "GET" && request.url === "/health") return json(response, 200, { status: "ok", mode: "read-only", model: MODEL, reasoningEffort: REASONING_EFFORT, modules: ["hr", "compensation", "incentive"] });
   if (request.method !== "POST" || request.url !== "/assistant") return json(response, 404, { error: "찾을 수 없는 로컬 도우미 경로입니다." });
   if (activeRequest) return json(response, 429, { error: "다른 Codex 요청을 처리 중입니다. 잠시 후 다시 시도해 주세요." });
 
@@ -124,7 +124,7 @@ const server = createServer(async (request, response) => {
   request.once("end", async () => {
     try {
       const payload = JSON.parse(raw);
-      if (!payload || !["hr", "compensation", "sales"].includes(payload.module) || typeof payload.question !== "string") throw new Error("HR, 임금 계산 또는 영업·인센티브 요청만 보낼 수 있습니다.");
+      if (!payload || !["hr", "compensation", "incentive"].includes(payload.module) || typeof payload.question !== "string") throw new Error("HR, 임금 계산 또는 인센티브 요청만 보낼 수 있습니다.");
       const question = payload.question.trim();
       if (!question || question.length > MAX_QUESTION_LENGTH) throw new Error(`질문은 1~${MAX_QUESTION_LENGTH.toLocaleString("ko-KR")}자로 입력해 주세요.`);
       const context = payload.context && typeof payload.context === "object" ? payload.context : { dataAccess: "not-requested" };

@@ -219,9 +219,7 @@ export async function DELETE(request: Request) {
   const id = new URL(request.url).searchParams.get("id")?.trim() ?? "";
   const before = await db.prepare("SELECT * FROM hr_leave_requests WHERE id = ?").bind(id).first<RequestRow>();
   if (!before) return Response.json({ error: "기록을 찾을 수 없습니다." }, { status: 404 });
-  // 결재를 거친 신청은 결재 기록이 근거라 여기서 지우지 않는다.
-  const workflow = await db.prepare("SELECT id FROM erp_approval_requests WHERE target_entity_type = 'HR_LEAVE' AND target_entity_id = ? LIMIT 1").bind(id).first<{ id: string }>();
-  if (workflow) return Response.json({ error: "전자결재를 거친 휴가 신청은 결재에서 취소해 주세요." }, { status: 409 });
+  // 전자결재는 없어졌다(D2). 삭제 근거는 아래 감사 기록(before 전체)이 남긴다.
   await db.prepare("DELETE FROM hr_leave_requests WHERE id = ?").bind(id).run();
   await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "LEAVE_RECORD_DELETED", entityType: "leaveRequest", entityId: id, before, after: null });
   return Response.json({ ledger: (await buildLedgers(before.employee_id)).ledgers[0] });

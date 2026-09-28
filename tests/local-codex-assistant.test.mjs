@@ -35,7 +35,7 @@ test("assistant leave evidence retains source date and negative balance without 
   assert.equal("email" in result.employees[0], false);
 });
 
-test("local Codex assistant is mounted for HR, payroll and sales while its bridge stays read-only", async () => {
+test("local Codex assistant is mounted for HR, payroll and incentive while its bridge stays read-only", async () => {
   const [page, component, bridge, claudeBridge, launcher, schema] = await Promise.all([
     read("app/page.tsx"), read("app/local-codex-assistant.tsx"), read("scripts/codex-assistant-bridge.mjs"),
     read("scripts/claude-assistant-bridge.mjs"),
@@ -44,8 +44,15 @@ test("local Codex assistant is mounted for HR, payroll and sales while its bridg
   assert.match(page, /<LocalCodexAssistant module="hr"\s*\/>/);
   assert.match(page, /<LocalCodexAssistant module=\{compensationAssistantModule\}\s*\/>/);
   assert.match(page, /setCompensationAssistantModule/);
-  assert.match(page, /<LocalCodexAssistant module="sales"\s*\/>/);
-  assert.match(component, /type AssistantModule = "hr" \| "compensation" \| "sales"/);
+  // R1(D1): 인센티브 계산기의 어시스턴트 모드는 sales 에서 incentive 로 이름만 바꿨다. 영업 화면 마운트와 /api/sales 조회는 없다.
+  assert.doesNotMatch(page, /<LocalCodexAssistant module="sales"/);
+  assert.match(page, /useState<"compensation" \| "incentive">\("compensation"\)/);
+  assert.match(component, /type AssistantModule = "hr" \| "compensation" \| "incentive"/);
+  assert.match(component, /module === "incentive"\) return \{ incentiveCalculator: incentiveCalculatorContext\(\) \}/);
+  assert.doesNotMatch(component, /\/api\/sales|salesIncentiveContext|"sales"/);
+  const calculator = await read("app/compensation-calculator.tsx");
+  assert.match(calculator, /mode === "incentive" \? "incentive" : "compensation"/);
+  assert.match(claudeBridge, /const ALLOWED_MODULES = new Set\(\["hr", "compensation", "incentive"\]\)/);
   // 화면은 다리를 직접 부르지 않고 ERP 서버의 /api/assistant 를 부른다. 브라우저가 127.0.0.1 을 직접 부르면
   // 태블릿 등 다른 기기에서는 그 기기 자신을 가리켜 실패한다. 다리 호출은 서버 라우트가 데스크탑 안에서 한다.
   assert.match(component, /const assistantEndpoint = "\/api\/assistant";/);
@@ -63,7 +70,8 @@ test("local Codex assistant is mounted for HR, payroll and sales while its bridg
   assert.match(bridge, /MODEL = "gpt-5\.6-terra"/);
   assert.match(bridge, /REASONING_EFFORT = "medium"/);
   assert.match(bridge, /model_reasoning_effort/);
-  assert.match(bridge, /\["hr", "compensation", "sales"\]/);
+  assert.match(bridge, /\["hr", "compensation", "incentive"\]/);
+  assert.doesNotMatch(bridge, /"sales"/);
   assert.match(bridge, /MAX_QUESTION_LENGTH = 2000/);
   assert.match(component, /includeServerData/);
   assert.match(component, /analyzeFile/);
@@ -90,7 +98,8 @@ test("local Codex assistant is mounted for HR, payroll and sales while its bridg
   assert.match(bridge, /CREATE_RECRUITMENT_OFFER/);
   assert.match(bridge, /interviewBrief/);
   assert.match(bridge, /직무와 무관한 민감한 개인정보/);
-  assert.match(bridge, /영업·인센티브/);
+  assert.match(bridge, /: "인센티브";/);
+  assert.doesNotMatch(bridge, /영업·인센티브/);
   assert.match(component, /내용 확인 후 반영/);
   assert.doesNotMatch(bridge, /danger-full-access|--yolo|--full-auto/);
   // 시작 스크립트는 Codex 다리(3110)를 더 띄우지 않는다.

@@ -23,7 +23,6 @@ import FinanceRiskPolicyWorkspace from "./finance-risk-policy-workspace";
 import FinanceAlertActionCenter from "./finance-alert-action-center";
 import GeneralLedgerWorkspace from "./general-ledger-workspace";
 import SalesWorkspace from "./sales-workspace";
-import ApprovalCenter from "./approval-center";
 import OperationsWorkbench from "./operations-workbench";
 import DataGovernanceCenter from "./data-governance-center";
 import CompensationCalculator from "./compensation-calculator";
@@ -240,7 +239,6 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
   const [workbenchOpen, setWorkbenchOpen] = useState(false);
   const [dataGovernanceOpen, setDataGovernanceOpen] = useState(false);
   const [dataGovernanceView, setDataGovernanceView] = useState<"trust" | "integration" | "audit" | "impact">("trust");
-  const [approvalRequestKey, setApprovalRequestKey] = useState(0);
   const [operationTasks, setOperationTasks] = useState<OperationTask[]>([]);
   const [operationsLoading, setOperationsLoading] = useState(false);
   const [operationsError, setOperationsError] = useState("");
@@ -304,11 +302,6 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
   }
 
   function openWorkbenchDestination(destination: string) {
-    if (destination === "approval:center") {
-      setApprovalRequestKey((value) => value + 1);
-      setWorkbenchOpen(false);
-      return;
-    }
     if (destination === "settings:data-governance") {
       setDataGovernanceView("trust");
       setDataGovernanceOpen(true);
@@ -373,12 +366,6 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
       setAlertsOpen(false);
       return;
     }
-    if (task.destination === "approval:center") {
-      setApprovalRequestKey((value) => value + 1);
-      void updateTask(task, "IN_PROGRESS");
-      setAlertsOpen(false);
-      return;
-    }
     const destination = task.module === "finance" && task.sourceType === "SYSTEM_RULE"
       ? { module: "finance" as const, financeView: "risk-actions" as const }
       : taskDestination(task);
@@ -434,7 +421,6 @@ function ERPTopNavigation({ active, onChange, onOpenAlert, openRequestKey = 0 }:
         <button type="button" className="erp-data-governance-button" aria-expanded={dataGovernanceOpen} onClick={() => { setDataGovernanceView("trust"); setDataGovernanceOpen(true); }}>
           <span aria-hidden="true">◇</span><strong>데이터 통제</strong>
         </button>
-        <ApprovalCenter openRequestKey={approvalRequestKey} />
         <button
           type="button"
           className="erp-alarm-button"
@@ -508,7 +494,7 @@ export default function Home() {
   const [financePeriod, setFinancePeriod] = useState<{ year: "2024" | "2025" | "2026"; label: string; requestKey: number }>({ year: "2026", label: "2026년 8월", requestKey: 0 });
   const [financeWorkspaceRequest, setFinanceWorkspaceRequest] = useState<{ view: FinanceWorkspaceView; requestKey: number }>({ view: "overview", requestKey: 0 });
   const [salesCreateRequestKey, setSalesCreateRequestKey] = useState(0);
-  const [compensationAssistantModule, setCompensationAssistantModule] = useState<"compensation" | "sales">("compensation");
+  const [compensationAssistantModule, setCompensationAssistantModule] = useState<"compensation" | "incentive">("compensation");
   const [toast, setToast] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -653,7 +639,6 @@ export default function Home() {
         {active === "hr" && <HrDashboard search={search} />}
       </main>
 
-      {active === "sales" && <LocalCodexAssistant module="sales" />}
 
       {toast && <div className="toast"><span>✓</span>{toast}</div>}
     </div>

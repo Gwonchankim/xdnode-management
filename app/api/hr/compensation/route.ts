@@ -28,6 +28,13 @@ type EmployeeRow = {
 };
 
 const periodPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/**
+ * 영업 인센티브(sales_incentive_payroll_links)가 급여기록에 합산됐던 과거 급여월. 영업 모듈이 없어져(D2)
+ * 확정 때 그 표를 읽지 않으므로, 이 월은 다시 확정(CONFIRM)하지 못하게 막는다.
+ * r1-preflight(2026-09-28) 조회에서 0건이라 비어 있다(Design §12.1).
+ */
+export const LEGACY_SALES_INCENTIVE_PERIODS: readonly string[] = [];
 const safeJson = <T,>(value: string, fallback: T): T => { try { return JSON.parse(value) as T; } catch { return fallback; } };
 // 개별 지급 항목은 0원 이상. 지급총액(공제 후 실지급)만 음수를 허용한다 — 선사용 연차 공제 등으로 공제가 지급을 넘는 달이 있다.
 const money = (value: unknown, allowNegative = false) => {
@@ -263,6 +270,10 @@ export async function POST(request: Request) {
     if ((reopened.meta.changes ?? 0) < 1) return Response.json({ error: "임금안 또는 급여월 상태가 변경되었습니다. 새로고침 후 다시 시도해 주세요." }, { status: 409 });
   } else if (["SAVE", "CONFIRM", "APPLY_RETIREMENT_PAY"].includes(action)) {
     if (beforeState.run.status !== "DRAFT") return Response.json({ error: "확정된 임금안은 수정하기를 먼저 눌러 주세요." }, { status: 409 });
+    // 영업 인센티브가 급여기록에 합산됐던 과거 급여월은 이 화면의 값만으로 다시 확정하면 그 금액이 사라진다.
+    if (action === "CONFIRM" && LEGACY_SALES_INCENTIVE_PERIODS.includes(period)) {
+      return Response.json({ error: "영업 인센티브가 반영된 과거 급여월은 다시 확정할 수 없습니다.", code: "LEGACY_PERIOD_LOCKED", period }, { status: 409 });
+    }
     if (action === "CONFIRM" || action === "APPLY_RETIREMENT_PAY") {
       const payroll = await db.prepare("SELECT status FROM hr_payroll_runs WHERE period = ?").bind(period).first<{ status: string }>();
       if (payroll && payroll.status !== "DRAFT") return Response.json({ error: "HR 급여관리에서 검토·승인·마감이 진행된 급여월은 임금안으로 덮어쓸 수 없습니다." }, { status: 409 });
@@ -309,21 +320,6 @@ export async function POST(request: Request) {
           action === "CONFIRM" ? authorization.principal.employeeId : "", action === "CONFIRM" ? now : null, now, period, expectedVersion),
     ];
     if (action === "CONFIRM") {
-      // Re-confirming an already-CONFIRMED wage plan (via REOPEN → edit → CONFIRM) rebuilds hr_payroll_records
-      // from this draft's snapshot alone. Any sales incentive already merged in via APPLY_PAYROLL
-      // (app/api/sales/incentives/route.ts) lives only in the DB row, not in this snapshot, so it must be
-      // re-added here or it silently disappears while sales_incentive_results still shows PAYROLL_APPLIED.
-      let appliedByRecordId = new Map<string, number>();
-      let totalAppliedIncentive = 0;
-      try {
-        const appliedIncentives = await db.prepare(`SELECT payroll_record_id, COALESCE(SUM(applied_amount), 0) AS amount
-          FROM sales_incentive_payroll_links WHERE payroll_period = ? GROUP BY payroll_record_id`)
-          .bind(period).all<{ payroll_record_id: string; amount: number }>();
-        appliedByRecordId = new Map(appliedIncentives.results.map((row) => [row.payroll_record_id, row.amount]));
-        totalAppliedIncentive = appliedIncentives.results.reduce((sum, row) => sum + row.amount, 0);
-      } catch {
-        // sales_incentive_payroll_links may not exist yet if the incentive workflow route has never run.
-      }
       // run UPDATE(위)가 이번 호출로 CONFIRMED·새 버전이 됐을 때만 급여기록을 교체한다.
       const confirmedGuard = "EXISTS (SELECT 1 FROM hr_compensation_runs WHERE period = ? AND status = 'CONFIRMED' AND version = ? AND updated_at = ?)";
       const confirmedGuardBinds = [period, expectedVersion + 1, now];
@@ -332,11 +328,11 @@ export async function POST(request: Request) {
         const employee = draft.employees[index];
         const combinedBonus = Number(row.bonus) + Number(row.extra) + Number(row.research);
         const recordId = `compensation:${period}:${String(employee.id)}`;
-        const appliedIncentiveAmount = appliedByRecordId.get(recordId) ?? 0;
-        const incentiveTotal = Number(row.incentive) + appliedIncentiveAmount;
+        // 인센티브는 임금 계산 화면의 입력값만 쓴다(영업 인센티브 합산은 R1에서 없앴다, Design §12.3).
+        const incentiveTotal = Number(row.incentive);
         const rowDeduction = Number(row.deduction ?? 0);
         // row.total 은 공제 후 금액이다. 공제를 되더해 공제 전 지급총액을 만든다.
-        const payNet = Number(row.total) + appliedIncentiveAmount;
+        const payNet = Number(row.total);
         const payGross = payNet + rowDeduction;
         // 공제 사유가 있으면 원본 메모 뒤에 덧붙인다. 저장할 때마다 메모에서 새로 만들기 때문에
         // 여러 번 저장해도 사유가 겹쳐 쌓이지 않는다.
@@ -362,8 +358,8 @@ export async function POST(request: Request) {
         ON CONFLICT(period) DO UPDATE SET employee_count=excluded.employee_count, gross_pay=excluded.gross_pay,
           deductions=excluded.deductions, net_pay=excluded.net_pay, prepared_by=excluded.prepared_by, reviewed_by='', approved_by='',
           locked_at=NULL, reopened_reason='', updated_at=excluded.updated_at WHERE hr_payroll_runs.status='DRAFT'`)
-        .bind(period, draft.employees.length, grossPay + totalAppliedIncentive + totalDeductions, totalDeductions,
-          grossPay + totalAppliedIncentive, authorization.principal.employeeId, now, now, ...confirmedGuardBinds));
+        .bind(period, draft.employees.length, grossPay + totalDeductions, totalDeductions,
+          grossPay, authorization.principal.employeeId, now, now, ...confirmedGuardBinds));
     }
     const results = await db.batch(statements);
     const runResult = results[lineStatements.length + 1];

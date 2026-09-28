@@ -2,8 +2,8 @@ import { env } from "cloudflare:workers";
 import { readOptionalHrRows } from "../../../hr-optional-tables";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
-import { createApprovalRequest, willAutoApproveForSelf } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit, type ErpPrincipal } from "../../../erp-platform";
+import { HR_CONFLICT_MESSAGE, LEGACY_PENDING, changedRows, hrConflictResponse, openRequisitionStatement } from "../../../hr-transitions";
 
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
@@ -171,13 +171,13 @@ export async function GET() {
   return Response.json({ principal: authorization.principal, ...await state() });
 }
 
-type SubmitResult = { approvalId: string; autoApproved: boolean } | { error: string; status: number };
+type OpenResult = { opened: true } | { error: string; status: number; conflict?: boolean };
 
-// Shared by direct registration and the explicit 결재 제출 button so both run the same plan check,
-// the same approval route and the same audit entry. Returns the failure instead of a Response so the
-// registration path can report it in its own wording.
-async function submitRequisition(principal: ErpPrincipal, row: RequisitionRow,
-  snapshot: Awaited<ReturnType<typeof state>>, now: number): Promise<SubmitResult> {
+// 직접 등록과 '모집 시작' 버튼이 같은 인원 검사와 같은 전이·감사를 쓰도록 한 곳에 둔다(Design §12.2 흐름 7).
+// 결재는 없어졌다. 인원 검사를 통과하면 곧바로 모집 중(OPEN)이 된다. Response 대신 실패 내용을 돌려줘서
+// 등록 경로가 자기 문구로 알릴 수 있게 한다.
+async function openRequisition(principal: ErpPrincipal, row: RequisitionRow,
+  snapshot: Awaited<ReturnType<typeof state>>, now: number): Promise<OpenResult> {
   const line = snapshot.lines.find((item) => item.id === row.workforce_plan_line_id);
   const selfReserved = Math.max(0, row.requested_headcount);
   // Only requisitions that were tied to a plan line are held to that plan's headcount. One raised
@@ -185,30 +185,10 @@ async function submitRequisition(principal: ErpPrincipal, row: RequisitionRow,
   if (row.workforce_plan_line_id && (!line || line.availableHeadcount + selfReserved < row.requested_headcount)) {
     return { error: "인력계획 또는 다른 TO가 변경되어 요청 인원을 승인 정원 안에 둘 수 없습니다.", status: 409 };
   }
-  const updated = await db.prepare("UPDATE hr_recruitment_requisitions SET status = 'SUBMITTED', updated_at = ? WHERE id = ? AND status = 'DRAFT'").bind(now, row.id).run();
-  if (updated.meta.changes !== 1) return { error: "다른 사용자가 채용요청 상태를 먼저 변경했습니다.", status: 409 };
-  try {
-    const approval = await createApprovalRequest(db, principal, requisitionApprovalInput(row, snapshot)) as { id: string; status: string; autoApproved?: boolean };
-    const autoApproved = approval.autoApproved === true;
-    await writeErpAudit(db, { principal, module: "recruitment", action: "REQUISITION_SUBMITTED", entityType: "hrRecruitmentRequisition", entityId: row.id, before: row, after: { status: autoApproved ? "OPEN" : "SUBMITTED", approvalId: approval.id, autoApproved } });
-    return { approvalId: approval.id, autoApproved };
-  } catch (error) {
-    await db.prepare("UPDATE hr_recruitment_requisitions SET status = 'DRAFT', updated_at = ? WHERE id = ? AND status = 'SUBMITTED'").bind(Date.now(), row.id).run();
-    return { error: error instanceof Error ? error.message : "채용요청 결재선을 만들지 못했습니다.", status: 409 };
-  }
-}
-
-// Built in one place so the pre-flight self-approval probe and the real submit resolve the identical
-// route; a probe against a different policy would answer for the wrong request.
-function requisitionApprovalInput(row: RequisitionRow, snapshot: Awaited<ReturnType<typeof state>>) {
-  const line = snapshot.lines.find((item) => item.id === row.workforce_plan_line_id);
-  const organizationName = line?.organizationName ?? snapshot.organizations.find((item) => item.id === row.organization_id)?.name ?? "삭제된 조직";
-  return {
-    module: "recruitment" as const, requestType: "REQUISITION", title: `${row.title} · ${row.requested_headcount}명 채용 승인`,
-    description: `${line ? snapshot.plan?.period ?? "인력계획" : "직접 등록"} · ${organizationName} · ${row.role} · 목표일 ${row.target_start_date}`,
-    targetEntityType: "HR_RECRUITMENT_REQUISITION", targetEntityId: row.id, priority: "HIGH" as const, dueDate: row.target_start_date,
-    metadata: { workforcePlanId: row.workforce_plan_id, workforcePlanLineId: row.workforce_plan_line_id, organizationId: row.organization_id, requestedHeadcount: row.requested_headcount, role: row.role },
-  };
+  const result = await db.batch(openRequisitionStatement(db, { id: row.id, actorEmployeeId: principal.employeeId, now }));
+  if (changedRows(result, 0) !== 1) return { error: HR_CONFLICT_MESSAGE, status: 409, conflict: true };
+  await writeErpAudit(db, { principal, module: "recruitment", action: "REQUISITION_OPENED", entityType: "hrRecruitmentRequisition", entityId: row.id, before: row, after: { status: "OPEN", approvedBy: principal.employeeId } });
+  return { opened: true };
 }
 
 export async function POST(request: Request) {
@@ -254,35 +234,28 @@ export async function POST(request: Request) {
         ownerEmployeeId, targetStartDate, reason, authorization.principal.employeeId, now, now).run();
     await writeErpAudit(db, { principal: authorization.principal, module: "recruitment", action: "REQUISITION_CREATED", entityType: "hrRecruitmentRequisition", entityId: id, after: { planId: line?.planId ?? "", organizationId, title, role, requestedHeadcount, ownerEmployeeId, targetStartDate, reason } });
 
-    // When the requester turns out to be the only approver on the route, 작성 중 → 결재 제출 → 승인 is
-    // three clicks with one possible outcome. Carry it through here so registering the request is the
-    // whole job. A route that includes anyone else still stops at 작성 중 for a real decision.
+    // 등록이 곧 모집 시작이다(현 관리자 1인 환경에서 보이던 동작, 생성 즉시 OPEN). 인원 검사에 걸리면
+    // 작성 중으로 남고 '모집 시작' 버튼으로 다시 시도할 수 있다.
     const created = await db.prepare("SELECT * FROM hr_recruitment_requisitions WHERE id = ?").bind(id).first<RequisitionRow>();
     // Re-read the plan figures: the snapshot above predates this row, so its reserved headcount would
-    // not yet count the request we are about to submit against the very same plan line.
+    // not yet count the request we are about to open against the very same plan line.
     const fresh = created ? await state() : snapshot;
-    if (created && await willAutoApproveForSelf(db, authorization.principal, requisitionApprovalInput(created, fresh))) {
-      const outcome = await submitRequisition(authorization.principal, created, fresh, now);
-      if (!("error" in outcome)) {
-        return Response.json({ created: true, id, autoApproved: outcome.autoApproved, approvalId: outcome.approvalId }, { status: 201 });
-      }
-      // The record is registered either way; only the shortcut failed, so it stays in 작성 중 and the
-      // caller is told why the 결재 제출 button is still waiting for them.
-      return Response.json({ created: true, id, autoApproved: false, submitError: outcome.error }, { status: 201 });
-    }
-    return Response.json({ created: true, id, autoApproved: false }, { status: 201 });
+    const outcome = created ? await openRequisition(authorization.principal, created, fresh, now) : { error: "채용요청을 찾을 수 없습니다.", status: 404 };
+    if ("error" in outcome) return Response.json({ created: true, id, opened: false, openError: outcome.error }, { status: 201 });
+    return Response.json({ created: true, id, opened: true }, { status: 201 });
   }
 
   const id = String(body.id ?? "").trim();
   const row = id ? await db.prepare("SELECT * FROM hr_recruitment_requisitions WHERE id = ?").bind(id).first<RequisitionRow>() : null;
   if (!row) return Response.json({ error: "채용요청을 찾을 수 없습니다." }, { status: 404 });
 
+  // UI 가 보내는 이름은 그대로 SUBMIT 이지만 결재 없이 모집을 시작한다. 결재 시절 SUBMITTED 행도 받는다.
   if (action === "SUBMIT") {
-    if (row.status !== "DRAFT") return Response.json({ error: "작성 중인 채용요청만 결재할 수 있습니다." }, { status: 409 });
+    if (row.status !== "DRAFT" && row.status !== LEGACY_PENDING.requisition) return Response.json({ error: "작성 중인 채용요청만 모집을 시작할 수 있습니다." }, { status: 409 });
     const snapshot = await state();
-    const outcome = await submitRequisition(authorization.principal, row, snapshot, now);
-    if ("error" in outcome) return Response.json({ error: outcome.error }, { status: outcome.status });
-    return Response.json({ submitted: true, approvalId: outcome.approvalId, autoApproved: outcome.autoApproved }, { status: 202 });
+    const outcome = await openRequisition(authorization.principal, row, snapshot, now);
+    if ("error" in outcome) return outcome.conflict ? hrConflictResponse() : Response.json({ error: outcome.error }, { status: outcome.status });
+    return Response.json({ opened: true, status: "OPEN" });
   }
 
   if (action === "CLOSE") {
@@ -312,38 +285,18 @@ export async function POST(request: Request) {
 
     // Applicants are records of real people. Dropping the requisition out from under them would leave
     // those rows pointing at an id that no longer resolves, so the link has to be cleared first.
-    const linked = await db.prepare("SELECT COUNT(*) AS count FROM hr_applicants WHERE requisition_id = ?")
-      .bind(id).first<{ count: number }>();
+    // 지원자 화면을 한 번도 열지 않은 새 DB 에는 hr_applicants 가 없다. 그때는 연결된 지원자도 없다.
+    const linked = (await readOptionalHrRows<{ count: number }>(db, ["hr_applicants"],
+      "SELECT COUNT(*) AS count FROM hr_applicants WHERE requisition_id = ?", id)).results[0];
     if ((linked?.count ?? 0) > 0) {
       return Response.json({ error: `이 채용요청에 연결된 지원자가 ${linked?.count}명 있습니다. 지원자 관리에서 연결을 해제한 뒤 삭제해 주세요.` }, { status: 409 });
     }
 
-    // A still-open approval would otherwise sit in 전자결재 pointing at a requisition that is gone.
-    // Close it out the same way an explicit 결재 취소 would, so the inbox and task list stay truthful.
-    const approval = await db.prepare(`SELECT id, current_step FROM erp_approval_requests
-      WHERE target_entity_type = 'HR_RECRUITMENT_REQUISITION' AND target_entity_id = ?
-        AND status NOT IN ('APPROVED', 'REJECTED', 'CANCELLED')`)
-      .bind(id).first<{ id: string; current_step: number }>();
-    const statements: D1PreparedStatement[] = [];
-    if (approval) {
-      statements.push(
-        db.prepare("UPDATE erp_approval_requests SET status = 'CANCELLED', decided_at = ?, version = version + 1, updated_at = ? WHERE id = ?")
-          .bind(now, now, approval.id),
-        db.prepare("UPDATE erp_approval_steps SET status = 'SKIPPED', updated_at = ? WHERE request_id = ? AND status IN ('PENDING', 'WAITING')")
-          .bind(now, approval.id),
-        db.prepare("UPDATE erp_tasks SET status = 'DONE', completed_at = ?, updated_at = ? WHERE source_type = 'APPROVAL' AND source_id = ?")
-          .bind(now, now, approval.id),
-        db.prepare(`INSERT INTO erp_approval_events (id, request_id, step_order, action, actor_employee_id, comment, snapshot_json, created_at)
-          VALUES (?, ?, ?, 'CANCELLED', ?, ?, '{}', ?)`)
-          .bind(crypto.randomUUID(), approval.id, approval.current_step, authorization.principal.employeeId, `채용요청 삭제: ${reason}`, now),
-      );
-    }
-    statements.push(db.prepare("DELETE FROM hr_recruitment_requisitions WHERE id = ?").bind(id));
-    await db.batch(statements);
+    await db.prepare("DELETE FROM hr_recruitment_requisitions WHERE id = ?").bind(id).run();
     // The row is gone from the ledger, but the audit entry carries the whole record it held, so what
     // was requested and by whom is still answerable after the fact.
-    await writeErpAudit(db, { principal: authorization.principal, module: "recruitment", action: "REQUISITION_DELETED", entityType: "hrRecruitmentRequisition", entityId: id, before: row, after: { deleted: true, reason, cancelledApprovalId: approval?.id ?? "" } });
-    return Response.json({ deleted: true, cancelledApproval: Boolean(approval) });
+    await writeErpAudit(db, { principal: authorization.principal, module: "recruitment", action: "REQUISITION_DELETED", entityType: "hrRecruitmentRequisition", entityId: id, before: row, after: { deleted: true, reason } });
+    return Response.json({ deleted: true });
   }
 
   return Response.json({ error: "지원하지 않는 채용요청 작업입니다." }, { status: 400 });

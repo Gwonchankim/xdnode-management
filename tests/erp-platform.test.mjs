@@ -147,8 +147,10 @@ test("master data changes freeze, validate and consume a server-side impact asse
   assert.match(api, /authorizeErpRequest/); assert.match(server, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(server, /expiresAt = createdAt \+ 15 \* 60_000/); assert.match(server, /row\.used_at/);
   assert.match(server, /current\.checksum !== row\.checksum/); assert.match(server, /current\.blockingCount > 0/);
-  for (const source of [finance, sales, hr]) assert.match(source, /validateMasterImpactAssessment/);
-  for (const source of [finance, sales, hr]) assert.match(source, /impactAssessmentId/);
+  for (const source of [finance, sales]) assert.match(source, /validateMasterImpactAssessment/);
+  for (const source of [finance, sales]) assert.match(source, /impactAssessmentId/);
+  // R1(r1-decouple, Design §12.3): HR 조직 수정은 마스터 영향 평가 없이 저장한다.
+  assert.doesNotMatch(hr, /master-impact|impactAssessmentId|MasterImpact/);
   assert.match(approvals, /reassessMasterImpact/); assert.match(approvals, /최종 승인 직전 재검증/);
   assert.match(dialog, /차단 항목 해결 필요/); assert.match(dialog, /변경 직전 서버에서 다시 검증/);
   assert.match(plan, /자동 병합·자동 계정 치환하지 않는다/); assert.match(plan, /localStorage.*사용하지 않는다/);
@@ -516,7 +518,8 @@ test("project profitability uses exact sales links, bounded manual allocations a
   assert.match(page, /\["project-costing", "프로젝트·원가센터", "프"\]/); assert.match(page, /<ProjectCostingWorkspace \/>/);
   assert.match(close, /PROJECT_COST_ALLOCATION/); assert.match(operations, /project-costing-risk/);
   assert.match(purchasing, /프로젝트 원가에 배부된 매입 인보이스/);
-  assert.match(payroll, /프로젝트 원가에 배부된 급여월/);
+  // R1(D2-b): 급여 재오픈은 재무 배부를 조회하지 않는다.
+  assert.doesNotMatch(payroll, /finance_project_allocations|프로젝트 원가에 배부된 급여월/);
   assert.match(sales, /프로젝트 손익에 반영된 청구서/);
   assert.match(plan, /Clobe 세금계산서 스냅샷은 문서 ID가 없는 일·거래처 집계이므로 프로젝트 손익 원천으로 자동 배부할 수 없다/);
 });
@@ -544,7 +547,7 @@ test("expense controls reconcile corporate cards, reviewed evidence and existing
   assert.match(operations, /지급 전 법인카드·지출증빙 화면에서 증빙과 세무 처리를 검토해 주세요/);
   assert.match(operations, /실제 카드 승인 거래와 정확한 금액으로 대사한 후/);
   assert.match(operations, /card_transaction_status !== "MATCHED"/);
-  assert.match(documents, /검토 완료된 지출증빙입니다/);
+  assert.doesNotMatch(documents, /financeExpense|검토 완료된 지출증빙입니다/);
   assert.match(close, /EXPENSE_SPEND_CONTROL/); assert.match(tasks, /expense-control-risk/);
   assert.match(plan, /기존 `finance_expense_requests`, 지급원장, 전표, 은행 대사를 회계 원천으로 유지한다/);
   assert.match(plan, /카드번호 전체값, CVC, 유효기간 저장/);
@@ -1132,7 +1135,7 @@ test("sales incentives require triple validation, collected cash, staged review 
   assert.match(control, /status !== "DRAFT"/);
   assert.match(control, /idx_sales_incentive_payroll_result/);
   assert.match(engine, /INCENTIVE_RULE/); assert.match(engine, /INCENTIVE_RESULT/);
-  assert.match(documents, /검증 또는 승인 절차에 사용된 인센티브 근거문서/);
+  assert.doesNotMatch(documents, /salesIncentiveRule|인센티브 근거문서/);
   assert.match(operations, /incentive-governance-risk/);
   assert.match(operations, /fallback_cost_count/);
   assert.match(operations, /clawback_count/);
@@ -1162,15 +1165,21 @@ test("runtime API column names stay aligned with the Drizzle production schema",
   assert.doesNotMatch(salesApi, /\brule_json\b/);
 });
 
-test("leave and attendance workflows persist real manual records and approval tasks", async () => {
-  const [api, view, engine] = await Promise.all([
+test("leave and attendance workflows persist real manual records and decide legacy requests directly", async () => {
+  const [api, view, transitions] = await Promise.all([
     read("app/api/hr/operations/route.ts"),
     read("app/hr-workspace.tsx"),
-    read("app/approval-engine.ts"),
+    read("app/hr-transitions.ts"),
   ]);
   assert.match(api, /resource === "leaveRequest"/);
-  assert.match(api, /createApprovalRequest/);
-  assert.match(engine, /source_type, source_id/);
+  // R1(D2-a): 휴가 신청은 결재 없이 APPROVED 로 등록되고, 결재 테이블을 직접 읽거나 쓰지 않는다.
+  assert.doesNotMatch(api, /createApprovalRequest|approval-engine|erp_approval_|erp_tasks/);
+  assert.match(api, /insertApprovedLeaveRequest\(db/);
+  assert.match(transitions, /export function insertApprovedLeaveRequest/);
+  assert.match(api, /LEAVE_REQUEST_APPROVED/);
+  // 결재 시절에 PENDING 으로 남은 신청은 화면의 승인/반려 버튼(decide)으로 처리한다.
+  assert.match(view, /decide\("leaveRequest", item\.id, "APPROVED"\)/);
+  assert.doesNotMatch(view, /상단 전자결재에서 처리/);
   // 체크리스트·입사 과제만 write. 정산 금액 확정과 임금안 반영(severanceToPayroll)은 돈이 움직이므로 approve 권한이다(2026-09-21 점검 후 상향).
   assert.match(api, /\["retirementChecklist", "lifecycleTask"\]\.includes\(resource\) \? "write" : "approve"/);
   assert.match(api, /'RECORDED', 'MANUAL'/);
@@ -1202,18 +1211,22 @@ test("post-approval finance and HR workflows require explicit controls before co
   for (const table of ["finance_journal_entries", "hr_retirement_settlements"]) assert.match(migration, new RegExp(table));
 });
 
-test("payroll close creates one traceable finance payment and blocks unsafe reopen", async () => {
-  const [payroll, finance, view, schema, migration] = await Promise.all([
+test("payroll close stays inside HR and legacy finance-locked months cannot be reopened", async () => {
+  const [payroll, finance, view, schema, migration, workspace] = await Promise.all([
     read("app/api/hr/payroll/route.ts"), read("app/api/finance/operations/route.ts"),
     read("app/finance-operations-center.tsx"), read("db/schema.ts"),
-    read("drizzle/0016_wild_black_tarantula.sql"),
+    read("drizzle/0016_wild_black_tarantula.sql"), read("app/hr-workspace.tsx"),
   ]);
-  assert.match(payroll, /payroll:\$\{period\}/);
-  assert.match(payroll, /'PAYROLL_RUN', period, 'APPROVED'/);
-  assert.match(payroll, /급여\(계정 확인 필요\)/);
-  assert.match(payroll, /financeBefore\.status === "PAID"/);
-  assert.match(payroll, /재무 취소·역분개 절차가 필요합니다/);
+  // R1(D2-b, Design §12.3): 급여↔재무 연결 3곳을 끊는다. ensureSchema·LOCKED·재오픈 어디에도 재무 표가 없다.
+  assert.doesNotMatch(payroll, /finance_expense_requests|finance_project_allocations|module: "finance"|payroll:\$\{period\}/);
+  assert.doesNotMatch(payroll, /createApprovalRequest|approval-engine|erp_approval_/);
+  assert.match(payroll, /export const LEGACY_FINANCE_LOCKED_PAYROLL_PERIODS: readonly string\[\] = \[\]/);
+  assert.match(payroll, /code: "LEGACY_PERIOD_LOCKED"/);
+  assert.match(payroll, /payrollRunTransition\(db/);
+  assert.match(payroll, /PAYROLL_RUN_LOCKED/);
+  assert.match(payroll, /PAYROLL_RUN_REOPENED/);
   assert.match(payroll, /allowedTransitions/);
+  assert.doesNotMatch(workspace, /financeExpenseId|재무회계 지급대기 원장/);
   assert.match(finance, /source_type/);
   assert.match(view, /급여 마감 자동연결/);
   for (const field of ["sourceType", "sourceId"]) assert.match(schema, new RegExp(field));
@@ -1343,8 +1356,7 @@ test("month-end close freezes automatic controls, evidence and a controlled reop
   assert.match(api, /targetEntityType: "FINANCE_CLOSE_REOPEN"/);
   assert.match(engine, /targetEntityType === "FINANCE_CLOSE_RUN"/);
   assert.match(engine, /targetEntityType === "FINANCE_CLOSE_REOPEN"/);
-  assert.match(documents, /entityType === "financeCloseRun"/);
-  assert.match(documents, /closeRun\.status !== "OPEN"/);
+  assert.doesNotMatch(documents, /financeCloseRun|finance_close_runs/);
   assert.match(operations, /month-close-controls/);
   assert.match(operations, /destination: "finance:close"/);
   assert.match(workspace, /월마감 통제센터/);
@@ -1425,12 +1437,10 @@ test("final approvals update linked HR, finance and sales records in the guarded
   for (const entity of ["HR_LEAVE", "HR_PERSONNEL_ACTION", "PAYROLL_RUN", "FINANCE_BUDGET", "FINANCE_BUDGET_PLAN", "FINANCE_CLOSE", "FINANCE_CLOSE_RUN", "FINANCE_CLOSE_REOPEN", "FINANCE_MANAGEMENT_REPORT", "SALES_DOCUMENT"]) assert.match(engine, new RegExp(entity));
   assert.match(approvalApi, /buildApprovalOutcomeStatements/);
   assert.match(engine, /transition_token = \?/);
-  assert.match(hr, /requestType: "LEAVE_REQUEST"/);
-  assert.match(hr, /requestType: "PERSONNEL_ACTION"/);
-  assert.match(hr, /status: "SUBMITTED"/);
+  // R1(D2-a): HR 라우트는 엔진에 결재를 올리지 않는다. HR 부수효과는 app/hr-transitions.ts 로 옮겼다.
+  for (const source of [hr, payroll]) assert.doesNotMatch(source, /requestType: "|createApprovalRequest|approval-engine/);
   assert.match(engine, /UPDATE hr_employee_records SET/);
   assert.match(engine, /history_json = json_insert/);
-  assert.match(payroll, /requestType: "PAYROLL_RUN"/);
   assert.match(finance, /requestType: "BUDGET"/);
   assert.match(closeApi, /requestType: "CLOSE"/);
   assert.match(sales, /targetEntityType: "SALES_DOCUMENT"/);
@@ -1438,7 +1448,8 @@ test("final approvals update linked HR, finance and sales records in the guarded
 
 test("approval center replaces fixed mock approvals with server-backed workflow history", async () => {
   const [page, center] = await Promise.all([read("app/page.tsx"), read("app/approval-center.tsx")]);
-  assert.match(page, /<ApprovalCenter/);
+  // R1(r1-decouple): 상단 전자결재 센터는 마운트하지 않는다. 파일은 r1-delete 에서 지운다.
+  assert.doesNotMatch(page, /<ApprovalCenter|from "\.\/approval-center"/);
   assert.doesNotMatch(page, /박서연 · 연차|이도윤 · 마이너스 연차|최유진 · 법인카드/);
   assert.match(center, /fetch\("\/api\/approvals"/);
   assert.match(center, /기안·검토·승인·반려/);
@@ -1461,8 +1472,8 @@ test("approval policies and delegations are durable, audited and server-authoriz
   assert.match(api, /writeErpAudit/);
   assert.match(engine, /configuredRouteFor/);
   assert.match(engine, /delegatedFromEmployeeId/);
-  assert.match(workspace, /전자결재 규칙/);
-  assert.match(workspace, /1단계 규칙은 전결/);
+  // R1(r1-decouple): HR 설정의 '전자결재 규칙' 절과 ApprovalSettings 는 지웠다.
+  assert.doesNotMatch(workspace, /전자결재 규칙|ApprovalSettings|\/api\/approval-settings/);
 });
 
 test("delegated approvals remain scoped to the assigned step and are visible in the route", async () => {
@@ -1594,11 +1605,17 @@ test("direct retirement approval activates a durable checklist and applies the d
     read("app/api/hr/employee-records/route.ts"), read("app/hr-workspace.tsx"),
   ]);
   assert.match(migration, /hr_retirement_requests/);
-  // 퇴직 요청은 SUBMITTED 로 저장되고 결재선(HR_RETIREMENT)을 탄다. 요청자 본인만 결재선에 있으면 엔진이 자동 승인해 곧바로 IN_PROGRESS 가 된다.
-  assert.match(api, /RETIREMENT_APPROVED" : "RETIREMENT_SUBMITTED/);
-  assert.match(api, /VALUES \(\?, \?, \?, \?, 'SUBMITTED'/);
-  assert.match(api, /requestType: "RETIREMENT"/);
-  assert.match(api, /targetEntityType: "HR_RETIREMENT"/);
+  // R1(D2-a): 퇴직 요청은 결재 없이 곧바로 IN_PROGRESS 로 등록되고, 정산 초안·인사기록 상태를 같은 batch 에서 반영한다.
+  const transitions = await read("app/hr-transitions.ts");
+  assert.match(api, /startRetirementStatements\(db/);
+  assert.match(api, /action: "RETIREMENT_APPROVED"/);
+  assert.doesNotMatch(api, /requestType: "RETIREMENT"|targetEntityType: "HR_RETIREMENT"|RETIREMENT_SUBMITTED/);
+  assert.match(transitions, /VALUES \(\?, \?, \?, \?, 'IN_PROGRESS'/);
+  assert.match(transitions, /INSERT OR IGNORE INTO hr_retirement_settlements/);
+  assert.doesNotMatch(transitions, /결재 승인/);
+  // 결재 시절에 SUBMITTED 로 남은 퇴직 요청은 승인·반려 버튼으로 빠져나온다.
+  assert.match(api, /resource === "retirementDecision"/);
+  assert.match(workspace, /onLegacyDecision\("APPROVED"\)/);
   assert.match(api, /resource === "retirementChecklist"/);
   assert.match(activator, /WHERE retirement_date <= \? AND \(status IN \('IN_PROGRESS', 'READY'\) OR \(status = 'EFFECTIVE'/);
   assert.match(activator, /"COMPLETED" : "EFFECTIVE"/);
@@ -1648,7 +1665,7 @@ test("debt management keeps Clobe balances immutable and routes schedules throug
   assert.match(forecast, /DEBT_SCHEDULE/);
   assert.match(close, /DEBT_SCHEDULE_CONTROL/);
   assert.match(operations, /destination: "finance:debt"/);
-  assert.match(documents, /활성 계약 또는 확정된 약정 검토에 사용된 근거문서/);
+  assert.doesNotMatch(documents, /financeDebtFacility|finance_debt_/);
   assert.match(page, /"debt", "차입금·상환·약정"/);
 });
 
@@ -1674,8 +1691,7 @@ test("financial system alerts require evidence, finance review and controlled cl
   assert.match(server, /status = 'CLOSED'/);
   assert.match(operations, /hasClosedFinanceAlertCase/);
   assert.match(operations, /중요 재무 경보는 조치계획·근거자료·재무 승인/);
-  assert.match(documents, /financeAlertCase/);
-  assert.match(documents, /감사 이력 보호/);
+  assert.doesNotMatch(documents, /financeAlertCase|finance-alert-actions-server/);
   assert.match(view, /재무 경보 조치센터/);
   assert.match(view, /증빙 확인·종료 검토 요청/);
   assert.match(page, /"risk-actions", "재무 경보 조치"/);
@@ -1751,8 +1767,12 @@ test("workforce planning versions approved headcount and derives actual staffing
   assert.match(api, /employee\.status === "입사 예정"/);
   assert.match(api, /Math\.max\(0, approvedHeadcount - projected\)/);
   assert.match(api, /예상 가동 인원보다 정원이 적으면/);
-  assert.match(api, /requestType: "WORKFORCE_PLAN"/);
-  assert.match(api, /targetEntityType: "HR_WORKFORCE_PLAN"/);
+  // R1(D2-a): 인력계획 승인은 결재 없이 곧바로 반영한다(SUPERSEDED 전환과 한 batch).
+  assert.doesNotMatch(api, /requestType: "WORKFORCE_PLAN"|createApprovalRequest|approval-engine/);
+  assert.match(api, /approveWorkforcePlanStatements\(db/);
+  assert.match(api, /WORKFORCE_PLAN_APPROVED/);
+  assert.match(api, /changedRows\(result, 1\) !== 1/);
+  assert.match(view, /승인·확정/);
   assert.match(view, /지원자 수는 포함하지 않으며/);
   assert.match(view, /승인 정원/);
   assert.match(workspace, /<WorkforcePlanningView/);
@@ -1780,8 +1800,10 @@ test("recruitment requisitions reserve approved gaps and link applicants through
   assert.match(api, /line\.approved_headcount - projected/);
   assert.match(api, /\["DRAFT", "SUBMITTED", "OPEN"\]/);
   assert.match(api, /availableHeadcount: Math\.max\(0, hiringGap - reserved\)/);
-  assert.match(api, /requestType: "REQUISITION"/);
-  assert.match(api, /targetEntityType: "HR_RECRUITMENT_REQUISITION"/);
+  // R1(D2-a): 모집 시작은 결재 없이 OPEN 으로 전이한다.
+  assert.doesNotMatch(api, /requestType: "REQUISITION"|createApprovalRequest|willAutoApproveForSelf|approval-engine|erp_approval_|erp_tasks/);
+  assert.match(api, /openRequisitionStatement\(db/);
+  assert.match(api, /REQUISITION_OPENED/);
   assert.match(recruitment, /requisition_id/);
   assert.match(recruitment, /요청 인원이 이미 모두 충원되었습니다/);
   assert.match(recruitment, /status = 'FILLED'/);
@@ -1793,19 +1815,16 @@ test("recruitment requisitions reserve approved gaps and link applicants through
   assert.match(migration, /ALTER TABLE `hr_applicants` ADD `requisition_id`/);
   assert.match(approval, /REQUISITION: "채용요청 승인"/);
   assert.match(approval, /targetEntityType === "HR_RECRUITMENT_REQUISITION"/);
-  // A sole approver registering their own requisition finishes the whole flow in one step.
-  assert.match(approval, /AUTO_APPROVE_WHEN_SELF = new Set<string>\(\["hr:PAYROLL_RUN", "hr:RETIREMENT", "recruitment:REQUISITION"\]\)/);
-  assert.match(approval, /export async function willAutoApproveForSelf/);
-  assert.match(api, /willAutoApproveForSelf\(db, authorization\.principal, requisitionApprovalInput\(created, fresh\)\)/);
-  assert.match(api, /submitRequisition\(authorization\.principal, created, fresh, now\)/);
-  assert.match(view, /채용요청을 등록하고 승인까지 마쳤습니다/);
+  // Registering a requisition opens it straight away when the headcount check passes (the behavior
+  // the single-admin office already saw), otherwise it stays a draft that 모집 시작 can open later.
+  assert.match(api, /openRequisition\(authorization\.principal, created, fresh, now\)/);
+  assert.match(view, /모집을 시작했습니다/);
   // 진행 중 요청 counts every live requisition, including teams with no workforce plan.
   assert.match(api, /reserved: requisitions\.filter/);
-  // Removing a requisition must not orphan applicants, strand an approval, or lose the record itself.
+  // Removing a requisition must not orphan applicants or lose the record itself.
   assert.match(api, /action === "DELETE"/);
   assert.match(api, /COUNT\(\*\) AS count FROM hr_applicants WHERE requisition_id = \?/);
   assert.match(api, /연결된 지원자가/);
-  assert.match(api, /status NOT IN \('APPROVED', 'REJECTED', 'CANCELLED'\)/);
   assert.match(api, /db\.prepare\("DELETE FROM hr_recruitment_requisitions WHERE id = \?"\)/);
   assert.match(api, /action: "REQUISITION_DELETED"[\s\S]*?before: row/);
   assert.match(view, /className="delete-action"/);
@@ -1829,8 +1848,13 @@ test("performance management separates goals, reviews, calibration, approval and
   assert.match(api, /reviewerType === "MANAGER"/);
   assert.match(api, /reviewerType === "CALIBRATION"/);
   assert.match(api, /14 \* 24 \* 60 \* 60 \* 1000/);
-  assert.match(api, /requestType: "PERFORMANCE_CYCLE"/);
-  assert.match(api, /targetEntityType: "HR_PERFORMANCE_CYCLE"/);
+  // R1(D2-a): 최종 확정은 결재 없이 주기와 CALIBRATED 참여자를 한 batch 에서 FINALIZED 로 만든다.
+  assert.doesNotMatch(api, /requestType: "PERFORMANCE_CYCLE"|createApprovalRequest|approval-engine/);
+  assert.match(api, /finalizePerformanceCycleStatements\(db/);
+  assert.match(api, /PERFORMANCE_CYCLE_FINALIZED/);
+  // 이의제기 '수용'은 서버가 받는 RESOLVED 를 보낸다(기존 버그: ACCEPTED 를 보내 400).
+  assert.match(view, /resolveAppeal\(appeal\.id, "RESOLVED"\)/);
+  assert.doesNotMatch(view, /"ACCEPTED"/);
   assert.match(view, /평가 제출·잠금/);
   assert.match(view, /resolveAppeal/);
   assert.match(view, /급여·승진·강등에 자동 반영되지 않습니다/);
@@ -2046,9 +2070,7 @@ test("sales contracts require signed evidence, obligations and governed changes 
   assert.match(helper, /order\.created_at >=/);
   assert.match(helper, /도입 이후 수주는 승인된 계약 원장/);
   assert.match(sales, /getSalesContractGate/);
-  assert.match(documents, /entityType === "salesContract"/);
-  assert.match(documents, /entityType === "salesContractObligation"/);
-  assert.match(documents, /감사 이력 보호/);
+  assert.doesNotMatch(documents, /salesContract|sales-contracts/);
   assert.match(view, /계약·이행 관리/);
   assert.match(view, /서명 계약서/);
   assert.match(view, /계약 변경요청/);
@@ -2093,8 +2115,7 @@ test("after-sales service governs SLA, return quantities, evidence, approval and
   assert.match(api, /authorizeErpRequest\(db, "finance", "write"\)/);
   assert.match(api, /'SALES_RETURN_IN'/);
   assert.match(api, /finance_status !== "PAID"/);
-  assert.match(documents, /entityType === "salesServiceCase"/);
-  assert.match(documents, /고객지원 근거문서는 삭제할 수 없습니다/);
+  assert.doesNotMatch(documents, /salesServiceCase|sales-service/);
   assert.match(approval, /SERVICE_POLICY: "고객지원 SLA 승인"/);
   assert.match(approval, /SERVICE_RESOLUTION: "고객 이슈 처리 승인"/);
   assert.match(approval, /targetEntityType === "SALES_SERVICE_POLICY"/);
@@ -2611,8 +2632,9 @@ test("연차관리 라우트는 권한·감사 가드를 거치고, 발생은 �
   assert.ok(!route.includes("hr_leave_grants ("));
   assert.ok(route.includes("VALUES (?, ?, ?, ?, ?, ?, ?, 'APPROVED', ?, ?, ?, ?, ?, ?, ?)"));
   assert.ok(route.includes("ADD COLUMN deducts INTEGER NOT NULL DEFAULT 1"));
-  // 결재를 거친 신청은 연차관리에서 지우지 못한다.
-  assert.ok(route.includes("전자결재를 거친 휴가 신청은 결재에서 취소해 주세요."));
+  // R1(Design §12.3): 삭제는 결재 테이블을 읽지 않는다. 새 DB 에서 'no such table' 500 이 나던 곳이다.
+  assert.ok(!route.includes("erp_approval_requests"));
+  assert.ok(!route.includes("전자결재를 거친 휴가 신청은 결재에서 취소해 주세요."));
 });
 
 test("연차관리 화면은 사이드바·인사기록카드에 연결되고, 직원 카드 팝업은 공통 팝업 규칙을 따른다", async () => {

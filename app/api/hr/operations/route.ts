@@ -1,12 +1,16 @@
 import { env } from "cloudflare:workers";
 import { calculateCompensation, type CompensationEmployee } from "../../../compensation-calculation";
 import { normalizeCompensationSettings } from "../../../compensation-settings";
-import { createApprovalRequest } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees } from "../../../hr-company-data";
 import { applyDueOnboarding } from "../../../hr-onboarding";
+import { applyDuePersonnelActions } from "../../../hr-personnel-actions";
 import { applyDueRetirements } from "../../../hr-retirements";
+import {
+  changedRows, decidePersonnelActionStatements, decideRetirementStatements, hrConflictResponse,
+  insertApprovedLeaveRequest, insertApprovedPersonnelAction, startRetirementStatements, type LegacyDecision,
+} from "../../../hr-transitions";
 import { averageWageMonths, calculateLeaveAllowance, calculateSeverance, normalizeDate } from "../../../hr-severance-calculation";
 import { computeLeaveLedger, type GrantAdjustment, type LeaveKind } from "../../../hr-leave-accrual";
 import { monthlyOrdinaryWageOn } from "../../../hr-ordinary-wage";
@@ -267,27 +271,18 @@ export async function POST(request: Request) {
     const beforeState = { department: String(body.fromDepartment ?? ""), position: String(body.fromPosition ?? "") };
     const afterState = { department: String(body.toDepartment ?? ""), position: String(body.toPosition ?? "") };
     if (!afterState.department || !afterState.position) return Response.json({ error: "발령 후 소속 조직과 직위을 확인해 주세요." }, { status: 400 });
-    await db.prepare(`INSERT INTO hr_personnel_actions
-      (id, employee_id, action_type, effective_date, order_number, before_json, after_json,
-        reason, status, approved_by, approved_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'SUBMITTED', '', NULL, ?, ?)`)
-      .bind(id, employeeId, actionType, effectiveDate, String(body.orderNumber ?? ""), JSON.stringify(beforeState),
-        JSON.stringify(afterState), reason, now, now).run();
-    try {
-      await createApprovalRequest(db, authorization.principal, {
-        module: "hr", requestType: "PERSONNEL_ACTION", title: `${employeeId} ${actionType} 승인 요청`,
-        description: `${effectiveDate} 시행 · ${beforeState.department}/${beforeState.position} → ${afterState.department}/${afterState.position}${reason ? ` · ${reason}` : ""}`,
-        targetEntityType: "HR_PERSONNEL_ACTION", targetEntityId: id, dueDate: effectiveDate,
-        priority: actionType === "강등" ? "HIGH" : "NORMAL",
-        metadata: { employeeId, actionType, effectiveDate, beforeState, afterState, reason },
-      });
-    } catch (error) {
-      await db.prepare("DELETE FROM hr_personnel_actions WHERE id = ?").bind(id).run();
-      return Response.json({ error: error instanceof Error ? error.message : "인사 발령 결재선을 만들지 못했습니다." }, { status: 409 });
-    }
-    const after = { id, employeeId, actionType, effectiveDate, fromDepartment: body.fromDepartment, toDepartment: body.toDepartment, fromPosition: body.fromPosition, toPosition: body.toPosition, reason, status: "SUBMITTED" };
-    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "PERSONNEL_ACTION_CREATED", entityType: "personnelAction", entityId: id, after });
-    return Response.json({ item: after, approvalSubmitted: true }, { status: 202 });
+    // 편집 권한자가 등록하면 곧바로 승인된 발령이 된다(결재 없음, Design §12.2 흐름 1).
+    // 시행일이 된 발령을 인사기록에 적용하는 것은 applyDuePersonnelActions 한 곳이다.
+    await db.batch(insertApprovedPersonnelAction(db, {
+      id, employeeId, actionType, effectiveDate, orderNumber: String(body.orderNumber ?? ""), beforeState, afterState, reason,
+      actorEmployeeId: authorization.principal.employeeId, now,
+    }));
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "PERSONNEL_ACTION_APPROVED", entityType: "personnelAction", entityId: id,
+      after: { id, employeeId, actionType, effectiveDate, fromDepartment: body.fromDepartment, toDepartment: body.toDepartment, fromPosition: body.fromPosition, toPosition: body.toPosition, reason, status: "APPROVED" } });
+    await applyDuePersonnelActions(db, now);
+    const created = await db.prepare("SELECT status FROM hr_personnel_actions WHERE id = ?").bind(id).first<{ status: string }>();
+    const after = { id, employeeId, actionType, effectiveDate, fromDepartment: body.fromDepartment, toDepartment: body.toDepartment, fromPosition: body.fromPosition, toPosition: body.toPosition, reason, status: created?.status ?? "APPROVED" };
+    return Response.json({ item: after }, { status: 201 });
   }
 
   if (resource === "retirement") {
@@ -317,12 +312,12 @@ export async function POST(request: Request) {
         .bind(taskId, employeeId, String(item.ownerType ?? "HR"), String(item.title ?? ""), eventDate,
           completed ? "DONE" : "OPEN", completed ? now : null, now, now);
     });
-    statements.unshift(db.prepare(`INSERT INTO hr_retirement_requests
-      (id, employee_id, retirement_date, reason, status, checklist_json, total_tasks, completed_tasks,
-        requested_by, approved_by, approved_at, completed_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, 'SUBMITTED', ?, ?, ?, ?, '', NULL, NULL, ?, ?)`)
-      .bind(id, employeeId, eventDate, reason, JSON.stringify(completedTaskIds), tasks.length, completedTaskIds.length,
-        authorization.principal.employeeId, now, now));
+    // 결재 없이 곧바로 IN_PROGRESS 로 등록하고, 같은 batch 에서 정산 초안과 인사기록의 '퇴직 예정'
+    // 상태를 반영한다(Design §12.2 흐름 2). 인사기록 INSERT OR IGNORE 가 이 문장들보다 앞에 온다.
+    statements.unshift(...startRetirementStatements(db, {
+      id, employeeId, retirementDate: eventDate, reason, completedTaskIds, totalTasks: tasks.length,
+      actorEmployeeId: authorization.principal.employeeId, now,
+    }));
     if (employee) {
       statements.unshift(db.prepare(`INSERT OR IGNORE INTO hr_employee_records
         (employee_id, name, birth, email, phone, address, department, manager, employment_type, join_date,
@@ -351,25 +346,9 @@ export async function POST(request: Request) {
     }
 
     await db.batch(statements);
-    // 인사발령·휴가처럼 결재선을 탄다(HR_RETIREMENT). 승인되면 엔진이 IN_PROGRESS 전환·정산 초안·인사기록의 퇴직 예정 표시를 한다.
-    // 예전에는 요청자 본인이 approved_by 로 저장되는 자기결재였다.
-    let approval: { autoApproved?: boolean } = {};
-    try {
-      approval = await createApprovalRequest(db, authorization.principal, {
-        module: "hr", requestType: "RETIREMENT", title: `${persistedEmployee?.name ?? employee?.name ?? employeeId} 퇴직 승인 요청`,
-        description: `${eventDate} 퇴직 예정 · ${reason}`, targetEntityType: "HR_RETIREMENT", targetEntityId: id, dueDate: eventDate,
-        metadata: { employeeId, eventDate, reason, taskCount: tasks.length },
-      });
-    } catch (error) {
-      await db.batch([
-        db.prepare("UPDATE hr_lifecycle_tasks SET status = 'CANCELLED', updated_at = ? WHERE lifecycle_type = 'RETIREMENT' AND id LIKE ?").bind(now, `${id}:%`),
-        db.prepare("UPDATE hr_retirement_requests SET status = 'REJECTED', updated_at = ? WHERE id = ?").bind(now, id),
-      ]);
-      return Response.json({ error: error instanceof Error ? error.message : "퇴직 결재선을 만들지 못했습니다." }, { status: 409 });
-    }
     await applyDueRetirements(db, now);
     const created = await db.prepare("SELECT status FROM hr_retirement_requests WHERE id = ?").bind(id).first<{ status: string }>();
-    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: approval.autoApproved ? "RETIREMENT_APPROVED" : "RETIREMENT_SUBMITTED", entityType: "employeeRetirement", entityId: id, after: { employeeId, employeeName: employee?.name ?? persistedEmployee?.name ?? employeeId, eventDate, reason, completedTaskIds, status: created?.status ?? "IN_PROGRESS" } });
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "RETIREMENT_APPROVED", entityType: "employeeRetirement", entityId: id, after: { employeeId, employeeName: employee?.name ?? persistedEmployee?.name ?? employeeId, eventDate, reason, completedTaskIds, status: created?.status ?? "IN_PROGRESS" } });
     return Response.json({ item: { id, employeeId, eventDate, taskCount: tasks.length, completedTaskIds, status: created?.status ?? "IN_PROGRESS" } }, { status: 201 });
   }
 
@@ -391,24 +370,13 @@ export async function POST(request: Request) {
     }
     // 연차관리(app/hr-leave-accrual.ts LEAVE_KINDS)와 같은 규칙: 연차·반차만 잔여에서 차감하고 병가·가족돌봄·기타는 기록만 한다.
     const deducts = ["ANNUAL", "HALF_AM", "HALF_PM"].includes(leaveType) ? 1 : 0;
-    await db.prepare(`INSERT INTO hr_leave_requests
-      (id, employee_id, leave_type, start_date, end_date, units, reason, status,
-        approver_employee_id, decided_at, created_at, updated_at, deducts, source, recorded_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', '', NULL, ?, ?, ?, 'ERP', ?)`)
-      .bind(id, employeeId, leaveType, startDate, endDate, units, reason, now, now, deducts, authorization.principal.employeeId).run();
-    try {
-      await createApprovalRequest(db, authorization.principal, {
-        module: "hr", requestType: "LEAVE_REQUEST", title: `${employeeId} 휴가 승인 요청`,
-        description: `${startDate}~${endDate} · ${leaveType}${reason ? ` · ${reason}` : ""}`,
-        targetEntityType: "HR_LEAVE", targetEntityId: id, dueDate: startDate,
-        metadata: { employeeId, leaveType, startDate, endDate, units, reason },
-      });
-    } catch (error) {
-      await db.prepare("DELETE FROM hr_leave_requests WHERE id = ?").bind(id).run();
-      return Response.json({ error: error instanceof Error ? error.message : "휴가 결재선을 만들지 못했습니다." }, { status: 409 });
-    }
-    const after = { id, employeeId, leaveType, startDate, endDate, units, reason, status: "PENDING" };
-    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "LEAVE_REQUEST_CREATED", entityType: "leaveRequest", entityId: id, after });
+    // 결재 없이 승인된 신청으로 등록한다. 결정자는 등록한 편집 권한자다(Design §12.2 흐름 3).
+    await db.batch(insertApprovedLeaveRequest(db, {
+      id, employeeId, leaveType, startDate, endDate, units, reason, deducts,
+      actorEmployeeId: authorization.principal.employeeId, now,
+    }));
+    const after = { id, employeeId, leaveType, startDate, endDate, units, reason, status: "APPROVED", approverEmployeeId: authorization.principal.employeeId };
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "LEAVE_REQUEST_APPROVED", entityType: "leaveRequest", entityId: id, after });
     return Response.json({ item: after }, { status: 201 });
   }
 
@@ -543,19 +511,36 @@ export async function PUT(request: Request) {
   if (resource === "leaveRequest") {
     const before = await db.prepare("SELECT * FROM hr_leave_requests WHERE id = ?").bind(id).first<Record<string, unknown>>();
     if (!before) return Response.json({ error: "휴가 신청을 찾을 수 없습니다." }, { status: 404 });
-    const workflow = await db.prepare("SELECT id FROM erp_approval_requests WHERE target_entity_type = 'HR_LEAVE' AND target_entity_id = ? LIMIT 1")
-      .bind(id).first<{ id: string }>();
-    if (workflow) return Response.json({ error: "이 휴가 신청은 상단 전자결재에서 처리해 주세요." }, { status: 409 });
+    // 결재 시절에 PENDING 으로 남은 신청도 이 결정으로 처리한다(전자결재는 없어졌다).
     const status = String(body.status ?? "");
     if (!["APPROVED", "REJECTED", "CANCELLED"].includes(status)) return Response.json({ error: "올바르지 않은 승인 상태입니다." }, { status: 400 });
-    await db.batch([
-      db.prepare("UPDATE hr_leave_requests SET status = ?, approver_employee_id = ?, decided_at = ?, updated_at = ? WHERE id = ?")
-        .bind(status, authorization.principal.employeeId, now, now, id),
-      db.prepare("UPDATE erp_tasks SET status = 'DONE', completed_at = ?, updated_at = ? WHERE source_type = 'RULE' AND source_id = ?")
-        .bind(now, now, id),
-    ]);
+    await db.prepare("UPDATE hr_leave_requests SET status = ?, approver_employee_id = ?, decided_at = ?, updated_at = ? WHERE id = ?")
+      .bind(status, authorization.principal.employeeId, now, now, id).run();
     const after = await db.prepare("SELECT * FROM hr_leave_requests WHERE id = ?").bind(id).first<Record<string, unknown>>();
     await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: `LEAVE_REQUEST_${status}`, entityType: "leaveRequest", entityId: id, before, after, reason: String(body.reason ?? "") });
+    return Response.json({ item: after });
+  }
+
+  // 결재 시절에 SUBMITTED 로 남은 인사발령·퇴직 요청의 승인·반려(Design §12.2 레거시 결정).
+  if (resource === "personnelActionDecision" || resource === "retirementDecision") {
+    const decision = String(body.decision ?? "").toUpperCase();
+    if (decision !== "APPROVED" && decision !== "REJECTED") return Response.json({ error: "승인 또는 반려를 선택해 주세요." }, { status: 400 });
+    const reason = String(body.reason ?? "").trim().slice(0, 1000);
+    const isPersonnel = resource === "personnelActionDecision";
+    const table = isPersonnel ? "hr_personnel_actions" : "hr_retirement_requests";
+    const before = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(id).first<Record<string, unknown>>();
+    if (!before) return Response.json({ error: isPersonnel ? "인사발령을 찾을 수 없습니다." : "퇴직 요청을 찾을 수 없습니다." }, { status: 404 });
+    const input = { id, decision: decision as LegacyDecision, actorEmployeeId: authorization.principal.employeeId, now } as const;
+    const result = await db.batch(isPersonnel ? decidePersonnelActionStatements(db, input) : decideRetirementStatements(db, input));
+    if (changedRows(result, 0) !== 1) return hrConflictResponse();
+    if (decision === "APPROVED") {
+      if (isPersonnel) await applyDuePersonnelActions(db, now);
+      else await applyDueRetirements(db, now);
+    }
+    const after = await db.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(id).first<Record<string, unknown>>();
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr",
+      action: `${isPersonnel ? "PERSONNEL_ACTION" : "RETIREMENT"}_${decision}`,
+      entityType: isPersonnel ? "personnelAction" : "employeeRetirement", entityId: id, before, after, reason });
     return Response.json({ item: after });
   }
 

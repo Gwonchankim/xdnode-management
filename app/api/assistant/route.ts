@@ -3,7 +3,7 @@ import { authorizeErpRequest, writeErpAudit, type ErpModule } from "../../erp-pl
 
 type AssistantBindings = {
   DB: D1Database;
-  // HR·임금계산·영업 AI 어시스턴트는 데스크탑에서 도는 Claude CLI 다리(scripts/claude-assistant-bridge.mjs)를 쓴다.
+  // HR·임금계산·인센티브 AI 어시스턴트는 데스크탑에서 도는 Claude CLI 다리(scripts/claude-assistant-bridge.mjs)를 쓴다.
   // 예전에는 브라우저가 http://127.0.0.1:3130 을 직접 불렀는데, 태블릿 등 다른 기기에서는 127.0.0.1 이
   // 그 기기 자신을 가리켜 항상 실패했다. 이제 브라우저는 이 라우트만 부르고, 다리 호출은 ERP 서버가
   // 데스크탑 안에서 대신 한다 — 이력서 분석(app/api/hr/resume-analysis/route.ts)과 같은 구조다.
@@ -11,13 +11,16 @@ type AssistantBindings = {
   CLAUDE_ASSISTANT_BRIDGE_URL?: string;
 };
 
-type AssistantModule = "hr" | "compensation" | "sales";
+type AssistantModule = "hr" | "compensation" | "incentive";
 
-/** 화면의 업무 영역을 ERP 권한 모듈로 잇는다. 임금계산은 HR 데이터로 답하므로 hr 권한을 본다. */
+/**
+ * 화면의 업무 영역을 ERP 권한 모듈로 잇는다. 임금계산은 HR 데이터로 답하므로 hr 권한을 본다.
+ * incentive 는 인센티브 계산기의 모드다(예전 이름 sales, D1). 영업 모듈이 없어져 R1에서는 hr 권한으로 본다.
+ */
 const MODULE_PERMISSION: Record<AssistantModule, ErpModule> = {
   hr: "hr",
   compensation: "hr",
-  sales: "sales",
+  incentive: "hr",
 };
 
 // 다리(scripts/claude-assistant-bridge.mjs)와 같은 한도. 다리에 닿기 전에 여기서 먼저 거른다.
@@ -27,7 +30,7 @@ const MAX_QUESTION_LENGTH = 2000;
 const BRIDGE_TIMEOUT_MS = 320_000;
 
 function moduleOf(value: unknown): AssistantModule | null {
-  return value === "hr" || value === "compensation" || value === "sales" ? value : null;
+  return value === "hr" || value === "compensation" || value === "incentive" ? value : null;
 }
 
 export async function POST(request: Request) {

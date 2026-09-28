@@ -618,9 +618,9 @@ const COMPENSATION_NAV_ITEMS: Array<{ id: CalculatorMode; label: string; hint: s
   { id: "incentive", label: "인센티브 계산", hint: "매출·마진·급여 반영액", icon: "인" },
 ];
 
-function CompensationCalculatorBody({ onAssistantModuleChange }: { onAssistantModuleChange?: (module: "compensation" | "sales") => void }) {
+function CompensationCalculatorBody({ onAssistantModuleChange }: { onAssistantModuleChange?: (module: "compensation" | "incentive") => void }) {
   const [mode, setMode] = useState<CalculatorMode>("wage");
-  useEffect(() => { onAssistantModuleChange?.(mode === "incentive" ? "sales" : "compensation"); }, [mode, onAssistantModuleChange]);
+  useEffect(() => { onAssistantModuleChange?.(mode === "incentive" ? "incentive" : "compensation"); }, [mode, onAssistantModuleChange]);
   return <div className="compensation-module-shell">
     <aside className="compensation-sidebar">
       <div className="compensation-sidebar-brand"><span>₩</span><div><strong>임금 계산</strong></div></div>

@@ -10,7 +10,6 @@ import PerformanceManagementView from "./performance-management-view";
 import TrainingManagementView from "./training-management-view";
 import HrAnalyticsView from "./hr-analytics-view";
 import AudioTranscriptionControl from "./audio-transcription-control";
-import MasterImpactDialog from "./master-impact-dialog";
 import WonInput from "./won-input";
 import { HrModalBackdrop, InterviewAudio, useKoreanToday } from "./hr-ui";
 import { addMonths, buildEmploymentContract, contractFileName, contractKindLabels, contractPay, contractTokens, defaultContractOptions, downloadBlob, FIXED_TERM_MONTHS, fixedTermEndDate, type ContractKind, type ContractOptions } from "./hr-employment-contract";
@@ -833,6 +832,17 @@ type PersistedRetirementRequest = {
   checklist_json: string;
 };
 
+/** /api/hr/operations 가 내려주는 인사발령 행. 화면은 결재 시절에 SUBMITTED 로 남은 것만 쓴다. */
+type LegacyPersonnelAction = {
+  id: string;
+  employee_id: string;
+  action_type: string;
+  effective_date: string;
+  after_json: string;
+  reason: string;
+  status: string;
+};
+
 const retirementChecklist = {
   hr: [
     { id: "hr-approval", label: "퇴직 승인 및 퇴직 인사발령 등록" },
@@ -899,6 +909,8 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   const [lifecycleTasks, setLifecycleTasks] = useState<DashboardLifecycleTask[]>([]);
   const [payrollRuns, setPayrollRuns] = useState<DashboardPayrollRun[]>([]);
   const [principalRoles, setPrincipalRoles] = useState<string[]>([]);
+  // 전자결재 시절에 SUBMITTED 로 남은 인사발령. 결재가 없어져 여기서 바로 승인·반려한다(Design §12.2 레거시 결정).
+  const [legacyPersonnelActions, setLegacyPersonnelActions] = useState<LegacyPersonnelAction[]>([]);
   // 연차관리 요약(촉진 대상·초과 사용). 대시보드 대기함에만 쓴다.
   const [leaveLedgers, setLeaveLedgers] = useState<DashboardLeaveLedger[]>([]);
   useEffect(() => {
@@ -941,7 +953,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       return data.organizations ?? [];
     }).catch(() => null);
     const loadRetirements = fetch("/api/hr/operations").then(async (response) => {
-      const data = await response.json() as { retirementRequests?: PersistedRetirementRequest[]; lifecycleTasks?: DashboardLifecycleTask[]; payrollRuns?: DashboardPayrollRun[]; principal?: { roles?: string[] }; error?: string };
+      const data = await response.json() as { retirementRequests?: PersistedRetirementRequest[]; personnelActions?: LegacyPersonnelAction[]; lifecycleTasks?: DashboardLifecycleTask[]; payrollRuns?: DashboardPayrollRun[]; principal?: { roles?: string[] }; error?: string };
       if (!response.ok) throw new Error(data.error || "퇴직 절차를 불러오지 못했습니다.");
       return data;
     }).catch(() => null);
@@ -956,7 +968,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
     Promise.all([loadLeaders, loadEmployeeRecords, loadOrganizations, loadRetirements, loadJobTitles]).then(([leaders, employeeRecords, organizationRecords, operations, jobTitleList]) => {
       if (cancelled) return;
       const retirementRequests = operations ? operations.retirementRequests ?? [] : null;
-      if (operations) { setLifecycleTasks(operations.lifecycleTasks ?? []); setPayrollRuns(operations.payrollRuns ?? []); setPrincipalRoles(operations.principal?.roles ?? []); }
+      if (operations) { setLifecycleTasks(operations.lifecycleTasks ?? []); setPayrollRuns(operations.payrollRuns ?? []); setPrincipalRoles(operations.principal?.roles ?? []); setLegacyPersonnelActions((operations.personnelActions ?? []).filter((action) => action.status === "SUBMITTED")); }
       if (jobTitleList?.JOB_TITLE?.length) setJobTitles(jobTitleList.JOB_TITLE);
       if (jobTitleList?.RANK?.length) setRanks(jobTitleList.RANK);
       const leaderByOrganization = new Map((leaders ?? []).map((leader) => [leader.organizationId, leader.leaderEmployeeId]));
@@ -1230,12 +1242,10 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
           reason: detail,
         }),
       });
-      const payload = await response.json() as { error?: string; approvalSubmitted?: boolean };
+      const payload = await response.json() as { error?: string };
       if (!response.ok) throw new Error(payload.error || "인사 발령을 저장하지 못했습니다.");
       setPersonnelAction(null);
-      showToast(payload.approvalSubmitted
-        ? `${actionType} 인사 발령을 전자결재로 제출했습니다. 최종 승인 후 인사기록에 반영됩니다.`
-        : `${actionType} 인사 발령을 저장했습니다.`);
+      showToast("인사발령을 반영했습니다.");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "인사 발령을 저장하지 못했습니다.");
     }
@@ -1283,7 +1293,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
     } catch (error) { showToast(error instanceof Error ? error.message : "조직을 저장하지 못했습니다."); }
   }
 
-  async function updateOrganization(organizationId: string, name: string, description: string, impactAssessmentId: string) {
+  async function updateOrganization(organizationId: string, name: string, description: string) {
     const trimmedName = name.trim();
     const current = organizations.find((organization) => organization.id === organizationId);
     if (!current || !trimmedName || organizations.some((organization) => organization.id !== organizationId && organization.name === trimmedName)) {
@@ -1299,7 +1309,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       const response = await fetch("/api/hr/organizations", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ organizationId, previousName: current.name, name: trimmedName, description: savedDescription, impactAssessmentId }),
+        body: JSON.stringify({ organizationId, previousName: current.name, name: trimmedName, description: savedDescription }),
       });
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error || "조직 정보를 저장하지 못했습니다.");
@@ -1353,16 +1363,59 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
     void changeCatalog("JOB_TITLE", "DELETE", value);
   }
 
+  // 결재 시절에 SUBMITTED 로 남은 인사발령·퇴직 요청을 승인·반려한다. 결재는 없어졌지만 그 행은 이 길로만 빠져나온다.
+  async function decideLegacy(resource: "personnelActionDecision" | "retirementDecision", id: string, decision: "APPROVED" | "REJECTED") {
+    const response = await fetch("/api/hr/operations", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resource, id, decision, reason: decision === "APPROVED" ? "기존 결재 요청 승인" : "기존 결재 요청 반려" }),
+    });
+    const payload = await response.json().catch(() => ({})) as { item?: Record<string, unknown>; error?: string };
+    if (!response.ok) throw new Error(payload.error || "처리하지 못했습니다.");
+    return payload.item ?? {};
+  }
+
+  async function decideLegacyPersonnelAction(action: LegacyPersonnelAction, decision: "APPROVED" | "REJECTED") {
+    try {
+      const item = await decideLegacy("personnelActionDecision", action.id, decision);
+      setLegacyPersonnelActions((items) => items.filter((entry) => entry.id !== action.id));
+      if (decision === "APPROVED" && item.status === "EFFECTIVE") {
+        let after: { department?: string; position?: string } = {};
+        try { after = JSON.parse(action.after_json) as typeof after; } catch { after = {}; }
+        setEmployees((items) => items.map((employee) => employee.id === action.employee_id
+          ? { ...employee, department: after.department || employee.department, position: after.position || employee.position }
+          : employee));
+      }
+      showToast(decision === "APPROVED" ? "인사발령을 반영했습니다." : "인사발령 요청을 반려했습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "인사발령을 처리하지 못했습니다.");
+    }
+  }
+
+  async function decideLegacyRetirement(decision: "APPROVED" | "REJECTED") {
+    const employee = selectedEmployee;
+    const requestId = employee?.retirement?.requestId;
+    if (!employee || !requestId) return;
+    try {
+      const item = await decideLegacy("retirementDecision", requestId, decision);
+      const status = String(item.status ?? (decision === "APPROVED" ? "IN_PROGRESS" : "REJECTED"));
+      setEmployees((items) => items.map((entry) => {
+        if (entry.id !== employee.id || !entry.retirement) return entry;
+        if (decision === "REJECTED") { const rest = { ...entry }; delete rest.retirement; return rest; }
+        return { ...entry, status: ["EFFECTIVE", "COMPLETED"].includes(status) ? "퇴직" : "퇴직 예정", retirement: { ...entry.retirement, status } };
+      }));
+      setRetirementOpen(false);
+      showToast(decision === "APPROVED" ? "퇴직을 승인했습니다. 퇴직 절차 체크리스트를 이어서 관리할 수 있습니다." : "퇴직 요청을 반려했습니다.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "퇴직 요청을 처리하지 못했습니다.");
+    }
+  }
+
   async function saveRetirement(record: RetirementRecord) {
     if (!selectedEmployee) return;
     const employee = selectedEmployee;
     const totalTasks = retirementChecklist.hr.length + retirementChecklist.employee.length;
     const completed = record.completedTaskIds.length;
     try {
-      if (record.requestId && record.status === "SUBMITTED") {
-        showToast("기존 방식으로 생성된 퇴직 요청입니다. 현재 진행 상태를 확인해 주세요.");
-        return;
-      }
       if (record.requestId && ["IN_PROGRESS", "READY"].includes(record.status ?? "")) {
         const response = await fetch("/api/hr/operations", {
           method: "PUT", headers: { "Content-Type": "application/json" },
@@ -1829,6 +1882,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
         {active === "training" && <TrainingManagementView onNotify={showToast} />}
         {active === "reports" && <HrAnalyticsView onNotify={showToast} />}
         {active === "settings" && <SettingsView employees={employees} onNotify={showToast} />}
+        {selectedEmployee && legacyPersonnelActions.some((action) => action.employee_id === selectedEmployee.id) && <article className="panel"><div className="table-toolbar"><div><h2>처리 대기 인사발령</h2><span>전자결재 시절에 제출돼 남아 있는 발령입니다. 승인하면 시행일에 인사기록에 반영됩니다.</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>구분</th><th>시행일</th><th>사유</th><th>처리</th></tr></thead><tbody>{legacyPersonnelActions.filter((action) => action.employee_id === selectedEmployee.id).map((action) => <tr key={action.id}><td>{action.action_type}</td><td>{action.effective_date}</td><td>{action.reason || "-"}</td><td><div className="row-actions"><button type="button" onClick={() => void decideLegacyPersonnelAction(action, "APPROVED")}>승인</button><button type="button" className="reject-action" onClick={() => void decideLegacyPersonnelAction(action, "REJECTED")}>반려</button></div></td></tr>)}</tbody></table></div></article>}
         {selectedEmployee && <EmployeeDetail key={selectedEmployee.id} employee={selectedEmployee} employees={employees} organizations={organizations} ranks={ranks} jobTitles={jobTitles} onBack={() => setSelectedEmployeeId(null)} onUpdate={updateEmployee} onPersonnelAction={() => setPersonnelAction("인사 발령")} onRetirement={() => setRetirementOpen(true)} onNotify={showToast} />}
       </main>
 
@@ -1860,7 +1914,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
 
       {selectedApplicant && <ApplicantDetail applicant={selectedApplicant} recruiters={recruiters} requisitions={requisitions} organizations={organizations} jobTitles={jobTitles} ranks={ranks} onClose={() => setSelectedApplicantId(null)} onSave={updateApplicantDetail} onDecideScreening={decideScreening} onSaveMemo={addInterviewMemo} onSubmitOffer={submitRecruitmentOffer} onRejectInterview={rejectAfterInterview} onRespondOffer={respondRecruitmentOffer} />}
       {personnelAction && selectedEmployee && <PersonnelActionModal employee={selectedEmployee} ranks={ranks} organizations={organizations} onClose={() => setPersonnelAction(null)} onSubmit={savePersonnelAction} />}
-      {retirementOpen && selectedEmployee && <RetirementModal employee={selectedEmployee} initial={retirementPrefill} onClose={() => { setRetirementOpen(false); setRetirementPrefill(null); }} onSubmit={saveRetirement} />}
+      {retirementOpen && selectedEmployee && <RetirementModal employee={selectedEmployee} initial={retirementPrefill} onClose={() => { setRetirementOpen(false); setRetirementPrefill(null); }} onSubmit={saveRetirement} onLegacyDecision={(decision) => void decideLegacyRetirement(decision)} />}
       {toast && <div className="toast"><span>✓</span>{toast}</div>}
     </div>
   );
@@ -1940,7 +1994,7 @@ function EmployeeDirectory({ employees, organizations, query, onSelect, onAdd }:
   </div>;
 }
 
-function OrganizationManagement({ onSelectEmployee, organizations, employees, ranks, jobTitles, onLeaderChange, onAddOrganization, onUpdateOrganization, onAddRank, onRemoveRank, onAddJobTitle, onRemoveJobTitle }: { onSelectEmployee: (id: string) => void; organizations: Organization[]; employees: Employee[]; ranks: string[]; jobTitles: string[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onAddOrganization: (name: string, description: string) => void; onUpdateOrganization: (organizationId: string, name: string, description: string, impactAssessmentId: string) => Promise<boolean>; onAddRank: (value: string) => void; onRemoveRank: (value: string) => void; onAddJobTitle: (value: string) => void; onRemoveJobTitle: (value: string) => void }) {
+function OrganizationManagement({ onSelectEmployee, organizations, employees, ranks, jobTitles, onLeaderChange, onAddOrganization, onUpdateOrganization, onAddRank, onRemoveRank, onAddJobTitle, onRemoveJobTitle }: { onSelectEmployee: (id: string) => void; organizations: Organization[]; employees: Employee[]; ranks: string[]; jobTitles: string[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onAddOrganization: (name: string, description: string) => void; onUpdateOrganization: (organizationId: string, name: string, description: string) => Promise<boolean>; onAddRank: (value: string) => void; onRemoveRank: (value: string) => void; onAddJobTitle: (value: string) => void; onRemoveJobTitle: (value: string) => void }) {
   const [newOrganization, setNewOrganization] = useState({ name: "", description: "" });
   const [newRank, setNewRank] = useState("");
   const [newJobTitle, setNewJobTitle] = useState("");
@@ -1969,10 +2023,10 @@ function OrganizationManagement({ onSelectEmployee, organizations, employees, ra
   </div>;
 }
 
-function OrganizationCard({ onSelectEmployee, organization, members, onLeaderChange, onUpdate }: { onSelectEmployee: (id: string) => void; organization: Organization; members: Employee[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onUpdate: (organizationId: string, name: string, description: string, impactAssessmentId: string) => Promise<boolean> }) {
+function OrganizationCard({ onSelectEmployee, organization, members, onLeaderChange, onUpdate }: { onSelectEmployee: (id: string) => void; organization: Organization; members: Employee[]; onLeaderChange: (organizationId: string, employeeId: string) => void; onUpdate: (organizationId: string, name: string, description: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({ name: organization.name, description: organization.description });
-  const [impactOpen, setImpactOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const sortedMembers = [...members].sort((first, second) => Number(second.id === organization.leaderEmployeeId) - Number(first.id === organization.leaderEmployeeId));
   const memberColumns = members.length <= 1 ? 1 : members.length <= 4 ? 2 : 3;
 
@@ -1983,12 +2037,16 @@ function OrganizationCard({ onSelectEmployee, organization, members, onLeaderCha
 
   async function saveEdit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setImpactOpen(true);
+    setSaving(true);
+    try {
+      if (await onUpdate(organization.id, draft.name, draft.description)) setEditing(false);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return <article className={`organization-card ${editing ? "editing" : ""}`}>
-    {editing ? <form className="organization-edit-form" onSubmit={saveEdit}><div className="organization-edit-heading"><strong>조직 정보 수정</strong><span>조직명 변경 시 소속 인사기록에도 함께 반영됩니다.</span></div><label><span>조직명</span><input required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label><span>조직 설명</span><textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label><div className="organization-edit-actions"><button type="button" onClick={cancelEdit}>취소</button><button type="submit">영향 확인 후 저장</button></div></form> : <><div className="organization-card-heading"><span>{organization.name.slice(0, 1)}</span><div><h3>{organization.name}</h3><p>{organization.description}</p></div><em>{members.length}명</em><button type="button" className="organization-edit-button" onClick={() => setEditing(true)}>조직 수정</button></div><label><span>조직장</span><select value={organization.leaderEmployeeId ?? ""} onChange={(event) => onLeaderChange(organization.id, event.target.value)}><option value="">미지정</option>{members.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.position}</option>)}</select></label><div className="organization-members"><div className="organization-members-heading"><strong>소속 조직원</strong><span>{members.length}명</span></div>{members.length > 0 ? <div className={`organization-member-list columns-${memberColumns}`}>{sortedMembers.map((employee) => <button type="button" onClick={() => onSelectEmployee(employee.id)} aria-haspopup="dialog" className={`organization-member ${employee.id === organization.leaderEmployeeId ? "leader" : ""}`} key={employee.id}><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.position} · {employee.id === organization.leaderEmployeeId ? "조직장" : employee.jobTitle ?? "팀원"}</small></div></button>)}</div> : <p className="organization-empty-members">소속 조직원이 없습니다.</p>}</div></>}
-    {impactOpen && <MasterImpactDialog entityType="HR_ORGANIZATION" entityId={organization.id} action="UPDATE" onClose={() => setImpactOpen(false)} onProceed={async (assessmentId) => { const saved = await onUpdate(organization.id, draft.name, draft.description, assessmentId); if (saved) setEditing(false); return saved; }} />}
+    {editing ? <form className="organization-edit-form" onSubmit={saveEdit}><div className="organization-edit-heading"><strong>조직 정보 수정</strong><span>조직명 변경 시 소속 인사기록에도 함께 반영됩니다.</span></div><label><span>조직명</span><input required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label><label><span>조직 설명</span><textarea value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label><div className="organization-edit-actions"><button type="button" onClick={cancelEdit}>취소</button><button type="submit" disabled={saving}>{saving ? "저장 중…" : "저장"}</button></div></form> : <><div className="organization-card-heading"><span>{organization.name.slice(0, 1)}</span><div><h3>{organization.name}</h3><p>{organization.description}</p></div><em>{members.length}명</em><button type="button" className="organization-edit-button" onClick={() => setEditing(true)}>조직 수정</button></div><label><span>조직장</span><select value={organization.leaderEmployeeId ?? ""} onChange={(event) => onLeaderChange(organization.id, event.target.value)}><option value="">미지정</option>{members.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.position}</option>)}</select></label><div className="organization-members"><div className="organization-members-heading"><strong>소속 조직원</strong><span>{members.length}명</span></div>{members.length > 0 ? <div className={`organization-member-list columns-${memberColumns}`}>{sortedMembers.map((employee) => <button type="button" onClick={() => onSelectEmployee(employee.id)} aria-haspopup="dialog" className={`organization-member ${employee.id === organization.leaderEmployeeId ? "leader" : ""}`} key={employee.id}><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.position} · {employee.id === organization.leaderEmployeeId ? "조직장" : employee.jobTitle ?? "팀원"}</small></div></button>)}</div> : <p className="organization-empty-members">소속 조직원이 없습니다.</p>}</div></>}
   </article>;
 }
 
@@ -2374,7 +2432,7 @@ function TimeAndLeaveView({ employees, onNotify }: { employees: Employee[]; onNo
     const response = await fetch("/api/hr/operations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource: "leaveRequest", ...leaveDraft, units }) });
     const payload = await response.json() as { error?: string };
     if (!response.ok) { onNotify(payload.error || "휴가 신청을 저장하지 못했습니다."); return; }
-    onNotify("휴가 신청을 저장하고 승인 업무를 생성했습니다.");
+    onNotify("휴가 신청을 승인된 상태로 저장했습니다.");
     setLeaveDraft((current) => ({ ...current, reason: "" }));
     await load();
   }
@@ -2401,18 +2459,18 @@ function TimeAndLeaveView({ employees, onNotify }: { employees: Employee[]; onNo
     <section className="module-hero"><div data-korean-heading><h1>일정·근태·휴가</h1><p>수기 근태와 휴가 신청·승인을 실제 저장합니다. 출입기록 자동연동 전까지 자료 출처는 수기 입력으로 표시됩니다.</p></div><span className="manual-source-badge">MANUAL · 자동연동 미설정</span></section>
     <section className="metric-grid module-metrics">{[
       ["오늘 근태", `${todayAttendance.length}명`, `재직자 ${activeEmployees.length}명 중 기록`],
-      ["휴가 승인 대기", `${pendingLeaves.length}건`, "알림 업무 자동 생성"],
+      ["휴가 승인 대기", `${pendingLeaves.length}건`, "기존 신청 중 미처리"],
       ["올해 승인 휴가", `${(approvedUnits / 100).toFixed(1)}일`, "승인된 신청 합계"],
       ["근태 확인 대기", `${pendingAttendance.length}건`, "수기 입력 검토 필요"],
     ].map(([label, value, note], index) => <div className="compact-metric" key={label}><span className={`metric-accent ${["navy", "orange", "blue", "red"][index]}`}></span><p>{label}</p><h2>{value}</h2><small>{note}</small></div>)}</section>
 
     <section className="time-leave-entry-grid">
-      <form className="panel operations-entry-card" onSubmit={createLeave}><div className="detail-card-heading"><div data-korean-heading><h2>휴가 신청</h2></div><span>승인 필요</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={leaveDraft.employeeId} onChange={(event) => setLeaveDraft({ ...leaveDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>휴가 종류</span><select value={leaveDraft.leaveType} onChange={(event) => { const value = event.target.value; setLeaveDraft({ ...leaveDraft, leaveType: value, units: value.startsWith("HALF") ? ".5" : leaveDraft.units }); }}>{Object.entries(leaveTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>시작일</span><input required type="date" value={leaveDraft.startDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, startDate: event.target.value })} /></label><label><span>종료일</span><input required type="date" value={leaveDraft.endDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, endDate: event.target.value })} /></label><label><span>사용일수</span><input required type="number" min=".5" step=".5" value={leaveDraft.units} onChange={(event) => setLeaveDraft({ ...leaveDraft, units: event.target.value })} /></label><label className="wide"><span>사유</span><input value={leaveDraft.reason} onChange={(event) => setLeaveDraft({ ...leaveDraft, reason: event.target.value })} /></label></div><button type="submit" className="primary-button">휴가 신청 저장</button></form>
+      <form className="panel operations-entry-card" onSubmit={createLeave}><div className="detail-card-heading"><div data-korean-heading><h2>휴가 신청</h2></div><span>저장 즉시 승인</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={leaveDraft.employeeId} onChange={(event) => setLeaveDraft({ ...leaveDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>휴가 종류</span><select value={leaveDraft.leaveType} onChange={(event) => { const value = event.target.value; setLeaveDraft({ ...leaveDraft, leaveType: value, units: value.startsWith("HALF") ? ".5" : leaveDraft.units }); }}>{Object.entries(leaveTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>시작일</span><input required type="date" value={leaveDraft.startDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, startDate: event.target.value })} /></label><label><span>종료일</span><input required type="date" value={leaveDraft.endDate} onChange={(event) => setLeaveDraft({ ...leaveDraft, endDate: event.target.value })} /></label><label><span>사용일수</span><input required type="number" min=".5" step=".5" value={leaveDraft.units} onChange={(event) => setLeaveDraft({ ...leaveDraft, units: event.target.value })} /></label><label className="wide"><span>사유</span><input value={leaveDraft.reason} onChange={(event) => setLeaveDraft({ ...leaveDraft, reason: event.target.value })} /></label></div><button type="submit" className="primary-button">휴가 신청 저장</button></form>
       <form className="panel operations-entry-card" onSubmit={createAttendance}><div className="detail-card-heading"><div data-korean-heading><h2>근태 기록</h2></div><span>수기 입력</span></div><div className="operations-form-grid"><label><span>대상 직원</span><select required value={attendanceDraft.employeeId} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, employeeId: event.target.value })}>{activeEmployees.map((employee) => <option key={employee.id} value={employee.id}>{employee.name} · {employee.department}</option>)}</select></label><label><span>근무일</span><input required type="date" value={attendanceDraft.workDate} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, workDate: event.target.value })} /></label><label><span>근무 형태</span><select value={attendanceDraft.workType} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, workType: event.target.value })}>{Object.entries(attendanceTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label><span>출근</span><input type="time" value={attendanceDraft.checkIn} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, checkIn: event.target.value })} /></label><label><span>퇴근</span><input type="time" value={attendanceDraft.checkOut} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, checkOut: event.target.value })} /></label><label className="wide"><span>메모</span><input value={attendanceDraft.memo} onChange={(event) => setAttendanceDraft({ ...attendanceDraft, memo: event.target.value })} /></label></div><button type="submit" className="primary-button">근태 기록 저장</button></form>
     </section>
 
     <section className="time-leave-tables">
-      <article className="panel"><div className="table-toolbar"><div><h2>휴가 신청 현황</h2><span>{leaveRequests.length}건 · 0.5일은 50단위로 안전하게 저장됩니다.</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>직원</th><th>종류</th><th>기간</th><th>일수</th><th>사유</th><th>상태</th><th>처리</th></tr></thead><tbody>{loading ? <tr><td colSpan={7} className="table-message">불러오는 중입니다.</td></tr> : leaveRequests.length ? leaveRequests.map((item) => <tr key={item.id}><td>{employeeName(item.employee_id)}</td><td>{leaveTypeLabels[item.leave_type] ?? item.leave_type}</td><td>{item.start_date}~{item.end_date}</td><td>{(item.units / 100).toFixed(1)}일</td><td>{item.reason || "-"}</td><td><StatusPill value={approvalLabels[item.status] ?? item.status} /></td><td>{item.status === "PENDING" ? <span className="approval-route-note">상단 전자결재에서 처리</span> : "처리 완료"}</td></tr>) : <tr><td colSpan={7} className="empty-cell">등록된 휴가 신청이 없습니다.</td></tr>}</tbody></table></div></article>
+      <article className="panel"><div className="table-toolbar"><div><h2>휴가 신청 현황</h2><span>{leaveRequests.length}건 · 0.5일은 50단위로 안전하게 저장됩니다.</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>직원</th><th>종류</th><th>기간</th><th>일수</th><th>사유</th><th>상태</th><th>처리</th></tr></thead><tbody>{loading ? <tr><td colSpan={7} className="table-message">불러오는 중입니다.</td></tr> : leaveRequests.length ? leaveRequests.map((item) => <tr key={item.id}><td>{employeeName(item.employee_id)}</td><td>{leaveTypeLabels[item.leave_type] ?? item.leave_type}</td><td>{item.start_date}~{item.end_date}</td><td>{(item.units / 100).toFixed(1)}일</td><td>{item.reason || "-"}</td><td><StatusPill value={approvalLabels[item.status] ?? item.status} /></td><td>{item.status === "PENDING" ? <div className="row-actions"><button type="button" onClick={() => void decide("leaveRequest", item.id, "APPROVED")}>승인</button><button type="button" className="reject-action" onClick={() => void decide("leaveRequest", item.id, "REJECTED")}>반려</button></div> : "처리 완료"}</td></tr>) : <tr><td colSpan={7} className="empty-cell">등록된 휴가 신청이 없습니다.</td></tr>}</tbody></table></div></article>
       <article className="panel"><div className="table-toolbar"><div><h2>근태 기록 현황</h2><span>{attendanceRecords.length}건 · 출입시스템 연동 전 수기 기록</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>직원</th><th>근무일</th><th>형태</th><th>출퇴근</th><th>근무시간</th><th>출처</th><th>상태</th><th>처리</th></tr></thead><tbody>{loading ? <tr><td colSpan={8} className="table-message">불러오는 중입니다.</td></tr> : attendanceRecords.length ? attendanceRecords.map((item) => <tr key={item.id}><td>{employeeName(item.employee_id)}</td><td>{item.work_date}</td><td>{attendanceTypeLabels[item.work_type] ?? item.work_type}</td><td>{item.check_in || "-"}~{item.check_out || "-"}</td><td>{Math.floor(item.minutes_worked / 60)}시간 {item.minutes_worked % 60}분</td><td><span className="manual-source-badge compact">{item.source_type}</span></td><td><StatusPill value={approvalLabels[item.status] ?? item.status} /></td><td>{item.status === "RECORDED" ? <div className="row-actions"><button type="button" onClick={() => void decide("attendance", item.id, "APPROVED")}>확인</button><button type="button" className="reject-action" onClick={() => void decide("attendance", item.id, "REJECTED")}>반려</button></div> : "처리 완료"}</td></tr>) : <tr><td colSpan={8} className="empty-cell">등록된 근태 기록이 없습니다.</td></tr>}</tbody></table></div></article>
     </section>
   </div>;
@@ -2615,12 +2673,12 @@ const payrollStatusLabels: Record<PayrollSummary["status"], string> = {
 
 // 상태 셀렉트에 쓰는 "다음에 할 일" 표현. 위 라벨은 현재 상태를 가리키는 말이라 다르다.
 const payrollStatusOptionLabels: Record<PayrollSummary["status"], string> = {
-  DRAFT: "작성 중", REVIEW: "검토 요청", APPROVED: "승인 결재 요청", LOCKED: "마감 잠금",
+  DRAFT: "작성 중", REVIEW: "검토 요청", APPROVED: "승인", LOCKED: "마감 잠금",
 };
 
 // app/api/hr/payroll/route.ts 의 allowedTransitions 와 같은 표를 둔다. 서버가 막을 선택지를
 // 열어 두면 눌러도 409 만 돌아와 아무 일도 안 일어난 것처럼 보인다. 작성 중에서 곧바로 마감
-// 잠금까지 갈 수 있고, 검토 요청·승인 결재는 필요할 때만 거친다.
+// 잠금까지 갈 수 있고, 검토 요청·승인은 필요할 때만 거친다.
 const payrollStatusTransitions: Record<PayrollSummary["status"], PayrollSummary["status"][]> = {
   DRAFT: ["DRAFT", "REVIEW", "LOCKED"],
   REVIEW: ["DRAFT", "REVIEW", "APPROVED", "LOCKED"],
@@ -2628,7 +2686,7 @@ const payrollStatusTransitions: Record<PayrollSummary["status"], PayrollSummary[
   LOCKED: ["DRAFT", "LOCKED"],
 };
 
-/** 급여월 상태 변경 한 곳. 상세 화면의 버튼과 목록의 상태 칸이 같은 규칙(재개방 사유·전자결재 안내)을 쓴다. */
+/** 급여월 상태 변경 한 곳. 상세 화면의 버튼과 목록의 상태 칸이 같은 규칙(재개방 사유)을 쓴다. 결재 없이 곧바로 반영된다. */
 async function requestPayrollStatusChange(dialog: ErpDialogApi, month: string, currentStatus: PayrollSummary["status"], status: PayrollSummary["status"]) {
   let reopenedReason = "";
   if (status === "DRAFT" && ["APPROVED", "LOCKED"].includes(currentStatus)) {
@@ -2636,12 +2694,9 @@ async function requestPayrollStatusChange(dialog: ErpDialogApi, month: string, c
     if (!reopenedReason) return { applied: false, notice: "", error: "급여월 재개방 사유가 필요합니다." };
   }
   const response = await fetch("/api/hr/payroll", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ period: month, status, reopenedReason }) });
-  const payload = await response.json() as { error?: string; approvalSubmitted?: boolean; autoApproved?: boolean; financeExpenseId?: string };
+  const payload = await response.json() as { error?: string };
   if (!response.ok) return { applied: false, notice: "", error: payload.error || "급여 처리 상태를 변경하지 못했습니다." };
-  if (payload.autoApproved) return { applied: true, notice: "요청자와 승인자가 동일해 승인을 자동 처리했습니다. 전자결재 기록은 남습니다.", error: "" };
-  if (payload.approvalSubmitted) return { applied: false, notice: "전자결재를 제출했습니다. 최종 승인 후 급여 상태가 반영됩니다.", error: "" };
-  const notice = payload.financeExpenseId ? "급여월을 마감하고 재무회계 지급대기 원장에 연결했습니다."
-    : status === "DRAFT" && reopenedReason ? "급여월을 다시 열고 미지급 재무 요청을 취소했습니다." : "";
+  const notice = status === "DRAFT" && reopenedReason ? "급여월을 다시 열었습니다." : "";
   return { applied: true, notice, error: "" };
 }
 
@@ -2954,7 +3009,8 @@ function previousApplicationsFor(applicant: Applicant, applicants: Applicant[]) 
   });
 }
 
-/** 공고가 진행 중인지 판단한다. 여기 없는 상태(CLOSED·FILLED·CANCELLED 등)는 모두 종료로 본다. */
+/** 공고가 진행 중인지 판단한다. 여기 없는 상태(CLOSED·FILLED·CANCELLED 등)는 모두 종료로 본다.
+ *  SUBMITTED 는 전자결재 시절에 제출돼 남은 요청이다. 새로 생기지는 않지만 '모집 시작'으로 열 수 있어 진행 중으로 둔다. */
 const OPEN_REQUISITION_STATUSES = ["OPEN", "DRAFT", "SUBMITTED"];
 
 /** 채용요청·TO 칸. 공고를 종료해도 지원자의 연결은 그대로 남으므로 제목을 계속 보여 준다.
@@ -4469,7 +4525,7 @@ function RetirementChecklistGroup({ title, tasks, completedTaskIds, pendingAppro
   );
 }
 
-function RetirementModal({ employee, initial, onClose, onSubmit }: { employee: Employee; initial?: { date: string; reason: string } | null; onClose: () => void; onSubmit: (record: RetirementRecord) => void }) {
+function RetirementModal({ employee, initial, onClose, onSubmit, onLegacyDecision }: { employee: Employee; initial?: { date: string; reason: string } | null; onClose: () => void; onSubmit: (record: RetirementRecord) => void; onLegacyDecision: (decision: "APPROVED" | "REJECTED") => void }) {
   const [date, setDate] = useState(employee.retirement?.date ?? initial?.date ?? "2026-09-30");
   const [reason, setReason] = useState(employee.retirement?.reason ?? initial?.reason ?? "");
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>(employee.retirement?.completedTaskIds ?? []);
@@ -4479,6 +4535,7 @@ function RetirementModal({ employee, initial, onClose, onSubmit }: { employee: E
   const totalTasks = retirementChecklist.hr.length + retirementChecklist.employee.length;
   const progress = Math.round((completedTaskIds.length / totalTasks) * 100);
   const checklistMode = Boolean(employee.retirement?.requestId && ["IN_PROGRESS", "READY", "EFFECTIVE"].includes(employee.retirement?.status ?? ""));
+  // 전자결재 시절에 SUBMITTED 로 남은 요청. 결재가 없어져 이 창에서 바로 승인·반려한다.
   const pendingApproval = Boolean(employee.retirement?.requestId && employee.retirement?.status === "SUBMITTED");
 
   function toggleTask(id: string) {
@@ -4488,7 +4545,8 @@ function RetirementModal({ employee, initial, onClose, onSubmit }: { employee: E
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const record = { requestId: employee.retirement?.requestId, status: employee.retirement?.status, date, reason: reason.trim(), completedTaskIds };
-    if (checklistMode || pendingApproval) onSubmit(record);
+    if (pendingApproval) return;
+    if (checklistMode) onSubmit(record);
     else setConfirmation(record);
   }
 
@@ -4502,14 +4560,14 @@ function RetirementModal({ employee, initial, onClose, onSubmit }: { employee: E
       const top = event.currentTarget.scrollTop;
       setCondensed((current) => nextCondensed(current, top));
     }}
-  ><div className="modal-header"><div data-korean-heading><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">기존 방식으로 생성된 퇴직 요청입니다. 현재 진행 상태를 확인해 주세요.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="인사담당자 수행 업무" tasks={retirementChecklist.hr} /><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="퇴직자 수행 업무" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button><button type="submit" disabled={pendingApproval} className="primary-button">{pendingApproval ? "기존 요청 확인 중" : checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button></div></form>{confirmation && <HrModalBackdrop className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section data-korean-heading className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" ><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></HrModalBackdrop>}</HrModalBackdrop>;
+  ><div className="modal-header"><div data-korean-heading><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">전자결재 시절에 제출돼 처리되지 않은 퇴직 요청입니다. 승인하면 퇴직 절차가 시작되고, 반려하면 요청을 닫습니다.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="인사담당자 수행 업무" tasks={retirementChecklist.hr} /><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="퇴직자 수행 업무" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button>{pendingApproval ? <><button type="button" className="reject-action" onClick={() => onLegacyDecision("REJECTED")}>반려</button><button type="button" className="primary-button" onClick={() => onLegacyDecision("APPROVED")}>승인</button></> : <button type="submit" className="primary-button">{checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button>}</div></form>{confirmation && <HrModalBackdrop className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section data-korean-heading className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" ><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></HrModalBackdrop>}</HrModalBackdrop>;
 }
 
 function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify: (message: string) => void }) {
   const [section, setSection] = useState("company");
-  type AccessRole = "SUPER_ADMIN" | "FINANCE_ADMIN" | "HR_ADMIN" | "RECRUITER" | "SALES_ADMIN" | "VIEWER";
+  type AccessRole = "SUPER_ADMIN" | "HR_ADMIN" | "RECRUITER" | "VIEWER";
   type AuthorizedUser = { employeeId: string; email: string; roles: AccessRole[]; active: boolean };
-  const roleLabels: Record<AccessRole, string> = { SUPER_ADMIN: "최고 관리자", FINANCE_ADMIN: "재무 관리자", HR_ADMIN: "HR 관리자", RECRUITER: "채용 담당자", SALES_ADMIN: "영업 관리자", VIEWER: "조회 전용" };
+  const roleLabels: Record<AccessRole, string> = { SUPER_ADMIN: "최고 관리자", HR_ADMIN: "HR 관리자", RECRUITER: "채용 담당자", VIEWER: "조회 전용" };
   const [authorizedUsers, setAuthorizedUsers] = useState<AuthorizedUser[]>([]);
   const [candidateId, setCandidateId] = useState("");
   const [candidateRole, setCandidateRole] = useState<AccessRole>("VIEWER");
@@ -4593,19 +4651,17 @@ function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify
         ? "알림 설정"
         : section === "permissions"
           ? "사용자·권한"
-          : section === "approvals"
-            ? "전자결재 규칙"
-            : "데이터·백업";
+          : "데이터·백업";
 
   return <div className="page-wrap settings-page">
     <section className="module-hero">
       <div data-korean-heading><h1>환경설정</h1><p>회사 정보, 인사 기준, 알림과 접근 권한을 설정합니다.</p></div>
       {/* 회사·기준정보·알림·데이터 섹션은 아직 저장 경로가 없다. 예전에는 「변경사항 저장」이 성공 토스트만 띄웠다. */}
-      {["permissions", "approvals"].includes(section) ? null : <span className="payroll-import-badge">표시 전용 · 저장 기능 준비 중</span>}
+      {section === "permissions" ? null : <span className="payroll-import-badge">표시 전용 · 저장 기능 준비 중</span>}
     </section>
     <div className="settings-layout">
       <aside className="panel settings-nav">
-        {[["company", "회사·조직 정보"], ["hr", "인사 기준정보"], ["notifications", "알림 설정"], ["permissions", "사용자·권한"], ["approvals", "전자결재 규칙"], ["data", "데이터·백업"]].map(([id, label]) => <button type="button" className={section === id ? "active" : ""} key={id} onClick={() => setSection(id)}>{label}<span>›</span></button>)}
+        {[["company", "회사·조직 정보"], ["hr", "인사 기준정보"], ["notifications", "알림 설정"], ["permissions", "사용자·권한"], ["data", "데이터·백업"]].map(([id, label]) => <button type="button" className={section === id ? "active" : ""} key={id} onClick={() => setSection(id)}>{label}<span>›</span></button>)}
       </aside>
       <section className="panel settings-content">
         <div className="detail-card-heading"><div data-korean-heading><h2>{sectionTitle}</h2></div></div>
@@ -4615,7 +4671,7 @@ function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify
         {section === "permissions" && <div className="permission-management">
           <form className="permission-add-form" onSubmit={addAuthorizedUser}>
             <label><span>회사 등록 인물</span><select value={candidateId} onChange={(event) => setCandidateId(event.target.value)} disabled={permissionsLoading || availableEmployees.length === 0}><option value="">{availableEmployees.length === 0 ? "추가 가능한 인물이 없습니다" : "사용자 선택"}</option>{availableEmployees.map((employee) => <option value={employee.id} key={employee.id}>{employee.name} · {employee.department}</option>)}</select></label>
-            <label><span>기본 역할</span><select value={candidateRole} onChange={(event) => setCandidateRole(event.target.value as AccessRole)}>{(["VIEWER", "FINANCE_ADMIN", "HR_ADMIN", "RECRUITER", "SALES_ADMIN"] as AccessRole[]).map((role) => <option value={role} key={role}>{roleLabels[role]}</option>)}</select></label>
+            <label><span>기본 역할</span><select value={candidateRole} onChange={(event) => setCandidateRole(event.target.value as AccessRole)}>{(["VIEWER", "HR_ADMIN", "RECRUITER"] as AccessRole[]).map((role) => <option value={role} key={role}>{roleLabels[role]}</option>)}</select></label>
             <button type="submit" className="primary-button" disabled={!candidateId}>사용자 추가</button>
           </form>
           <p className="permission-help">회사 인사기록에 등록된 재직자만 추가할 수 있으며 역할별 권한은 서버에서 검사되고 변경이력은 감사기록에 남습니다.</p>
@@ -4629,119 +4685,14 @@ function SettingsView({ employees, onNotify }: { employees: Employee[]; onNotify
               return <div key={employeeId}>
                 <span className="owner-chip">{employee.name.slice(0, 1)}</span>
                 <p><strong>{employee.name}</strong><small>{employee.department} · {access.email}</small></p>
-                <div className="permission-row-actions">{isCurrentAdministrator ? <><em>{roleLabels.SUPER_ADMIN}</em><span className="permission-current">현재 사용자</span></> : <><select aria-label={`${employee.name} 역할`} value={access.roles[0] ?? "VIEWER"} onChange={(event) => void updateAuthorizedUserRole(employeeId, event.target.value as AccessRole)}>{(["VIEWER", "FINANCE_ADMIN", "HR_ADMIN", "RECRUITER", "SALES_ADMIN"] as AccessRole[]).map((role) => <option value={role} key={role}>{roleLabels[role]}</option>)}</select><button type="button" onClick={() => removeAuthorizedUser(employeeId)}>비활성화</button></>}</div>
+                <div className="permission-row-actions">{isCurrentAdministrator ? <><em>{roleLabels.SUPER_ADMIN}</em><span className="permission-current">현재 사용자</span></> : <><select aria-label={`${employee.name} 역할`} value={access.roles[0] ?? "VIEWER"} onChange={(event) => void updateAuthorizedUserRole(employeeId, event.target.value as AccessRole)}>{(["VIEWER", "HR_ADMIN", "RECRUITER"] as AccessRole[]).map((role) => <option value={role} key={role}>{roleLabels[role]}</option>)}</select><button type="button" onClick={() => removeAuthorizedUser(employeeId)}>비활성화</button></>}</div>
               </div>;
             })}
           </div>
         </div>}
-        {section === "approvals" && <ApprovalSettings employees={employees} onNotify={onNotify} />}
         {section === "data" && <div className="data-settings"><div><strong>자동 백업</strong><span>미설정 · 로컬 D1 파일을 수동으로 보관합니다</span><button type="button" disabled title="준비 중">지금 백업</button></div><div><strong>개인정보 보유기간</strong><span>퇴사 후 3년(방침) · 자동 삭제는 미구현</span><button type="button" disabled title="준비 중">정책 관리</button></div><div><strong>엑셀 데이터 가져오기</strong><span>재무 「데이터 통제」의 가져오기를 사용하세요</span><button type="button" disabled title="준비 중">가져오기</button></div></div>}
       </section>
     </div>
-  </div>;
-}
-
-function ApprovalSettings({ employees, onNotify }: { employees: Employee[]; onNotify: (message: string) => void }) {
-  type Module = "finance" | "hr" | "recruitment" | "sales" | "settings";
-  type Role = "SUPER_ADMIN" | "FINANCE_ADMIN" | "HR_ADMIN" | "SALES_ADMIN";
-  type PolicyStep = { stepOrder: number; stepName: string; approverRole: Role; approverEmployeeId: string };
-  type Policy = { id: string; module: Module; requestType: string; name: string; minAmount: number; maxAmount: number | null; priority: number; steps: PolicyStep[] };
-  type Delegation = { id: string; delegatorEmployeeId: string; delegateEmployeeId: string; module: string; startsOn: string; endsOn: string; reason: string };
-  type AccessUser = { employeeId: string; roles: string[] };
-  type DefaultRoute = { module: Module; requestType: string; label: string; steps: PolicyStep[] };
-  const moduleLabels: Record<Module, string> = { finance: "재무회계", hr: "HR", recruitment: "채용", sales: "영업", settings: "데이터 통제" };
-  const moduleRoles: Record<Module, Role[]> = { finance: ["FINANCE_ADMIN", "SUPER_ADMIN"], hr: ["HR_ADMIN", "SUPER_ADMIN"], recruitment: ["HR_ADMIN", "SUPER_ADMIN"], sales: ["SALES_ADMIN", "SUPER_ADMIN"], settings: ["SUPER_ADMIN"] };
-  const roleLabels: Record<Role, string> = { SUPER_ADMIN: "대표 승인", FINANCE_ADMIN: "재무 관리자", HR_ADMIN: "HR 관리자", SALES_ADMIN: "영업 관리자" };
-  const today = useKoreanToday();
-  const nextWeek = today ? new Date(new Date(`${today}T00:00:00Z`).getTime() + 7 * 86400000).toISOString().slice(0, 10) : "";
-  const [loading, setLoading] = useState(true);
-  const [types, setTypes] = useState<Record<Module, Record<string, string>>>({ finance: {}, hr: {}, recruitment: {}, sales: {}, settings: {} });
-  const [policies, setPolicies] = useState<Policy[]>([]);
-  const [defaults, setDefaults] = useState<DefaultRoute[]>([]);
-  const [delegations, setDelegations] = useState<Delegation[]>([]);
-  const [users, setUsers] = useState<AccessUser[]>([]);
-  const emptySteps = (module: Module): PolicyStep[] => module === "settings"
-    ? [{ stepOrder: 1, stepName: "경영 책임자 승인", approverRole: "SUPER_ADMIN", approverEmployeeId: "" }]
-    : [{ stepOrder: 1, stepName: `${moduleLabels[module]} 검토`, approverRole: moduleRoles[module][0], approverEmployeeId: "" }, { stepOrder: 2, stepName: "대표 승인", approverRole: "SUPER_ADMIN", approverEmployeeId: "" }];
-  const [policyDraft, setPolicyDraft] = useState({ id: "", module: "finance" as Module, requestType: "EXPENSE", name: "", minAmount: "0", maxAmount: "", priority: "0", steps: emptySteps("finance") });
-  const [delegationDraft, setDelegationDraft] = useState({ delegatorEmployeeId: "", delegateEmployeeId: "", module: "all", startsOn: today, endsOn: nextWeek, reason: "" });
-  const employeeName = (id: string) => employees.find((employee) => employee.id === id)?.name ?? id;
-  const formatAmount = (value: number | null) => value === null ? "제한 없음" : `${new Intl.NumberFormat("ko-KR").format(value)}원`;
-
-  const loadSettings = useCallback(() => {
-    return fetch("/api/approval-settings", { cache: "no-store" }).then(async response => {
-      const payload = await response.json() as { policies?: Policy[]; defaults?: DefaultRoute[]; delegations?: Delegation[]; users?: AccessUser[]; types?: Record<Module, Record<string, string>>; error?: string };
-      if (!response.ok) throw new Error(payload.error || "전자결재 설정을 불러오지 못했습니다.");
-      setPolicies(payload.policies ?? []); setDefaults(payload.defaults ?? []); setDelegations(payload.delegations ?? []); setUsers(payload.users ?? []);
-      if (payload.types) setTypes(payload.types);
-    }).catch(error => { onNotify(error instanceof Error ? error.message : "전자결재 설정을 불러오지 못했습니다."); })
-      .finally(() => setLoading(false));
-  }, [onNotify, setPolicies, setDefaults, setDelegations, setUsers, setTypes, setLoading]);
-
-  useEffect(() => { void loadSettings(); }, [loadSettings]);
-
-  function changePolicyModule(module: Module) {
-    setPolicyDraft({ id: "", module, requestType: Object.keys(types[module])[0] ?? "", name: "", minAmount: "0", maxAmount: "", priority: "0", steps: emptySteps(module) });
-  }
-
-  async function savePolicy(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const response = await fetch("/api/approval-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource: "policy", ...policyDraft }) });
-    const payload = await response.json() as { error?: string };
-    if (!response.ok) { onNotify(payload.error || "결재 규칙을 저장하지 못했습니다."); return; }
-    onNotify(policyDraft.id ? "결재 규칙을 수정했습니다." : "결재 규칙을 추가했습니다.");
-    changePolicyModule(policyDraft.module); await loadSettings();
-  }
-
-  function editPolicy(policy: Policy) {
-    setPolicyDraft({ id: policy.id, module: policy.module, requestType: policy.requestType, name: policy.name, minAmount: String(policy.minAmount), maxAmount: policy.maxAmount === null ? "" : String(policy.maxAmount), priority: String(policy.priority), steps: policy.steps });
-  }
-
-  async function disableSetting(resource: "policy" | "delegation", id: string) {
-    const response = await fetch("/api/approval-settings", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource, id, reason: "관리자 설정 변경" }) });
-    const payload = await response.json() as { error?: string };
-    if (!response.ok) { onNotify(payload.error || "설정을 비활성화하지 못했습니다."); return; }
-    onNotify(resource === "policy" ? "결재 규칙을 비활성화했습니다." : "대결 설정을 종료했습니다."); await loadSettings();
-  }
-
-  async function saveDelegation(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const response = await fetch("/api/approval-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ resource: "delegation", ...delegationDraft }) });
-    const payload = await response.json() as { error?: string };
-    if (!response.ok) { onNotify(payload.error || "대결 설정을 저장하지 못했습니다."); return; }
-    onNotify("대결 기간을 등록했습니다. 새로 제출되는 결재부터 적용됩니다.");
-    setDelegationDraft({ delegatorEmployeeId: "", delegateEmployeeId: "", module: "all", startsOn: today, endsOn: nextWeek, reason: "" }); await loadSettings();
-  }
-
-  const updateStep = (index: number, change: Partial<PolicyStep>) => setPolicyDraft((current) => ({ ...current, steps: current.steps.map((step, stepIndex) => stepIndex === index ? { ...step, ...change } : step) }));
-  return <div className="approval-settings">
-    <div className="approval-settings-intro"><strong>결재 규칙은 제출 시점에 확정됩니다.</strong><span>금액 구간에 맞는 사용자 정의 규칙이 없으면 안전한 기본 결재선을 사용합니다. 1단계 규칙은 전결로 처리됩니다.</span></div>
-    <section className="approval-setting-block"><div className="approval-setting-heading"><div><h3>금액·유형별 결재 규칙</h3><span>겹치지 않는 금액 구간으로 최대 3단계까지 설정합니다.</span></div></div>
-      <form className="approval-policy-form" onSubmit={savePolicy}>
-        <label><span>업무 영역</span><select value={policyDraft.module} onChange={(event) => changePolicyModule(event.target.value as Module)}>{Object.entries(moduleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label><span>결재 유형</span><select value={policyDraft.requestType} onChange={(event) => setPolicyDraft({ ...policyDraft, requestType: event.target.value })}>{Object.entries(types[policyDraft.module]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label><span>규칙명</span><input required value={policyDraft.name} onChange={(event) => setPolicyDraft({ ...policyDraft, name: event.target.value })} placeholder="예: 소액 견적 전결" /></label>
-        <label><span>최소 금액</span><input type="number" min="0" required value={policyDraft.minAmount} onChange={(event) => setPolicyDraft({ ...policyDraft, minAmount: event.target.value })} /></label>
-        <label><span>최대 금액</span><input type="number" min="0" value={policyDraft.maxAmount} onChange={(event) => setPolicyDraft({ ...policyDraft, maxAmount: event.target.value })} placeholder="비우면 제한 없음" /></label>
-        <label><span>우선순위</span><input type="number" min="0" max="999" value={policyDraft.priority} onChange={(event) => setPolicyDraft({ ...policyDraft, priority: event.target.value })} /></label>
-        <div className="approval-policy-steps"><span>결재 단계</span>{policyDraft.steps.map((step, index) => <div key={step.stepOrder}><b>{index + 1}</b><input aria-label={`${index + 1}단계 명칭`} required value={step.stepName} onChange={(event) => updateStep(index, { stepName: event.target.value })} /><select aria-label={`${index + 1}단계 역할`} value={step.approverRole} onChange={(event) => updateStep(index, { approverRole: event.target.value as Role, approverEmployeeId: "" })}>{moduleRoles[policyDraft.module].map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select><select aria-label={`${index + 1}단계 지정 결재자`} value={step.approverEmployeeId} onChange={(event) => updateStep(index, { approverEmployeeId: event.target.value })}><option value="">역할로 자동 배정</option>{users.filter((user) => user.roles.includes(step.approverRole) || user.roles.includes("SUPER_ADMIN")).map((user) => <option key={user.employeeId} value={user.employeeId}>{employeeName(user.employeeId)}</option>)}</select>{policyDraft.steps.length > 1 && <button type="button" onClick={() => setPolicyDraft((current) => ({ ...current, steps: current.steps.filter((_, stepIndex) => stepIndex !== index).map((item, stepIndex) => ({ ...item, stepOrder: stepIndex + 1 })) }))}>삭제</button>}</div>)}{policyDraft.steps.length < 3 && <button type="button" className="approval-add-step" onClick={() => setPolicyDraft((current) => ({ ...current, steps: [...current.steps, { stepOrder: current.steps.length + 1, stepName: "추가 승인", approverRole: "SUPER_ADMIN", approverEmployeeId: "" }] }))}>＋ 단계 추가</button>}</div>
-        <div className="approval-policy-actions">{policyDraft.id && <button type="button" onClick={() => changePolicyModule(policyDraft.module)}>수정 취소</button>}<button type="submit">{policyDraft.id ? "규칙 수정" : "규칙 추가"}</button></div>
-      </form>
-      <div className="approval-policy-list">{loading ? <p>불러오는 중입니다.</p> : policies.length ? policies.map((policy) => <article key={policy.id}><div><span>{moduleLabels[policy.module]} · {types[policy.module]?.[policy.requestType] ?? policy.requestType}</span><strong>{policy.name}</strong><small>{formatAmount(policy.minAmount)} ~ {formatAmount(policy.maxAmount)} · {policy.steps.length === 1 ? "전결" : `${policy.steps.length}단계`}</small></div><ol>{policy.steps.map((step) => <li key={step.stepOrder}>{step.stepName} · {step.approverEmployeeId ? employeeName(step.approverEmployeeId) : roleLabels[step.approverRole]}</li>)}</ol><div><button type="button" onClick={() => editPolicy(policy)}>수정</button><button type="button" onClick={() => void disableSetting("policy", policy.id)}>비활성화</button></div></article>) : <div className="approval-default-list"><strong>현재 사용자 정의 규칙 없음</strong><span>아래 기본 결재선이 적용됩니다.</span>{defaults.slice(0, 8).map((route) => <small key={`${route.module}:${route.requestType}`}>{moduleLabels[route.module]} · {route.label}: {route.steps.map((step) => step.stepName).join(" → ")}</small>)}</div>}</div>
-    </section>
-    <section className="approval-setting-block"><div className="approval-setting-heading"><div><h3>대결 설정</h3><span>휴가·출장 등 부재기간의 새 결재를 지정 사용자에게 배정합니다.</span></div></div>
-      <form className="approval-delegation-form" onSubmit={saveDelegation}>
-        <label><span>원 결재자</span><select required value={delegationDraft.delegatorEmployeeId} onChange={(event) => setDelegationDraft({ ...delegationDraft, delegatorEmployeeId: event.target.value })}><option value="">선택</option>{users.map((user) => <option key={user.employeeId} value={user.employeeId}>{employeeName(user.employeeId)}</option>)}</select></label>
-        <label><span>대결자</span><select required value={delegationDraft.delegateEmployeeId} onChange={(event) => setDelegationDraft({ ...delegationDraft, delegateEmployeeId: event.target.value })}><option value="">선택</option>{users.filter((user) => user.employeeId !== delegationDraft.delegatorEmployeeId).map((user) => <option key={user.employeeId} value={user.employeeId}>{employeeName(user.employeeId)}</option>)}</select></label>
-        <label><span>업무 범위</span><select value={delegationDraft.module} onChange={(event) => setDelegationDraft({ ...delegationDraft, module: event.target.value })}><option value="all">전체</option>{Object.entries(moduleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label><span>시작일</span><input required type="date" value={delegationDraft.startsOn} onChange={(event) => setDelegationDraft({ ...delegationDraft, startsOn: event.target.value })} /></label>
-        <label><span>종료일</span><input required type="date" value={delegationDraft.endsOn} onChange={(event) => setDelegationDraft({ ...delegationDraft, endsOn: event.target.value })} /></label>
-        <label className="wide"><span>대결 사유</span><input required value={delegationDraft.reason} onChange={(event) => setDelegationDraft({ ...delegationDraft, reason: event.target.value })} placeholder="부재 사유와 적용 범위를 기록하세요" /></label>
-        <button type="submit" disabled={users.length < 2}>대결 등록</button>
-      </form>
-      {users.length < 2 && <p className="approval-setting-warning">대결을 사용하려면 사용자·권한에서 ERP 사용자를 한 명 이상 추가해야 합니다.</p>}
-      <div className="approval-delegation-list">{delegations.map((delegation) => <article key={delegation.id}><span>{employeeName(delegation.delegatorEmployeeId)} → {employeeName(delegation.delegateEmployeeId)}</span><strong>{delegation.module === "all" ? "전체 업무" : moduleLabels[delegation.module as Module]} · {delegation.startsOn}~{delegation.endsOn}</strong><small>{delegation.reason}</small><button type="button" onClick={() => void disableSetting("delegation", delegation.id)}>종료</button></article>)}{!loading && !delegations.length && <p>현재 활성 대결 설정이 없습니다.</p>}</div>
-    </section>
   </div>;
 }
 

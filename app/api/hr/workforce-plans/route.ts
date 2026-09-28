@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
-import { createApprovalRequest } from "../../../approval-engine";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { LEGACY_PENDING, approveWorkforcePlanStatements, changedRows, hrConflictResponse } from "../../../hr-transitions";
 import { companyEmployees, companyOrganizations } from "../../../hr-company-data";
 
 type Bindings = { DB: D1Database };
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     const assumptions = String(body.assumptions ?? "").trim().slice(0, 3000);
     if (!validPeriod(period) || !title) return Response.json({ error: "계획 반기와 제목을 확인해 주세요." }, { status: 400 });
     const active = await db.prepare("SELECT id FROM hr_workforce_plans WHERE period = ? AND status IN ('DRAFT','SUBMITTED') LIMIT 1").bind(period).first();
-    if (active) return Response.json({ error: "같은 반기에 작성 또는 결재 중인 계획이 있습니다." }, { status: 409 });
+    if (active) return Response.json({ error: "같은 반기에 작성 중인 계획이 있습니다." }, { status: 409 });
     const latest = await db.prepare("SELECT COALESCE(MAX(version), 0) AS version FROM hr_workforce_plans WHERE period = ?").bind(period).first<{ version: number }>();
     const id = crypto.randomUUID();
     const version = (latest?.version ?? 0) + 1;
@@ -222,29 +222,19 @@ export async function POST(request: Request) {
     return Response.json({ saved: true });
   }
 
+  // UI 가 보내는 이름은 그대로 SUBMIT_PLAN 이지만, 결재 없이 곧바로 승인·확정한다(Design §12.2 흐름 6).
+  // 결재 시절에 SUBMITTED 로 남은 계획도 같은 버튼으로 확정할 수 있다.
   if (action === "SUBMIT_PLAN") {
-    if (plan.status !== "DRAFT") return Response.json({ error: "작성 중인 계획만 결재를 제출할 수 있습니다." }, { status: 409 });
-    if (plan.assumptions.trim().length < 10) return Response.json({ error: "계획 가정과 기준을 10자 이상 저장한 뒤 제출해 주세요." }, { status: 409 });
+    if (plan.status !== "DRAFT" && plan.status !== LEGACY_PENDING.workforcePlan) return Response.json({ error: "작성 중인 계획만 승인·확정할 수 있습니다." }, { status: 409 });
+    if (plan.assumptions.trim().length < 10) return Response.json({ error: "계획 가정과 기준을 10자 이상 저장한 뒤 승인·확정해 주세요." }, { status: 409 });
     const organizations = await organizationSnapshot();
     const lineCount = await db.prepare("SELECT COUNT(*) AS count FROM hr_workforce_plan_lines WHERE plan_id = ?").bind(planId).first<{ count: number }>();
-    if ((lineCount?.count ?? 0) !== organizations.length) return Response.json({ error: "현재 모든 조직의 정원을 저장한 뒤 제출해 주세요." }, { status: 409 });
+    if ((lineCount?.count ?? 0) !== organizations.length) return Response.json({ error: "현재 모든 조직의 정원을 저장한 뒤 승인·확정해 주세요." }, { status: 409 });
     const summary = (await responseState(planId)).summary;
-    const updated = await db.prepare("UPDATE hr_workforce_plans SET status = 'SUBMITTED', submitted_at = ?, updated_at = ? WHERE id = ? AND status = 'DRAFT'")
-      .bind(now, now, planId).run();
-    if (updated.meta.changes !== 1) return Response.json({ error: "다른 사용자가 계획 상태를 먼저 변경했습니다." }, { status: 409 });
-    try {
-      const approval = await createApprovalRequest(db, authorization.principal, {
-        module: "hr", requestType: "WORKFORCE_PLAN", title: `${plan.period} ${plan.title} v${plan.version} 승인`,
-        description: `승인 정원 ${summary.approved}명 · 현재 ${summary.current}명 · 입사 예정 ${summary.incoming}명 · 충원 필요 ${summary.gap}명`,
-        targetEntityType: "HR_WORKFORCE_PLAN", targetEntityId: planId,
-        metadata: { period: plan.period, version: plan.version, summary },
-      });
-      await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "WORKFORCE_PLAN_SUBMITTED", entityType: "hrWorkforcePlan", entityId: planId, before: planView(plan), after: { approvalId: approval.id, summary } });
-      return Response.json({ submitted: true, approvalId: approval.id }, { status: 202 });
-    } catch (error) {
-      await db.prepare("UPDATE hr_workforce_plans SET status = 'DRAFT', submitted_at = NULL, updated_at = ? WHERE id = ? AND status = 'SUBMITTED'").bind(Date.now(), planId).run();
-      return Response.json({ error: error instanceof Error ? error.message : "인력계획 결재선을 만들지 못했습니다." }, { status: 409 });
-    }
+    const result = await db.batch(approveWorkforcePlanStatements(db, { planId, actorEmployeeId: authorization.principal.employeeId, now }));
+    if (changedRows(result, 1) !== 1) return hrConflictResponse();
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "WORKFORCE_PLAN_APPROVED", entityType: "hrWorkforcePlan", entityId: planId, before: planView(plan), after: { status: "APPROVED", supersededPlans: changedRows(result, 0), summary } });
+    return Response.json({ approved: true, status: "APPROVED" });
   }
 
   if (action === "CREATE_REVISION") {
@@ -252,7 +242,7 @@ export async function POST(request: Request) {
     const reason = String(body.reason ?? "").trim().slice(0, 1000);
     if (reason.length < 5) return Response.json({ error: "개정 사유를 5자 이상 입력해 주세요." }, { status: 400 });
     const active = await db.prepare("SELECT id FROM hr_workforce_plans WHERE period = ? AND status IN ('DRAFT','SUBMITTED') LIMIT 1").bind(plan.period).first();
-    if (active) return Response.json({ error: "같은 반기에 작성 또는 결재 중인 개정본이 있습니다." }, { status: 409 });
+    if (active) return Response.json({ error: "같은 반기에 작성 중인 개정본이 있습니다." }, { status: 409 });
     const latest = await db.prepare("SELECT COALESCE(MAX(version), 0) AS version FROM hr_workforce_plans WHERE period = ?").bind(plan.period).first<{ version: number }>();
     const id = crypto.randomUUID(); const version = (latest?.version ?? plan.version) + 1;
     await db.batch([

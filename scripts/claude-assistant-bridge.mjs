@@ -26,7 +26,7 @@ const EFFORT = process.env.XD_NODE_CLAUDE_EFFORT || "medium";
 // 정상 호출은 ERP 서버(/api/assistant)가 이 PC 안에서 하는 서버 대 서버 요청이라 Origin 이 없다.
 // Origin 이 붙은 요청은 브라우저가 직접 부른 것이므로 권한 검사를 건너뛰지 못하게 거부한다.
 const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
-const ALLOWED_MODULES = new Set(["hr", "compensation", "sales"]);
+const ALLOWED_MODULES = new Set(["hr", "compensation", "incentive"]);
 const MAX_REQUEST_BYTES = 256 * 1024;
 const MAX_QUESTION_LENGTH = 2000;
 const MAX_CONTEXT_BYTES = 192 * 1024;

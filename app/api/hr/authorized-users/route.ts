@@ -6,7 +6,8 @@ import type { ErpRole } from "../../../erp-platform";
 type Bindings = { DB: D1Database };
 const db = (env as unknown as Bindings).DB;
 const currentAdministratorId = "gc.kim";
-const allowedRoles = new Set<ErpRole>(["SUPER_ADMIN", "FINANCE_ADMIN", "HR_ADMIN", "RECRUITER", "SALES_ADMIN", "VIEWER"]);
+// 재무·영업 관리자 역할은 두 모듈과 함께 없어졌다(D2). 라우트 자체는 R3에 계정 관리로 대체된다.
+const allowedRoles = new Set<ErpRole>(["SUPER_ADMIN", "HR_ADMIN", "RECRUITER", "VIEWER"]);
 
 type AccessRow = {
   employee_id: string;

@@ -7,18 +7,27 @@ import { DatabaseSync } from 'node:sqlite';
 import ts from 'typescript';
 
 let sqlite;
-const runtime = { env: {}, headers: new Headers(), beforeBatch: null };
+const runtime = { env: {}, headers: new Headers(), beforeBatch: null, forbiddenTables: null };
 globalThis.__hrApiTestRuntime = runtime;
+// forbidTableAccess(/pattern/) makes every read or write that names a matching table fail the way a
+// fresh D1 database without those tables would ('no such table'). Schema bootstrap statements
+// (CREATE / PRAGMA / the erp_approval_steps ALTER in ensureErpPlatformSchema) are still allowed, so
+// a test can prove a route path no longer touches approval or finance tables at all.
+const guard = sql => {
+  if (!runtime.forbiddenTables || !runtime.forbiddenTables.test(sql)) return;
+  if (/^\s*(CREATE|PRAGMA)\b/i.test(sql) || /^\s*ALTER TABLE erp_approval_steps\b/i.test(sql)) return;
+  throw new Error(`no such table (forbidden in this test): ${sql.trim().slice(0, 120)}`);
+};
 const db = {
   prepare(sql) {
     let args = [];
     const statement = {
       sql,
       bind(...values) { args = values; return statement; },
-      async all() { return { results: sqlite.prepare(sql).all(...args), success: true }; },
-      async first(column) { const row = sqlite.prepare(sql).get(...args); return column ? row?.[column] ?? null : row ?? null; },
+      async all() { guard(sql); return { results: sqlite.prepare(sql).all(...args), success: true }; },
+      async first(column) { guard(sql); const row = sqlite.prepare(sql).get(...args); return column ? row?.[column] ?? null : row ?? null; },
       async run() { return statement.execute(); },
-      execute() { const result = sqlite.prepare(sql).run(...args); return { success: true, meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } }; },
+      execute() { guard(sql); const result = sqlite.prepare(sql).run(...args); return { success: true, meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } }; },
     };
     return statement;
   },
@@ -75,6 +84,7 @@ export async function resetDatabase({ migrate = false } = {}) {
   sqlite?.close();
   sqlite = new DatabaseSync(':memory:');
   runtime.beforeBatch = null;
+  runtime.forbiddenTables = null;
   objects.clear();
   for (const key of Object.keys(runtime.env)) if (!['DB', 'HR_AUDIO'].includes(key)) delete runtime.env[key];
   if (migrate) {
@@ -95,13 +105,22 @@ export function setIdentity(roles = ['SUPER_ADMIN']) {
   if (sqlite && roles) sqlite.prepare('UPDATE erp_user_access SET roles_json=? WHERE employee_id=?').run(JSON.stringify(roles), administrator.id);
 }
 export function beforeBatch(callback) { runtime.beforeBatch = callback; }
-export async function callApi(path, method = 'GET', body, query = '') {
+export function forbidTableAccess(pattern) { runtime.forbiddenTables = pattern ?? null; }
+/**
+ * Calls a real route handler. `options.rawBody` sends an unparsed body (with `options.contentType`) so a
+ * test can prove authorization happens before the body is read. JSON responses are parsed; anything else
+ * (e.g. the plain-text document 404) comes back as text.
+ */
+export async function callApi(path, method = 'GET', body, query = '', options = {}) {
   const route = await import(`../../app/api/${path}/route.ts`);
-  const request = new Request(`http://audit.invalid/api/${path}${query}`, {
-    method, ...(body instanceof FormData ? { body } : body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {}),
-  });
+  const init = options.rawBody !== undefined
+    ? { headers: { 'Content-Type': options.contentType ?? 'application/json' }, body: options.rawBody }
+    : body instanceof FormData ? { body } : body !== undefined ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : {};
+  const request = new Request(`http://audit.invalid/api/${path}${query}`, { method, ...init });
   const response = await route[method](request);
-  return { status: response.status, body: response.status === 204 ? null : await response.json() };
+  if (response.status === 204) return { status: response.status, body: null };
+  const isJson = (response.headers.get('content-type') ?? '').includes('json');
+  return { status: response.status, body: isJson ? await response.json() : await response.text() };
 }
 export const callRoute = (name, ...args) => callApi(`hr/${name}`, ...args);
 export { db, objects };

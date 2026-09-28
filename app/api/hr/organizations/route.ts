@@ -1,7 +1,6 @@
 import { env } from "cloudflare:workers";
 import { companyOrganizations } from "../../../hr-company-data";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
-import { MasterImpactError, prepareMasterImpactConsumption, validateMasterImpactAssessment } from "../../../master-impact";
 
 type OrganizationRow = {
   organization_id: string;
@@ -73,7 +72,6 @@ export async function PUT(request: Request) {
     ? body.description.trim()
     : "조직 설명 미입력";
   const clientPreviousName = typeof body.previousName === "string" ? body.previousName.trim() : "";
-  const impactAssessmentId = typeof body.impactAssessmentId === "string" ? body.impactAssessmentId.trim() : "";
 
   if (!organizationId || !name) {
     return Response.json({ error: "조직 ID와 조직명이 필요합니다." }, { status: 400 });
@@ -90,9 +88,6 @@ export async function PUT(request: Request) {
     FROM hr_organization_records WHERE organization_id = ?`).bind(organizationId).first<OrganizationRow>();
   const baseOrganization = companyOrganizations.find((organization) => organization.id === organizationId);
   const previousName = existing?.name ?? baseOrganization?.name ?? clientPreviousName;
-  if (!impactAssessmentId) return Response.json({ error: "최신 연결 원장 영향도 확인이 필요합니다." }, { status: 409 });
-  try { await validateMasterImpactAssessment(db, impactAssessmentId, "HR_ORGANIZATION", organizationId, "UPDATE"); }
-  catch (error) { if (error instanceof MasterImpactError) return Response.json({ error: error.message }, { status: error.status }); throw error; }
   const updatedAt = Date.now();
 
   const statements = [
@@ -110,7 +105,6 @@ export async function PUT(request: Request) {
     statements.push(db.prepare("UPDATE hr_payroll_records SET department = ? WHERE department = ?").bind(name, previousName));
     statements.push(db.prepare("UPDATE hr_compensation_lines SET snapshot_json = json_set(snapshot_json, '$.department', ?), updated_at = ? WHERE json_valid(snapshot_json) = 1 AND json_extract(snapshot_json, '$.department') = ?").bind(name, updatedAt, previousName));
   }
-  statements.push(prepareMasterImpactConsumption(db, impactAssessmentId, authorization.principal, "HR_ORGANIZATION", organizationId));
   await db.batch(statements);
 
   const after = toOrganization({

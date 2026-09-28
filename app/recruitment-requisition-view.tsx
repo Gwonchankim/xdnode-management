@@ -23,7 +23,8 @@ type Payload = {
 };
 
 const labels: Record<string, string> = {
-  DRAFT: "작성 중", SUBMITTED: "결재 중", OPEN: "모집 중", REJECTED: "반려",
+  // SUBMITTED 는 전자결재 시절에 제출돼 남은 요청이다. 결재가 없어져 '모집 시작'으로 바로 연다.
+  DRAFT: "작성 중", SUBMITTED: "모집 대기", OPEN: "모집 중", REJECTED: "반려",
   FILLED: "충원 완료", CLOSED: "조기 마감", CANCELLED: "취소",
 };
 
@@ -72,11 +73,10 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "CREATE_DRAFT", ...draft }),
       });
-      const payload = await response.json() as { error?: string; autoApproved?: boolean; submitError?: string };
+      const payload = await response.json() as { error?: string; opened?: boolean; openError?: string };
       if (!response.ok) throw new Error(payload.error || "채용요청을 저장하지 못했습니다.");
-      onNotify(payload.autoApproved ? "채용요청을 등록하고 승인까지 마쳤습니다. 바로 모집 중입니다."
-        : payload.submitError ? `채용요청을 등록했지만 자동 승인에 실패했습니다: ${payload.submitError}`
-        : "채용요청을 등록했습니다. 내용을 확인한 뒤 결재를 제출해 주세요.");
+      onNotify(payload.opened ? "채용요청을 등록했습니다. 바로 모집 중입니다."
+        : `채용요청을 등록했지만 모집을 시작하지 못했습니다: ${payload.openError || "인원을 확인해 주세요."} 확인한 뒤 '모집 시작'을 눌러 주세요.`);
       setFormOpen(false);
       setDraft(emptyDraft);
       await load();
@@ -98,17 +98,17 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
     // Deletion removes the row outright rather than moving it to a closed state, so it gets its own
     // confirmation before the reason prompt that the other actions share.
     if (name === "DELETE" && !(await dialog.confirm(`'${title}' 채용요청을 원장에서 삭제합니다.
-되돌릴 수 없으며, 진행 중인 결재가 있으면 함께 취소됩니다.`, { title: "채용요청 삭제", confirmLabel: "삭제", danger: true }))) return;
+되돌릴 수 없습니다.`, { title: "채용요청 삭제", confirmLabel: "삭제", danger: true }))) return;
     const reason = name === "SUBMIT" ? "" : (await dialog.prompt(reasonPrompts[name], { title: reasonTitles[name], minLength: 5, multiline: true })) ?? "";
     if (name !== "SUBMIT" && reason.length < 5) return;
     const response = await fetch("/api/hr/recruitment-requisitions", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: name, id, reason }),
     });
-    const payload = await response.json() as { error?: string; autoApproved?: boolean; cancelledApproval?: boolean };
+    const payload = await response.json() as { error?: string };
     if (!response.ok) { onNotify(payload.error || "채용요청 상태를 변경하지 못했습니다."); return; }
-    onNotify(name === "SUBMIT" ? (payload.autoApproved ? "요청자와 승인자가 같아 자동 승인되었습니다. 바로 모집 중입니다." : "채용요청 결재를 제출했습니다.")
+    onNotify(name === "SUBMIT" ? "모집을 시작했습니다."
       : name === "CLOSE" ? "채용요청을 사유와 함께 마감했습니다."
-      : name === "DELETE" ? (payload.cancelledApproval ? "채용요청을 삭제하고 진행 중이던 결재도 취소했습니다." : "채용요청을 삭제했습니다.")
+      : name === "DELETE" ? "채용요청을 삭제했습니다."
       : "채용요청을 취소했습니다.");
     try { await load(); } catch (error) { onNotify(error instanceof Error ? error.message : "목록을 새로고침하지 못했습니다."); }
   }
@@ -121,7 +121,7 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
   return <div className="page-wrap module-page requisition-page">
     <section className="module-hero"><div data-korean-heading><h1>채용요청·TO 관리</h1><p>필요한 팀과 포지션을 직접 등록하고, 지원자와 입사 확정까지 하나의 흐름으로 관리합니다.</p></div><div className="requisition-hero-actions"><span className="requisition-plan-badge">{data?.plan ? `${data.plan.period} · v${data.plan.version} 승인본` : "승인 인력계획 없음"}</span><button type="button" className="primary-button" onClick={openForm} disabled={loading}>+ 채용요청 등록</button></div></section>
     <section className="metric-grid module-metrics">{[
-      ["계획 충원 필요", `${summary.planGap}명`, "승인 인력계획 기준"], ["진행 중 요청", `${summary.reserved}명`, "작성·결재·모집 중"],
+      ["계획 충원 필요", `${summary.planGap}명`, "승인 인력계획 기준"], ["진행 중 요청", `${summary.reserved}명`, "작성·모집 중"],
       ["계획 대비 여유", `${summary.available}명`, "인력계획이 있는 팀"], ["입사 확정", `${summary.filled}명`, "제안 수락 기준"],
     ].map(([label, value, note], index) => <div className="compact-metric" key={label}><span className={`metric-accent ${["navy", "orange", "blue", "green"][index]}`}></span><p>{label}</p><h2>{value}</h2><small>{note}</small></div>)}</section>
 
@@ -130,7 +130,7 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
       <div className="data-table-wrap"><table className="data-table"><thead><tr><th>팀·포지션</th><th>요청/확정/잔여</th><th>지원자</th><th>담당자</th><th>목표일</th><th>상태</th><th>처리</th></tr></thead><tbody>
         {loading ? <tr><td colSpan={7} className="empty-cell">채용요청을 불러오는 중입니다.</td></tr> : data?.requisitions.length ? data.requisitions.map((item) => <tr key={item.id}>
           <td><strong>{item.title}</strong><small>{item.organizationName} · {item.role}</small></td><td>{item.requestedHeadcount} / {item.filledHeadcount} / <b>{item.remainingHeadcount}</b></td><td>{item.applicantCount}명</td><td>{item.ownerName || "미지정"}</td><td>{item.targetStartDate}</td><td><span className={`requisition-status ${item.status.toLowerCase()}`}>{labels[item.status] ?? item.status}</span></td>
-          <td><div className="row-actions">{item.status === "DRAFT" && <><button type="button" className="interview-action" onClick={() => void action(item.id, "SUBMIT")}>결재 제출</button><button type="button" className="reject-action" onClick={() => void action(item.id, "CANCEL")}>취소</button></>}{item.status === "OPEN" && <button type="button" className="reject-action" onClick={() => void action(item.id, "CLOSE")}>조기 마감</button>}{!["DRAFT", "OPEN"].includes(item.status) && <span>{item.closeReason || "자동 처리"}</span>}<button type="button" className="delete-action" onClick={() => void action(item.id, "DELETE", item.title)}>삭제</button></div></td>
+          <td><div className="row-actions">{item.status === "DRAFT" && <><button type="button" className="interview-action" onClick={() => void action(item.id, "SUBMIT")}>모집 시작</button><button type="button" className="reject-action" onClick={() => void action(item.id, "CANCEL")}>취소</button></>}{item.status === "SUBMITTED" && <button type="button" className="interview-action" onClick={() => void action(item.id, "SUBMIT")}>모집 시작</button>}{item.status === "OPEN" && <button type="button" className="reject-action" onClick={() => void action(item.id, "CLOSE")}>조기 마감</button>}{!["DRAFT", "SUBMITTED", "OPEN"].includes(item.status) && <span>{item.closeReason || "자동 처리"}</span>}<button type="button" className="delete-action" onClick={() => void action(item.id, "DELETE", item.title)}>삭제</button></div></td>
         </tr>) : <tr><td colSpan={7} className="empty-cell">등록된 채용요청이 없습니다. 상단의 채용요청 등록 버튼으로 추가하세요.</td></tr>}
       </tbody></table></div>
     </section>
@@ -150,7 +150,7 @@ export default function RecruitmentRequisitionView({ onNotify }: { onNotify: (me
             <option value="">나중에 지정</option>
             {(data?.recruiters ?? []).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.department}</option>)}
           </select></label>
-          <label className="wide"><span>충원 사유와 기대 역할</span><textarea value={draft.reason} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} placeholder="이 인원이 맡을 역할이나 충원이 필요한 배경을 남겨두면 결재와 이후 채용에 참고됩니다." /></label>
+          <label className="wide"><span>충원 사유와 기대 역할</span><textarea value={draft.reason} onChange={(event) => setDraft({ ...draft, reason: event.target.value })} placeholder="이 인원이 맡을 역할이나 충원이 필요한 배경을 남겨두면 이후 채용에 참고됩니다." /></label>
         </div>
         {selectedTeam && <p className="requisition-form-hint">{teamLine
           ? `${selectedTeam.name}은 승인 인력계획상 ${teamLine.hiringGap}명 부족, 진행 중 요청 ${teamLine.reservedHeadcount}명입니다.`
