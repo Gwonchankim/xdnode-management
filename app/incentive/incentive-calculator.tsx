@@ -4,7 +4,6 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import readXlsxFile from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
-import { companyEmployees } from "../hr-company-data";
 import styles from "./incentive.module.css";
 
 type DealKind = "일반" | "인바운드" | "단독 RAM" | "케이블" | "온라인";
@@ -101,17 +100,10 @@ function inferKind(value: unknown, person: unknown, item: unknown): DealKind {
   return "일반";
 }
 
-// The HR module treats the static company roster as the base and layers DB rows on top
-// (see initialEmployees in hr-workspace.tsx). hr_employee_records only holds people who have been
-// explicitly edited or imported, so reading that table alone hides most of the company — including
-// every salesperson — which would leave their incentive rows permanently stuck on "확인필요"
-// with no assignable option in the dropdown.
-const COMPANY_EMPLOYEE_OPTIONS: EmployeeOption[] = companyEmployees.map((employee) => ({
-  id: employee.id, name: employee.name, department: employee.department, status: employee.status,
-}));
-
+// 담당자 목록은 /api/hr/employee-records 에서만 받는다. 이 라우트가 회사 명부를 hr_employee_records 에
+// 시드·병합해 주므로 정적 명부를 번들에 넣을 필요가 없다(R1 M1-3, Design §7.9: 클라이언트 번들 실데이터 0건).
 function mergeEmployeeOptions(records: Array<{ employeeId: string; name: string; department: string; status: string }>) {
-  const merged = new Map(COMPANY_EMPLOYEE_OPTIONS.map((employee) => [employee.id, employee]));
+  const merged = new Map<string, EmployeeOption>();
   for (const record of records) {
     if (!record.employeeId) continue;
     merged.set(record.employeeId, { id: record.employeeId, name: record.name, department: record.department, status: record.status });
@@ -324,18 +316,26 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
   const [dashboardPerson, setDashboardPerson] = useState("");
   const [dealFilterPerson, setDealFilterPerson] = useState("");
   const [excludedPeople, setExcludedPeople] = useState<string[]>([]);
-  const [employees, setEmployees] = useState<EmployeeOption[]>(COMPANY_EMPLOYEE_OPTIONS);
+  const [employees, setEmployees] = useState<EmployeeOption[]>([]);
+  const [employeesError, setEmployeesError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let cancelled = false;
     fetch("/api/hr/employee-records")
-      .then((response) => response.json())
-      .then((data: { records?: Array<{ employeeId: string; name: string; department: string; status: string }> }) => {
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({})) as { records?: Array<{ employeeId: string; name: string; department: string; status: string }>; error?: string };
+        if (!response.ok) throw new Error(data.error || "직원 목록을 불러오지 못했습니다.");
+        return data;
+      })
+      .then((data) => {
         if (cancelled) return;
         setEmployees(mergeEmployeeOptions(data.records ?? []));
+        setEmployeesError("");
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (!cancelled) setEmployeesError(`${error instanceof Error ? error.message : "직원 목록을 불러오지 못했습니다."} 담당자를 지정하려면 새로고침하거나 인사 조회 권한을 확인해 주세요.`);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -509,10 +509,12 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
 
   function loadExample() {
     const idFor = (name: string) => resolvePersonId(name, employees);
+    // 예시 담당자는 불러온 직원 목록에서 고른다. 실명을 코드(브라우저 번들)에 두지 않기 위해서다(Design §7.9).
+    const examplePerson = (index: number) => employees[index]?.name || `예시 직원${"ABC"[index] ?? index + 1}`;
     setDeals([
-      { ...emptyDeal(), person: "김민성", personId: idFor("김민성"), client: "리안시스템", item: "PRO 5000", quantity: 2, unitCost: 8190000, unitSale: 8950000, expense: 12455 },
-      { ...emptyDeal(), person: "김민성", personId: idFor("김민성"), client: "온라인몰", item: "서버 케이블", quantity: 4, unitCost: 110000, unitSale: 150000, expense: 2990, kind: "케이블", excluded: true },
-      { ...emptyDeal(), person: "이세현", personId: idFor("이세현"), client: "대학교 산학협력단", item: "DGX Spark", quantity: 2, unitCost: 6607091, unitSale: 7700000, expense: 0 },
+      { ...emptyDeal(), person: examplePerson(0), personId: idFor(examplePerson(0)), client: "리안시스템", item: "PRO 5000", quantity: 2, unitCost: 8190000, unitSale: 8950000, expense: 12455 },
+      { ...emptyDeal(), person: examplePerson(0), personId: idFor(examplePerson(0)), client: "온라인몰", item: "서버 케이블", quantity: 4, unitCost: 110000, unitSale: 150000, expense: 2990, kind: "케이블", excluded: true },
+      { ...emptyDeal(), person: examplePerson(1), personId: idFor(examplePerson(1)), client: "대학교 산학협력단", item: "DGX Spark", quantity: 2, unitCost: 6607091, unitSale: 7700000, expense: 0 },
     ]);
     setAdjustments([]);
     setMessage("예시 거래를 불러왔습니다. 자유롭게 수정하거나 삭제해 보세요.");
@@ -572,6 +574,7 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
       </header>}
 
       <div className={styles.container}>
+        {employeesError && <div className={styles.notice} role="alert">{employeesError}</div>}
         <section className={styles.hero}>
           <div data-korean-heading><h1>매출을 넣으면<br />지급액까지 한 번에.</h1><span>거래별 초과마진을 계산하고, 제외 매출과 지급 조정을 반영해 개인별 급여 입력액을 만듭니다.</span></div>
           <div className={styles.formula}><small>현재 적용 산식</small><strong>MAX((마진 − 매출×{config.hurdleRate}%) × {config.payoutRate}%, 0)</strong><p>인바운드 · 단독 RAM · 온라인은 기본 제외 · 케이블은 거래별 판단</p></div>

@@ -53,7 +53,8 @@ runtime.env.HR_AUDIO = {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
-    if (['cloudflare:workers', 'next/headers', 'next/navigation'].includes(specifier)) return { url: `hr-test:${specifier}`, shortCircuit: true };
+    // 'server-only' is a virtual module in vinext (@vitejs/plugin-rsc rsc:validate-imports); no package is installed.
+    if (['cloudflare:workers', 'next/headers', 'next/navigation', 'server-only'].includes(specifier)) return { url: `hr-test:${specifier}`, shortCircuit: true };
     if (specifier.startsWith('.') && context.parentURL?.startsWith('file:')) {
       const url = new URL(specifier, context.parentURL);
       if (!existsSync(url) && existsSync(new URL(`${url.href}.ts`))) return nextResolve(`${url.href}.ts`, context);
@@ -62,7 +63,8 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (url.startsWith('hr-test:')) {
-      const source = url.endsWith('cloudflare:workers') ? 'export const env = globalThis.__hrApiTestRuntime.env;'
+      const source = url.endsWith('server-only') ? 'export {};'
+        : url.endsWith('cloudflare:workers') ? 'export const env = globalThis.__hrApiTestRuntime.env;'
         : url.endsWith('next/headers') ? 'export async function headers() { return globalThis.__hrApiTestRuntime.headers; }'
           : 'export function redirect(url) { throw new Error(`Unexpected redirect: ${url}`); }';
       return { format: 'module', source, shortCircuit: true };

@@ -162,6 +162,8 @@ test("master impact blockers become controlled resolution cases with recheck and
     read("app/api/workbench/route.ts"), read("app/master-impact-case-workspace.tsx"), read("app/data-governance-center.tsx"), read("app/page.tsx"), read("db/schema.ts"),
     read("drizzle/0062_master_impact_resolution_queue.sql"), read("docs/master-impact-resolution-queue-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const source of [server, api, schema, migration]) for (const table of ["erp_master_impact_cases", "erp_master_impact_case_events"]) assert.match(source, new RegExp(table));
   assert.match(server, /entry\.severity === "BLOCKER" && entry\.count > 0/);
   assert.match(server, /MASTER_IMPACT_CASE/); assert.match(server, /source_type, source_id/);
@@ -172,7 +174,7 @@ test("master impact blockers become controlled resolution cases with recheck and
   assert.match(workspace, /자동 해결 없음/); assert.match(workspace, /회사 직원만 배정/); assert.match(workspace, /원장 재검증/); assert.match(workspace, /증빙 남기고 종결/);
   assert.match(operations, /before\.source_type === "MASTER_IMPACT_CASE" && status !== before\.status/);
   assert.match(workbench, /row\.source_type !== "MASTER_IMPACT_CASE"/);
-  assert.match(center, /기준정보 영향/); assert.match(page, /destination === "data-control:master-impact"/); assert.match(page, /task\.sourceType !== "MASTER_IMPACT_CASE"/);
+  assert.match(center, /기준정보 영향/);
   assert.match(plan, /`BLOCKER`이면서 연결 건수가 1건 이상/); assert.match(plan, /OPEN → IN_PROGRESS → VERIFIED → CLOSED/);
   assert.match(plan, /자동 해결, 자동 계정 치환, 자동 병합, 자동 종결은 하지 않는다/);
 });
@@ -221,6 +223,8 @@ test("finance assistant answers become traceable decision drafts without bypassi
     read("app/management-report-workspace.tsx"), read("db/schema.ts"),
     read("drizzle/0059_finance_assistant_decision_lineage.sql"), read("docs/finance-assistant-to-decision-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const source of [api, schema, migration]) {
     assert.match(source, /source_assistant_answer_id/);
     assert.match(source, /source_answer_hash/);
@@ -231,10 +235,8 @@ test("finance assistant answers become traceable decision drafts without bypassi
   assert.match(api, /assistant\.evidence_status !== "VERIFIED" && body\.reviewAcknowledged !== true/);
   assert.match(api, /ASSISTANT_ANSWER_PROMOTED/);
   assert.match(migration, /UNIQUE INDEX `idx_finance_management_decision_assistant_source`/);
-  assert.match(page, /경영 안건으로 제안/);
   assert.match(workspace, /AI 근거 안건 제안/);
   assert.match(workspace, /원문 근거/);
-  assert.match(page, /openFinanceAssistantSource/);
   assert.match(workspace, /근거 제한을 확인했습니다/);
   assert.match(plan, /답변 → 안건 초안 → 보고서 제출 → 전자결재 → 안건 확정 → 후속조치/);
 });
@@ -246,6 +248,8 @@ test("daily treasury reports freeze source data, survive AI outages and require 
     read("app/api/operations/route.ts"), read("app/api/finance/close/route.ts"),
     read("docs/finance-daily-treasury-report-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(schema, /financeDailyTreasuryReports/);
   assert.match(migration, /idx_finance_daily_treasury_report_date_version/);
   assert.match(api, /finance_bank_transactions/);
@@ -261,8 +265,6 @@ test("daily treasury reports freeze source data, survive AI outages and require 
   assert.match(api, /WHERE id = \? AND status = 'REVIEWED'/);
   assert.match(view, /동결 스냅샷 분석/);
   assert.match(view, /AI 결과는 참고자료/);
-  assert.match(page, /\["daily-report", "일일 자금일보", "일"\]/);
-  assert.match(page, /requestFinanceWorkspace\("daily-report"\)/);
   assert.doesNotMatch(page, /임시 저장/);
   assert.match(operations, /daily-treasury-report-due/);
   assert.match(operations, /destination: "finance:daily-report"/);
@@ -277,15 +279,10 @@ test("finance overview uses live operation tasks and saved treasury reports inst
     read("app/page.tsx"), read("app/api/finance/assistant/route.ts"),
     read("app/finance-current-insights.ts"), read("docs/finance-live-overview-plan.md"),
   ]);
-  assert.match(page, /fetch\("\/api\/operations"\)/);
-  assert.match(page, /\/api\/finance\/daily-treasury\?date=/);
-  assert.match(page, /activeFinanceTasks\.length/);
-  assert.match(page, /financeDestinationView\(task\.destination\)/);
-  assert.match(page, /treasuryReport\?\.analysisText/);
-  assert.match(page, /과거 분석 문장을 최신 결과처럼 표시하지 않습니다/);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.doesNotMatch(page, /const financeAlerts\s*=/);
   assert.doesNotMatch(page, /const financeDailyBrief\s*=/);
-  assert.match(page, /financeCurrentInsights\.bankActivity31Days/);
   assert.match(assistant, /financeCurrentInsights\.bankActivity31Days/);
   assert.match(insights, /계좌간 대체 포함 가능/);
   assert.match(plan, /완료 업무는 카드에서 제거/);
@@ -296,9 +293,8 @@ test("finance charts derive balance endpoints and invoice flows from shared sour
   const [page, series, plan] = await Promise.all([
     read("app/page.tsx"), read("app/finance-time-series.ts"), read("docs/finance-time-series-plan.md"),
   ]);
-  assert.match(page, /buildBalanceSeries\(financeCurrentData\.balanceTrend, period\)/);
-  assert.match(page, /buildAmountSeries\(financeCurrentData\.salesDaily2026, period, financeCurrentInsights\.taxInvoicesAsOf\)/);
-  assert.match(page, /세금계산서 매출 공급가액/);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.doesNotMatch(page, /const cashTrend\s*=/);
   assert.doesNotMatch(page, /const financeChartSeries\s*=/);
   assert.match(series, /주간 마지막 관측값/);
@@ -312,10 +308,8 @@ test("finance forecast and account risk share explainable decision models with t
     read("app/page.tsx"), read("app/api/finance/assistant/route.ts"),
     read("app/finance-decision-model.ts"), read("docs/finance-forecast-risk-model-plan.md"),
   ]);
-  assert.match(page, /buildSalesForecast\(financeCurrentData\.salesDaily2026, financeCurrentInsights\.taxInvoicesAsOf\)/);
-  assert.match(page, /buildAccountRiskModel\(financeCurrentData\.accountSummary/);
-  assert.match(page, /<h2>연말 매출 전망 · 기준<\/h2>/);
-  assert.match(page, /위험 신호와 배점/);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.doesNotMatch(page, /const elapsedDays2026/);
   assert.doesNotMatch(page, /const accountRiskScore/);
   assert.match(assistant, /buildSalesForecast/);
@@ -333,6 +327,8 @@ test("company finance policy is durable, admin-controlled, audited and connected
     read("app/api/finance/assistant/route.ts"), read("app/api/finance/forecast/route.ts"),
     read("docs/finance-risk-policy-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /authorizeErpRequest\(db, "finance", "read"\)/);
   assert.match(api, /authorizeErpRequest\(db, "settings", "admin"\)/);
   assert.match(api, /FINANCE_RISK_POLICY_UPDATED/);
@@ -342,8 +338,6 @@ test("company finance policy is durable, admin-controlled, audited and connected
   assert.match(migration, /minimum_debt_coverage_bps/);
   assert.match(view, /정책 저장·재평가/);
   assert.match(view, /감사기록에 남습니다/);
-  assert.match(page, /\["policy", "회사 재무정책", "설"\]/);
-  assert.match(page, /FinanceRiskPolicyWorkspace/);
   assert.match(operations, /finance-risk-policy-missing/);
   assert.match(operations, /account-liquidity-policy-risk/);
   assert.match(operations, /destination: "finance:policy"/);
@@ -359,6 +353,8 @@ test("finance master changes are approval-gated and new finance inputs validate 
     read("app/api/finance/budget/route.ts"), read("app/api/sales/route.ts"),
     read("app/api/finance/purchasing/route.ts"), read("app/page.tsx"), read("docs/finance-master-data-plan.md"), read("app/api/operations/route.ts"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /requestType: "MASTER_DATA"/);
   assert.match(api, /targetEntityType: "FINANCE_MASTER_CHANGE"/);
   assert.match(api, /INSERT OR IGNORE INTO finance_master_accounts/);
@@ -372,7 +368,6 @@ test("finance master changes are approval-gated and new finance inputs validate 
   assert.match(budget, /전기 분개를 연결하려면 활성 계정과목/);
   assert.match(sales, /finance_master_partner_aliases/);
   assert.match(purchasing, /finance_master_partner_aliases/);
-  assert.match(page, /"master", "통합 재무 마스터"/);
   assert.match(taskRoute, /finance-master-quality/);
   assert.match(taskRoute, /destination: "finance:master"/);
   assert.match(plan, /과거 문자열 스냅샷은 보존/);
@@ -385,6 +380,8 @@ test("invoice receivables derive balances from accepted payments and preserve op
     read("db/schema.ts"), read("drizzle/0025_receivable_collections.sql"), read("app/page.tsx"),
     read("app/api/operations/route.ts"), read("docs/finance-receivables-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_receivable_cases", "finance_receivable_notes"]) {
     assert.match(api, new RegExp(table));
     assert.match(migration, new RegExp(table));
@@ -398,7 +395,6 @@ test("invoice receivables derive balances from accepted payments and preserve op
   assert.match(workspace, /회계·영업 원천값 · 읽기 전용/);
   assert.match(workspace, /연체 구간별 미수잔액/);
   assert.match(workspace, /접촉·특이사항 기록/);
-  assert.match(page, /<ReceivablesWorkspace \/>/);
   assert.match(operations, /receivable-collections-risk/);
   assert.match(plan, /사용자가 임의 종결하지 못한다/);
   assert.match(plan, /공식 신용등급/);
@@ -432,6 +428,8 @@ test("inventory control connects accepted receipts and deliveries without invent
     read("db/schema.ts"), read("drizzle/0027_inventory_control.sql"), read("app/api/finance/close/route.ts"),
     read("app/api/operations/route.ts"), read("docs/finance-inventory-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(schema, /inventoryProducts/);
   assert.match(schema, /idx_inventory_movement_source_line/);
   assert.match(migration, /CREATE TABLE `inventory_movements`/);
@@ -444,7 +442,6 @@ test("inventory control connects accepted receipts and deliveries without invent
   assert.match(view, /자유입력 품목명.*자동 SKU로 간주하지 않습니다/);
   assert.match(view, /이동평균 원가 · 음수재고 차단/);
   assert.match(view, /변경 저장/);
-  assert.match(page, /\["inventory", "재고·상품원가", "재"\]/);
   assert.match(close, /INVENTORY_LEDGER/);
   assert.match(operations, /inventory-control-risk/);
   assert.match(plan, /과거 Clobe·이카운트 자료를 임의로 재고수량으로 환산하지 않는다/);
@@ -456,6 +453,8 @@ test("VAT review reconciles explicit source and reported figures without inferri
     read("db/schema.ts"), read("drizzle/0028_tax_reconciliation.sql"), read("app/api/finance/close/route.ts"),
     read("app/api/operations/route.ts"), read("docs/finance-tax-reconciliation-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(schema, /financeTaxPeriods/);
   assert.match(migration, /CREATE TABLE `finance_tax_periods`/);
   assert.match(api, /financeCurrentData\.salesDaily2026\.filter/);
@@ -465,7 +464,6 @@ test("VAT review reconciles explicit source and reported figures without inferri
   assert.doesNotMatch(api, /\*\s*0\.1|\/\s*10/);
   assert.match(view, /공식 신고서가 아니며 과세유형·세율·공제 여부를 자동 추정하지 않습니다/);
   assert.match(view, /홈택스 또는 이카운트 원본에서 확인했습니다/);
-  assert.match(page, /\["tax", "부가세 검토", "세"\]/);
   assert.match(close, /TAX_RECONCILIATION/);
   assert.match(operations, /tax-reconciliation-due/);
   assert.match(plan, /공식 세무신고를 대신하지 않는 내부 검토 원장/);
@@ -477,6 +475,8 @@ test("fixed assets require explicit classification, evidence and posted straight
     read("db/schema.ts"), read("drizzle/0029_fixed_asset_control.sql"), read("app/api/finance/close/route.ts"),
     read("app/api/operations/route.ts"), read("docs/finance-fixed-assets-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(schema, /financeFixedAssets/);
   assert.match(schema, /financeAssetDepreciationSchedules/);
   assert.match(migration, /CREATE TABLE `finance_fixed_assets`/);
@@ -493,7 +493,6 @@ test("fixed assets require explicit classification, evidence and posted straight
   assert.match(api, /처분일까지의 미전기 감가상각을 먼저 처리해 주세요/);
   assert.match(view, /구매 품목은 후보일 뿐이며 담당자가 직접 자산 여부와 내용연수·계정과목을 확정합니다/);
   assert.match(view, /정액법 · 원 단위 균등배분 · 사용개시월부터 월할/);
-  assert.match(page, /\["fixed-assets", "고정자산·감가상각", "고"\]/);
   assert.match(close, /FIXED_ASSET_DEPRECIATION/);
   assert.match(operations, /fixed-asset-control-risk/);
   assert.match(plan, /과거 자료와 자유입력 품목을 자동으로 자산화하지 않는다/);
@@ -506,6 +505,8 @@ test("project profitability uses exact sales links, bounded manual allocations a
     read("app/api/operations/route.ts"), read("docs/finance-project-costing-plan.md"),
     read("app/api/finance/purchasing/route.ts"), read("app/api/hr/payroll/route.ts"), read("app/api/sales/route.ts"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_cost_centers", "finance_project_monthly_budgets", "finance_project_allocations"]) {
     assert.match(api, new RegExp(table)); assert.match(migration, new RegExp(table));
   }
@@ -515,7 +516,6 @@ test("project profitability uses exact sales links, bounded manual allocations a
   assert.match(api, /영업기회로 자동 귀속된 매출은 수동으로 다시 배부할 수 없습니다/);
   assert.match(api, /잠긴 마감월에는 프로젝트 배부를 추가할 수 없습니다/);
   assert.match(view, /추정 자동배부 금지/); assert.match(view, /타임시트·관리자 확인 근거/);
-  assert.match(page, /\["project-costing", "프로젝트·원가센터", "프"\]/); assert.match(page, /<ProjectCostingWorkspace \/>/);
   assert.match(close, /PROJECT_COST_ALLOCATION/); assert.match(operations, /project-costing-risk/);
   assert.match(purchasing, /프로젝트 원가에 배부된 매입 인보이스/);
   // R1(D2-b): 급여 재오픈은 재무 배부를 조회하지 않는다.
@@ -531,6 +531,8 @@ test("expense controls reconcile corporate cards, reviewed evidence and existing
     read("app/api/documents/route.ts"), read("app/api/finance/close/route.ts"), read("app/api/operations/route.ts"),
     read("docs/finance-expense-control-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_corporate_cards", "finance_card_transactions", "finance_expense_controls"]) {
     assert.match(api, new RegExp(table)); assert.match(migration, new RegExp(table));
   }
@@ -543,7 +545,6 @@ test("expense controls reconcile corporate cards, reviewed evidence and existing
   assert.match(api, /DEDUCTIBLE.*NONDEDUCTIBLE.*OUT_OF_SCOPE/s);
   assert.match(view, /증빙 파일 존재만으로 적격성을 자동 확정하지 않습니다/);
   assert.match(view, /카드사 거래 참조값/);
-  assert.match(page, /\["expense-control", "법인카드·지출증빙", "증"\]/); assert.match(page, /<ExpenseControlWorkspace \/>/);
   assert.match(operations, /지급 전 법인카드·지출증빙 화면에서 증빙과 세무 처리를 검토해 주세요/);
   assert.match(operations, /실제 카드 승인 거래와 정확한 금액으로 대사한 후/);
   assert.match(operations, /card_transaction_status !== "MATCHED"/);
@@ -1088,6 +1089,8 @@ test("13-week cash forecast de-duplicates ledgers, exposes data quality and pers
     read("app/api/operations/route.ts"), read("db/schema.ts"),
     read("drizzle/0020_careless_goliath.sql"), read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /expense\.source_type = 'PURCHASE_INVOICE' AND expense\.source_id = invoice\.id/);
   // 미수잔액은 receivables/route.ts와 같은 정의(확정 수금만 차감)를 써야 한다 — DRAFT/SUBMITTED
   // 수금까지 차감하면 미수잔액이 과소계상되어 자금예측이 낙관적으로 왜곡된다.
@@ -1106,7 +1109,6 @@ test("13-week cash forecast de-duplicates ledgers, exposes data quality and pers
   assert.match(schema, /financeCashForecastSettings/);
   assert.match(schema, /financeCashForecastSnapshots/);
   assert.match(migration, /idx_finance_cash_forecast_snapshot_asof_scenario/);
-  assert.match(page, /"forecast", "13주 자금예측"/);
 });
 
 test("sales incentives require triple validation, collected cash, staged review and one payroll application", async () => {
@@ -1280,6 +1282,8 @@ test("purchase-to-pay requires an approved order, accepted receipt and matched i
     read("app/approval-engine.ts"), read("app/approval-center.tsx"), read("app/api/finance/operations/route.ts"), read("app/api/operations/route.ts"), read("db/schema.ts"),
     read("drizzle/0018_confused_thanos.sql"), read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_purchase_vendors", "finance_purchase_orders", "finance_purchase_order_lines", "finance_purchase_receipts", "finance_purchase_receipt_lines", "finance_purchase_invoices"]) {
     assert.match(schema, new RegExp(table));
     assert.match(migration, new RegExp(table));
@@ -1295,7 +1299,6 @@ test("purchase-to-pay requires an approved order, accepted receipt and matched i
   assert.match(operations, /purchase-match-exceptions/);
   assert.match(view, /발주·입고 현황/);
   assert.match(view, /매입채무·지급 연결/);
-  assert.match(page, /"purchasing", "구매·매입채무"/);
 });
 
 test("cash reconciliation imports real Clobe transaction IDs and keeps confirmation human-controlled", async () => {
@@ -1304,6 +1307,8 @@ test("cash reconciliation imports real Clobe transaction IDs and keeps confirmat
     read("app/page.tsx"), read("app/api/finance/close/route.ts"), read("db/schema.ts"),
     read("app/finance-bank-transactions.ts"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /finance_bank_transactions/);
   assert.match(api, /finance_cash_matches/);
   assert.match(api, /SUGGESTED_CONFIRMED/);
@@ -1311,7 +1316,6 @@ test("cash reconciliation imports real Clobe transaction IDs and keeps confirmat
   assert.match(api, /action === "REVERSE"/);
   assert.match(workspace, /후보는 자동 제시하되 확정은 사용자가 수행합니다/);
   assert.match(workspace, /부분 배분/);
-  assert.match(page, /"reconciliation", "자금 대사"/);
   assert.match(closeApi, /match_row\.status = 'CONFIRMED'/);
   assert.match(closeApi, /미대사.*건/);
   assert.match(schema, /idx_finance_cash_match_unique_source/);
@@ -1344,6 +1348,8 @@ test("month-end close freezes automatic controls, evidence and a controlled reop
     read("app/api/operations/route.ts"), read("db/schema.ts"),
     read("drizzle/0021_amusing_sway.sql"), read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /match_row\.status = 'CONFIRMED'/);
   assert.match(api, /journalSummary\.differenceKrw/);
   assert.match(api, /status <> 'POSTED'/);
@@ -1366,7 +1372,6 @@ test("month-end close freezes automatic controls, evidence and a controlled reop
   assert.match(schema, /idx_finance_close_run_status_period/);
   assert.match(migration, /finance_close_runs/);
   assert.match(migration, /idx_finance_close_run_status_period/);
-  assert.match(page, /"close", "월마감 통제"/);
 });
 
 test("budget-versus-actual uses versioned plans, explicit sources and accountable variance actions", async () => {
@@ -1375,6 +1380,8 @@ test("budget-versus-actual uses versioned plans, explicit sources and accountabl
     read("app/approval-engine.ts"), read("app/api/operations/route.ts"), read("db/schema.ts"),
     read("drizzle/0022_yellow_shadowcat.sql"), read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const source of ["SALES_INVOICE", "PURCHASE_INVOICE", "POSTED_JOURNAL_DEBIT", "POSTED_JOURNAL_CREDIT"]) assert.match(api, new RegExp(source));
   assert.match(api, /line\.department !== "전사"/);
   assert.match(api, /currentDay \/ daysInMonth/);
@@ -1396,7 +1403,6 @@ test("budget-versus-actual uses versioned plans, explicit sources and accountabl
   for (const table of ["finance_budget_plans", "finance_budget_plan_lines", "finance_budget_variance_actions"]) assert.match(migration, new RegExp(table));
   assert.match(migration, /idx_finance_budget_plan_year_version/);
   assert.match(migration, /idx_finance_budget_variance_line_unique/);
-  assert.match(page, /"budget", "예산·실적"/);
 });
 
 test("approval transitions require module approval rights and optimistic concurrency", async () => {
@@ -1479,6 +1485,8 @@ test("monthly management reporting freezes source lineage, quality gates, revisi
     read("db/schema.ts"), read("drizzle/0023_management_reporting.sql"), read("app/page.tsx"),
     read("app/approval-engine.ts"), read("app/api/operations/route.ts"), read("docs/finance-management-report-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_management_reports", "finance_management_report_actions"]) {
     assert.match(migration, new RegExp(table));
     assert.match(api, new RegExp(table));
@@ -1498,7 +1506,6 @@ test("monthly management reporting freezes source lineage, quality gates, revisi
   assert.match(workspace, /보고 수치 원천 등록부/);
   assert.match(workspace, /품질경고/);
   assert.match(workspace, /window\.print/);
-  assert.match(page, /"report", "월간 경영보고"/);
   assert.match(operations, /management-report-due/);
   assert.match(operations, /management-report-actions/);
   assert.match(plan, /제출 이후에는 수정하지 않는다/);
@@ -1616,6 +1623,8 @@ test("debt management keeps Clobe balances immutable and routes schedules throug
     read("app/api/finance/close/route.ts"), read("app/api/operations/route.ts"),
     read("app/api/documents/route.ts"), read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_debt_facilities", "finance_debt_schedule_items", "finance_debt_covenant_reviews"]) {
     assert.match(migration, new RegExp(table));
     assert.match(schema, new RegExp(table));
@@ -1630,7 +1639,6 @@ test("debt management keeps Clobe balances immutable and routes schedules throug
   assert.match(close, /DEBT_SCHEDULE_CONTROL/);
   assert.match(operations, /destination: "finance:debt"/);
   assert.doesNotMatch(documents, /financeDebtFacility|finance_debt_/);
-  assert.match(page, /"debt", "차입금·상환·약정"/);
 });
 
 test("financial system alerts require evidence, finance review and controlled closure", async () => {
@@ -1641,6 +1649,8 @@ test("financial system alerts require evidence, finance review and controlled cl
     read("drizzle/0036_finance_alert_actions.sql"), read("app/page.tsx"),
     read("docs/finance-alert-action-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const table of ["finance_alert_cases", "finance_alert_case_events"]) {
     assert.match(api, new RegExp(table));
     assert.match(migration, new RegExp(table));
@@ -1658,8 +1668,6 @@ test("financial system alerts require evidence, finance review and controlled cl
   assert.doesNotMatch(documents, /financeAlertCase|finance-alert-actions-server/);
   assert.match(view, /재무 경보 조치센터/);
   assert.match(view, /증빙 확인·종료 검토 요청/);
-  assert.match(page, /"risk-actions", "재무 경보 조치"/);
-  assert.match(page, /"조치 등록 →"/);
   assert.match(plan, /OPEN → IN_PROGRESS → REVIEW → CLOSED/);
 });
 
@@ -1670,6 +1678,8 @@ test("financial alert outcomes are frozen into treasury, management reporting an
     read("app/api/finance/management-report/route.ts"), read("app/management-report-workspace.tsx"),
     read("app/api/finance/close/route.ts"), read("docs/finance-alert-reporting-integration-plan.md"), read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(reporting, /alert\.created_at <= \?/);
   assert.match(reporting, /document\.created_at <= \?/);
   assert.match(model, /CLOSURE_APPROVED: "CLOSED"/);
@@ -1688,7 +1698,6 @@ test("financial alert outcomes are frozen into treasury, management reporting an
   assert.match(closeApi, /highCriticalUnresolvedCount > 0 \? "FAIL"/);
   assert.match(closeApi, /alertActions\.unresolvedCount > 0 \? "REVIEW"/);
   assert.match(plan, /현재 진행 중인 월은 미래 월말이 아니라 최신 재무 원천 기준일/);
-  assert.match(page, /DailyTreasuryWorkspace onNavigate/);
 });
 
 test("personal workbench merges assigned sources without copying source status", async () => {
@@ -1697,6 +1706,8 @@ test("personal workbench merges assigned sources without copying source status",
     read("drizzle/0038_personal_workbench.sql"), read("app/page.tsx"),
     read("docs/personal-operations-workbench-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /owner_employee_id = \?/);
   assert.match(api, /id NOT IN \('management-report-actions','management-report-decisions'\)/);
   assert.match(api, /finance_management_report_actions/);
@@ -1712,8 +1723,6 @@ test("personal workbench merges assigned sources without copying source status",
   assert.match(view, /fetch\(isTask \? "\/api\/operations" : "\/api\/finance\/management-report"/);
   assert.match(view, /오늘의 업무/);
   assert.match(view, /경영 의사결정/);
-  assert.match(page, /<OperationsWorkbench/);
-  assert.match(page, /오늘 업무 전체 보기/);
   assert.match(plan, /상태의 진실은 각 원천 원장이 소유한다/);
   assert.match(plan, /다른 사용자가 읽거나 수정할 수 없게 한다/);
 });
@@ -2141,6 +2150,8 @@ test("data governance control center verifies recoverability without automatic r
     read("app/data-governance-center.tsx"), read("app/page.tsx"), read("app/api/operations/route.ts"), read("db/schema.ts"),
     read("drizzle/0052_data_governance.sql"), read("docs/data-governance-control-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const source of [api, server, schema, migration]) {
     for (const table of ["erp_data_control_runs", "erp_data_control_checks", "erp_logical_snapshots",
       "erp_recovery_rehearsals", "erp_audit_exports", "erp_retention_policies"]) assert.match(source, new RegExp(table));
@@ -2163,10 +2174,6 @@ test("data governance control center verifies recoverability without automatic r
   assert.match(view, /복구 모의훈련/);
   assert.match(view, /자동 복구 없음/);
   assert.match(view, /자동 삭제 없음/);
-  assert.match(page, /DataGovernanceCenter/);
-  assert.match(page, /데이터 통제/);
-  assert.match(page, /destination === "settings:data-governance"/);
-  assert.match(page, /task\.id !== "data-governance-attention"/);
   assert.match(operations, /데이터 통제 점검이 정상 상태가 된 뒤 업무가 자동 종료/);
   assert.match(plan, /실제 복구는 자동 제공하지 않는다/);
   assert.match(plan, /settings:admin/);
@@ -2178,6 +2185,8 @@ test("data integration center reconciles approved snapshots with idempotent revi
     read("app/data-governance-center.tsx"), read("app/page.tsx"), read("app/api/operations/route.ts"),
     read("db/schema.ts"), read("drizzle/0053_data_integration_center.sql"), read("docs/data-integration-reconciliation-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for (const source of [api, server, schema, migration]) for (const table of ["erp_integration_sources", "erp_integration_exceptions", "erp_sync_run_events"]) assert.match(source, new RegExp(table));
   assert.match(api, /authorizeErpRequest\(db, "settings", "admin"\)/);
   assert.match(api, /crypto\.subtle\.digest\("SHA-256"/);
@@ -2186,7 +2195,7 @@ test("data integration center reconciles approved snapshots with idempotent revi
   assert.match(api, /automaticWrites: 0, externalFetch: false/);
   assert.doesNotMatch(api, /DELETE FROM finance_bank_transactions|DELETE FROM hr_employee_records|DELETE FROM hr_payroll_records/);
   assert.match(workspace, /현재 ERP 스냅샷 검증/); assert.match(workspace, /외부 조회 없음/); assert.match(workspace, /자동 덮어쓰기 없음/);
-  assert.match(center, /연동·대사/); assert.match(page, /settings:data-integration/); assert.match(page, /integration-center-attention/);
+  assert.match(center, /연동·대사/);
   assert.match(operations, /고위험 연동 예외를 해결하거나 근거와 함께 위험 수용/);
   assert.match(migration, /WHERE `idempotency_key` <> ''/); assert.match(plan, /자동 덮어쓰기/); assert.match(plan, /외부 API를 호출하지 않았는데 수집했다고 표시/);
 });
@@ -2272,6 +2281,8 @@ test("general ledger is import-only and excludes ERP-generated payment journal e
     read("app/finance-ledger-snapshot.ts"),
     read("app/general-ledger-workspace.tsx"), read("app/page.tsx"), read("docs/finance-general-ledger-plan.md"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api, /authorizeErpRequest\(db, "finance", "read"\)/);
   assert.match(api, /financeHistoricalData\.trialBalance2025/);
   assert.match(api, /finance_posting_batches batch ON batch\.id=voucher\.batch_id AND batch\.status='POSTED'/);
@@ -2281,7 +2292,6 @@ test("general ledger is import-only and excludes ERP-generated payment journal e
   assert.match(server, /row\.voucherDate < from/); assert.match(api, /ledgerRows\("2026-01-01", to\)/);
   assert.match(api, /stagedOrClobeRowsIncluded: false/); assert.match(api, /Content-Disposition/); assert.match(api, /\^\[=\+\\-@\]/);
   assert.match(workspace, /총계정원장·2026 시산표/); assert.match(workspace, /CSV 내려받기/); assert.match(workspace, /이카운트 분개장 import분만/);
-  assert.match(page, /GeneralLedgerWorkspace/); assert.match(page, /총계정원장·시산표/);
   assert.match(plan, /검증·분석 레이어/); assert.match(plan, /제외/);
 });
 
@@ -2344,23 +2354,25 @@ test("statement comparisons disclose source scope and submitted closes detect le
 
 test("finance assistant answers from posted evidence and discloses source lineage and limitations",async()=>{
   const[api,evidence,page,style,plan]=await Promise.all([read("app/api/finance/assistant/route.ts"),read("app/finance-assistant-evidence.ts"),read("app/page.tsx"),read("app/globals.css"),read("docs/finance-assistant-evidence-plan.md")]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   assert.match(api,/buildFinancePeriodStatementSnapshot/);assert.match(api,/buildFinanceLedgerSnapshot/);assert.match(api,/evaluateLedgerSnapshotDrift/);
   assert.match(api,/finance_close_runs/);assert.match(api,/RULE_BASED_FALLBACK/);assert.match(api,/quotaExceeded/);
   assert.match(evidence,/JSON 근거에 들어 있는 사실과 숫자만 사용/);assert.match(evidence,/taxInvoices2026.*회계상 매출/s);
-  assert.match(page,/이번 답변의 근거/);assert.match(page,/assistantMeta\.limitations/);assert.match(page,/마감 원장 변경 여부/);
   assert.match(style,/assistant-trust-line/);assert.match(style,/assistant-limitations/);
   assert.match(plan,/AI는 구조화된 근거 JSON을 설명만/);assert.match(plan,/규칙 기반 답변/);
 });
 
 test("finance assistant audit history freezes evidence and restores prior answers without mutation routes",async()=>{
   const[api,history,page,style,schema,migration,plan]=await Promise.all([read("app/api/finance/assistant/route.ts"),read("app/finance-assistant-history.ts"),read("app/page.tsx"),read("app/globals.css"),read("db/schema.ts"),read("drizzle/0058_finance_assistant_history.sql"),read("docs/finance-assistant-history-plan.md")]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for(const source of[history,schema,migration])assert.match(source,/finance_assistant_answers/);
   assert.match(api,/export async function GET/);assert.match(api,/saveFinanceAssistantAnswer/);assert.match(api,/responseWithHistory/);
   assert.match(history,/evidenceHash/);assert.match(history,/answerHash/);assert.match(history,/FINANCE_ASSISTANT_PROMPT_VERSION/);
   assert.match(history,/ORDER BY created_at DESC LIMIT/);assert.match(history,/Math\.min\(Math\.max\(limit, 1\), 50\)/);assert.match(history,/getFinanceAssistantAnswer/);
   assert.match(api,/searchParams\.get\("id"\)/);
   assert.doesNotMatch(api,/DELETE FROM finance_assistant_answers|UPDATE finance_assistant_answers/);
-  assert.match(page,/답변 감사이력/);assert.match(page,/restoreFinanceAssistantAnswer/);assert.match(page,/evidenceHash\.slice/);
   assert.match(style,/assistant-history-list/);assert.match(plan,/수정·삭제 API는 만들지 않는다/);assert.match(plan,/저장에 실패한 답변은 화면에 성공한 답변으로 반환하지 않는다/);
 });
 
@@ -2438,13 +2450,12 @@ test("tie-out board unifies all 5 subsidiary-to-GL reconciliations with drill-do
   const[board,page]=await Promise.all([
     read("app/tie-out-board-workspace.tsx"),read("app/page.tsx"),
   ]);
+  // R1(M1-3): 셸(page.tsx)에서 재무·영업·워크벤치·데이터 통제 화면을 뺐다. 이 테스트와 대상 파일은 r1-delete에서 삭제한다.
+  assert.doesNotMatch(page, /finance-current-data|FinanceDashboard|OperationsWorkbench|DataGovernanceCenter/);
   for(const type of["RECEIVABLES","PAYABLES","INVENTORY","DEBT","BANK"]) assert.match(board,new RegExp(`type: "${type}"`));
   assert.match(board,/fetch\(`\/api\/finance\/tie-out\?period=/);
   assert.match(board,/action: "RECOMPUTE"/);
   assert.match(board,/onNavigate\(item\.destination\)/);
-  assert.match(page,/import TieOutBoardWorkspace from ".\/tie-out-board-workspace"/);
-  assert.match(page,/"reconciliation-board"/);
-  assert.match(page,/대사 현황판/);
 });
 
 test("inventory moving average respects transaction date and fully liquidated stock leaves no rounding residue", async () => {
@@ -2734,4 +2745,29 @@ test("면접일이 확정되면 기본 질문지가 채워지고, 심화·역제
   assert.match(bridge, /interviewBrief\.questionMode 가 DEEP_DIVE 이면 기본 질문지 다음 단계의 심화 질문 요청입니다\./);
   assert.match(bridge, /questionMode 가 COUNTER 이면 counterProposalPosition 에 대한 질문만/);
   assert.match(styles, /\.applicant-question-buttons \{/);
+});
+
+// R1(M1-3, Design §7.9·§12.5): 직원 명부·보상 시드는 서버 전용 모듈에만 두고, 클라이언트는 카탈로그만 import한다.
+// 빌드 산출물 전수 검사(bundle-exposure)는 r1-delete에서 추가한다.
+test("employee roster seed is server-only and client screens load employees from the API", async () => {
+  const [data, catalogs, workspace, incentive, harness] = await Promise.all([
+    read("app/hr-company-data.ts"), read("app/hr-company-catalogs.ts"), read("app/hr-workspace.tsx"),
+    read("app/incentive/incentive-calculator.tsx"), read("tests/helpers/hr-api-harness.mjs"),
+  ]);
+  assert.match(data, /^import "server-only";/);
+  assert.match(data, /export \{ companyOrganizations, companyRanks, companyJobTitles, type CompanyOrganizationSeed \} from "\.\/hr-company-catalogs";/);
+  assert.match(data, /export const companyEmployees: CompanyEmployeeSeed\[\]/);
+  assert.doesNotMatch(data, /export const (companyOrganizations|companyRanks|companyJobTitles)\b/);
+  for (const name of ["companyOrganizations", "companyRanks", "companyJobTitles"]) assert.match(catalogs, new RegExp(`export const ${name}\\b`));
+  assert.match(catalogs, /export type CompanyOrganizationSeed = \{/);
+  assert.doesNotMatch(catalogs, /server-only|companyEmployees|annualSalary|phone/);
+  assert.match(workspace, /from "\.\/hr-company-catalogs";/);
+  assert.doesNotMatch(workspace, /hr-company-data|companyEmployees/);
+  assert.match(workspace, /const initialEmployees: Employee\[\] = \[\];/);
+  assert.match(workspace, /fetch\("\/api\/hr\/employee-records"\)/);
+  assert.match(workspace, /직원 정보를 불러오는 중입니다/);
+  assert.doesNotMatch(incentive, /hr-company-data|companyEmployees|COMPANY_EMPLOYEE_OPTIONS/);
+  assert.match(incentive, /if \(!response\.ok\) throw new Error\(data\.error \|\| "직원 목록을 불러오지 못했습니다\."\)/);
+  assert.match(incentive, /role="alert">\{employeesError\}/);
+  assert.match(harness, /'server-only'\]\.includes\(specifier\)/);
 });

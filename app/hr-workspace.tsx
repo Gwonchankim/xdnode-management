@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { companyEmployees, companyJobTitles, companyOrganizations, companyRanks } from "./hr-company-data";
+import { companyJobTitles, companyOrganizations, companyRanks } from "./hr-company-catalogs";
 import WorkforcePlanningView from "./workforce-planning-view";
 import RecruitmentRequisitionView from "./recruitment-requisition-view";
 import { ErpDialogProvider, useErpDialog, type ErpDialogApi } from "./erp-dialog";
@@ -867,11 +867,13 @@ const initialOrganizations: Organization[] = [
 const initialRanks = [...companyRanks];
 const initialJobTitles = [...companyJobTitles];
 
-const initialEmployees: Employee[] = [
-  ...companyEmployees,
-];
+// 직원 명부는 클라이언트 번들에 넣지 않는다(R1 M1-3, Design §7.9). /api/hr/employee-records가 명부를 시드·병합해 준다.
+const initialEmployees: Employee[] = [];
 
 const initialApplicants: Applicant[] = [];
+
+// 직원 목록을 받아 초기값을 정하는 화면. 첫 명부 응답 전에는 로딩 표시로 대신한다.
+const EMPLOYEE_LIST_VIEWS = new Set(["dashboard", "schedule", "documents", "employees", "organization", "recruiters", "settings"]);
 
 
 function StatusPill({ value }: { value: string }) {
@@ -899,6 +901,8 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
   }
   const [query, setQuery] = useState("");
   const [employees, setEmployees] = useState(initialEmployees);
+  // 첫 /api/hr/employee-records 응답 전까지 true. 직원 목록으로 초기값을 정하는 화면은 이 동안 로딩 표시를 낸다.
+  const [employeesLoading, setEmployeesLoading] = useState(true);
   const [organizations, setOrganizations] = useState(initialOrganizations);
   const [ranks, setRanks] = useState(initialRanks);
   const [jobTitles, setJobTitles] = useState(initialJobTitles);
@@ -967,6 +971,7 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
 
     Promise.all([loadLeaders, loadEmployeeRecords, loadOrganizations, loadRetirements, loadJobTitles]).then(([leaders, employeeRecords, organizationRecords, operations, jobTitleList]) => {
       if (cancelled) return;
+      setEmployeesLoading(false);
       const retirementRequests = operations ? operations.retirementRequests ?? [] : null;
       if (operations) { setLifecycleTasks(operations.lifecycleTasks ?? []); setPayrollRuns(operations.payrollRuns ?? []); setPrincipalRoles(operations.principal?.roles ?? []); setLegacyPersonnelActions((operations.personnelActions ?? []).filter((action) => action.status === "SUBMITTED")); }
       if (jobTitleList?.JOB_TITLE?.length) setJobTitles(jobTitleList.JOB_TITLE);
@@ -1027,7 +1032,11 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
           regularContractDate: record.regularContractDate,
           firstTermReview: record.firstTermReview ?? null,
           ...(record.retirement ? { retirement: record.retirement } : {}),
-        } satisfies Employee)).map(withActiveRetirement);
+        } satisfies Employee)).map((employee) => {
+          // 명부가 서버에서만 오므로 기존 직원도 이 경로로 들어온다. 조직 이름 변경과 조직장 표시를 같이 반영한다.
+          const withOrganization = { ...employee, department: renamedDepartmentByOriginalName.get(employee.department) ?? employee.department };
+          return withActiveRetirement(persistedLeaderIds.has(employee.id) ? { ...withOrganization, jobTitle: "조직장" } : withOrganization);
+        });
         return [...mergedExisting, ...newlyRegistered];
       });
       if (!leaders || !employeeRecords || !organizationRecords || !retirementRequests) showToast("일부 저장 정보를 불러오지 못했습니다. 잠시 후 새로고침해 주세요.");
@@ -1866,22 +1875,23 @@ function XdnodeHrApp({ requestedView, navigationRequestKey }: { requestedView: s
       </aside>
 
       <main className="main-content">
-        {active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} leaveLedgers={leaveLedgers} roles={principalRoles} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
-        {active === "schedule" && <TimeAndLeaveView employees={employees} onNotify={showToast} />}
-        {active === "documents" && <EmployeeDocumentView employees={employees} onNotify={showToast} />}
-        {active === "employees" && <EmployeeDirectory employees={employees} organizations={organizations} query={query} onSelect={setSelectedEmployeeId} onAdd={() => setEmployeeModalOpen(true)} />}
-        {active === "organization" && <OrganizationManagement onSelectEmployee={setSelectedEmployeeId} organizations={organizations} employees={employees} ranks={ranks} jobTitles={jobTitles} onLeaderChange={updateOrganizationLeader} onAddOrganization={addOrganization} onUpdateOrganization={updateOrganization} onAddRank={addRank} onRemoveRank={removeRank} onAddJobTitle={addJobTitle} onRemoveJobTitle={removeJobTitle} />}
+        {employeesLoading && EMPLOYEE_LIST_VIEWS.has(active) && <section className="panel hr-employees-loading" role="status" aria-live="polite"><strong>직원 정보를 불러오는 중입니다.</strong><span>잠시만 기다려 주세요.</span></section>}
+        {!employeesLoading && active === "dashboard" && <Dashboard employees={employees} organizations={organizations} applicants={applicants} requisitions={requisitions} lifecycleTasks={lifecycleTasks} payrollRuns={payrollRuns} leaveLedgers={leaveLedgers} roles={principalRoles} onNavigate={navigate} onOpenEmployee={(id) => { navigate("employees"); setSelectedEmployeeId(id); }} onOpenApplicant={(id) => { navigate("recruitment"); setSelectedApplicantId(id); }} onMarkRegular={markRegularContract} onEndContract={endFirstTermContract} />}
+        {!employeesLoading && active === "schedule" && <TimeAndLeaveView employees={employees} onNotify={showToast} />}
+        {!employeesLoading && active === "documents" && <EmployeeDocumentView employees={employees} onNotify={showToast} />}
+        {!employeesLoading && active === "employees" && <EmployeeDirectory employees={employees} organizations={organizations} query={query} onSelect={setSelectedEmployeeId} onAdd={() => setEmployeeModalOpen(true)} />}
+        {!employeesLoading && active === "organization" && <OrganizationManagement onSelectEmployee={setSelectedEmployeeId} organizations={organizations} employees={employees} ranks={ranks} jobTitles={jobTitles} onLeaderChange={updateOrganizationLeader} onAddOrganization={addOrganization} onUpdateOrganization={updateOrganization} onAddRank={addRank} onRemoveRank={removeRank} onAddJobTitle={addJobTitle} onRemoveJobTitle={removeJobTitle} />}
         {active === "payroll" && (selectedPayrollMonth ? <PayrollMonthDetail month={selectedPayrollMonth} onBack={() => setSelectedPayrollMonth(null)} /> : <PayrollOverview onSelectMonth={setSelectedPayrollMonth} />)}
         {active === "requisitions" && <RecruitmentRequisitionView onNotify={showToast} />}
         {active === "recruitment" && <RecruitmentView applicants={applicants} recruiters={recruiters} requisitions={requisitions} query={query} onAdd={() => setApplicantModalOpen(true)} onSelect={setSelectedApplicantId} onOwnerChange={assignRecruiter} onDelete={deleteApplicant} onRequisitionChange={(applicant, requisitionId) => updateApplicantDetail({ ...applicant, requisitionId })} />}
-        {active === "recruiters" && <RecruiterManagement employees={employees} recruiterIds={recruiterIds} onAdd={addRecruiter} onRemove={removeRecruiter} />}
+        {!employeesLoading && active === "recruiters" && <RecruiterManagement employees={employees} recruiterIds={recruiterIds} onAdd={addRecruiter} onRemove={removeRecruiter} />}
         {active === "onboarding" && <LifecycleManagementView jobTitles={jobTitles} ranks={ranks} onSelectApplicant={setSelectedApplicantId} applicantPopupOpen={Boolean(selectedApplicantId)} />}
         {active === "leave" && <LeaveManagementView onNotify={showToast} />}
         {active === "workforce" && <WorkforcePlanningView onNotify={showToast} />}
         {active === "performance" && <PerformanceManagementView onNotify={showToast} />}
         {active === "training" && <TrainingManagementView onNotify={showToast} />}
         {active === "reports" && <HrAnalyticsView onNotify={showToast} />}
-        {active === "settings" && <SettingsView employees={employees} onNotify={showToast} />}
+        {!employeesLoading && active === "settings" && <SettingsView employees={employees} onNotify={showToast} />}
         {selectedEmployee && legacyPersonnelActions.some((action) => action.employee_id === selectedEmployee.id) && <article className="panel"><div className="table-toolbar"><div><h2>처리 대기 인사발령</h2><span>전자결재 시절에 제출돼 남아 있는 발령입니다. 승인하면 시행일에 인사기록에 반영됩니다.</span></div></div><div className="data-table-wrap"><table className="data-table"><thead><tr><th>구분</th><th>시행일</th><th>사유</th><th>처리</th></tr></thead><tbody>{legacyPersonnelActions.filter((action) => action.employee_id === selectedEmployee.id).map((action) => <tr key={action.id}><td>{action.action_type}</td><td>{action.effective_date}</td><td>{action.reason || "-"}</td><td><div className="row-actions"><button type="button" onClick={() => void decideLegacyPersonnelAction(action, "APPROVED")}>승인</button><button type="button" className="reject-action" onClick={() => void decideLegacyPersonnelAction(action, "REJECTED")}>반려</button></div></td></tr>)}</tbody></table></div></article>}
         {selectedEmployee && <EmployeeDetail key={selectedEmployee.id} employee={selectedEmployee} employees={employees} organizations={organizations} ranks={ranks} jobTitles={jobTitles} onBack={() => setSelectedEmployeeId(null)} onUpdate={updateEmployee} onPersonnelAction={() => setPersonnelAction("인사 발령")} onRetirement={() => setRetirementOpen(true)} onNotify={showToast} />}
       </main>

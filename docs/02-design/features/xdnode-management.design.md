@@ -3078,6 +3078,16 @@ export const LEGACY_PENDING = {
 - `incentive-calculator.tsx`: import(`:7`)와 `COMPANY_EMPLOYEE_OPTIONS`(`:109-121`)를 지우고, `response.ok`가 아니면 오류를 표시한다.
 - 하니스 `server-only` 스텁(`:47`).
 
+**실행 결과 (2026-09-28)**
+- 셸: `ModuleKey = 'hr'|'compensation'|'audit'`, 감사 로그 탭 재마운트. 재무·영업·워크벤치·알림 코드 삭제(page.tsx −1,600줄 안팎).
+- 분리 대조: HEAD의 `hr-company-data.ts`와 분리 후 모듈의 export 4개(`companyEmployees` 27, `companyOrganizations` 6, `companyRanks` 7, `companyJobTitles` 8)가 JSON 직렬화 기준으로 모두 같다.
+- 추가 발견과 조치: 브라우저 번들에 들어가는 **예시 데이터에도 실명**이 있었다.
+  - 임금 계산 '예시 명부' 3명(`compensation-calculator.tsx`)은 모두 실제 직원 이름이었고, 그중 1명은 연봉도 같았다. 이름을 '예시 직원A/B/C'로 바꿨다.
+  - 인센티브 '예시 거래'(`incentive-calculator.tsx` `loadExample`)의 담당자 이름 2개는 코드에 적는 대신 불러온 직원 목록에서 고른다(`examplePerson`).
+- 번들 검사(`npm run build` 뒤 `dist/client`): 실제 직원 이름 0, 전화번호 0, 개인 이메일 0, 시드 키 0. `annualSalary:<숫자>` 리터럴은 가상 예시 3건뿐이다.
+- `hr-company-data`를 import하는 클라이언트 파일 8개는 모두 r1-delete 대상이고 앱에서 import되지 않는다.
+- `npm test` 429/429. lint 신규 오류 없음(`set-state-in-effect`는 대상 파일 합계 14건에서 2건으로 줄었다).
+
 ### 12.6 일괄 삭제와 정리 (`r1-delete`, M1-4)
 
 - 삭제 전에 삭제 대상 경로를 import·fetch하는 남는 파일이 0개인지 grep으로 확인한다(`app/`, `worker/`, `scripts/`, `build/`). 남는 파일에서 삭제 라우트를 부르는 곳은 `hr-workspace.tsx:4672,4689,4701,4709`(approval-settings), `local-codex-assistant.tsx:279`(`/api/sales`), `page.tsx:269,342,773,774,795,804,928,972`(operations·finance)뿐이고 모두 앞 단계에서 지운다. 동적 `/api/${…}` 조립은 없다.

@@ -32,7 +32,8 @@ body { margin: 0; }
 button, input, select, textarea { font: inherit; }
 button { color: inherit; }
 
-.app-shell, .hr-module-shell { min-height: 100vh; padding-top: var(--erp-nav-height); }
+.app-shell, .hr-module-shell, .admin-module-shell { min-height: 100vh; padding-top: var(--erp-nav-height); }
+.admin-page { max-width: 1440px; margin: 0 auto; }
 .erp-top-nav { position: fixed; inset: 0 0 auto 0; z-index: 45; display: flex; align-items: center; }
 .erp-top-brand { display: flex; align-items: center; gap: 11px; }
 .erp-top-brand strong, .erp-top-brand small { display: block; }
@@ -190,7 +191,7 @@ button { color: inherit; }
 
 html, body { color: var(--color-carbon-black); background: var(--color-warm-canvas); }
 body { letter-spacing: -.011em; }
-.app-shell, .hr-module-shell { background: var(--color-warm-canvas); }
+.app-shell, .hr-module-shell, .admin-module-shell { background: var(--color-warm-canvas); }
 
 .erp-top-nav {
   border: 0;

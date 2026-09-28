@@ -1,3 +1,9 @@
+import "server-only";
+
+// R1(M1-3): 조직·직급·직책 카탈로그는 클라이언트에서도 쓰는 app/hr-company-catalogs.ts로 옮겼다.
+// 이 파일은 실제 직원 명부·보상 시드만 두는 서버 전용 모듈이다. 서버 import가 바뀌지 않도록 카탈로그를 재수출한다.
+export { companyOrganizations, companyRanks, companyJobTitles, type CompanyOrganizationSeed } from "./hr-company-catalogs";
+
 export type CompanyEmployeeSeed = {
   id: string;
   name: string;
@@ -18,13 +24,6 @@ export type CompanyEmployeeSeed = {
   mealAllowance: number;
   childcareAllowance: number;
   vehicleAllowance: number;
-};
-
-export type CompanyOrganizationSeed = {
-  id: string;
-  name: string;
-  leaderEmployeeId: string | null;
-  description: string;
 };
 
 type RawEmployee = [
@@ -127,16 +126,3 @@ export const companyEmployees: CompanyEmployeeSeed[] = rawEmployees.map((employe
     ...(companyCompensationByEmployeeId[id] ?? { annualSalary: 0, basePay: 0, mealAllowance: 0, childcareAllowance: 0, vehicleAllowance: 0 }),
   };
 });
-
-export const companyOrganizations: CompanyOrganizationSeed[] = [
-  { id: "org-purchase", name: "구매팀", leaderEmployeeId: null, description: "구매 및 조달 업무" },
-  { id: "org-online", name: "온라인팀", leaderEmployeeId: null, description: "온라인 채널 및 마케팅 업무" },
-  { id: "org-ai-business", name: "AI사업팀", leaderEmployeeId: null, description: "AI 사업 영업 및 고객 관리" },
-  { id: "org-support", name: "지원팀", leaderEmployeeId: null, description: "경영지원 및 영업지원 업무" },
-  { id: "org-technology", name: "기술팀", leaderEmployeeId: null, description: "기술지원 업무" },
-  { id: "org-unassigned", name: "소속 미지정", leaderEmployeeId: null, description: "원본 자료에 소속 조직이 입력되지 않은 인원" },
-];
-
-// 직위 서열. 낮은 쪽부터 늘어놓는다 — 승진·강등은 이 순서로 판정한다.
-export const companyRanks = ["사원", "주임", "대리", "과장", "차장", "팀장", "대표"];
-export const companyJobTitles = ["구매", "마케팅", "영업", "경영지원", "기술지원", "영업지원", "미지정", "조직장"];

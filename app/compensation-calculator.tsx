@@ -368,9 +368,9 @@ function WageCalculatorClient() {
   }
   function loadExample() {
     setEmployees([
-      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "김민성", department: "영업팀", title: "팀장", birthDate: "1988-04-12", joinDate: "2024-03-11", annualSalary: 60_000_000, meal: 200_000, car: 200_000, child: 200_000 },
-      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "이서윤", department: "경영지원팀", title: "대리", birthDate: "1994-07-03", joinDate: `${year}-${String(month).padStart(2, "0")}-15`, annualSalary: 39_000_000, meal: 200_000, car: 0, child: 0 },
-      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "정윤수", department: "기술팀", title: "사원", birthDate: "1998-01-21", joinDate: `${year}-${String(Math.max(1, month - 1)).padStart(2, "0")}-06`, probationMonths: 3, annualSalary: 30_000_000, meal: 200_000, car: 0, child: 0 },
+      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "예시 직원A", department: "영업팀", title: "팀장", birthDate: "1988-04-12", joinDate: "2024-03-11", annualSalary: 60_000_000, meal: 200_000, car: 200_000, child: 200_000 },
+      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "예시 직원B", department: "경영지원팀", title: "대리", birthDate: "1994-07-03", joinDate: `${year}-${String(month).padStart(2, "0")}-15`, annualSalary: 39_000_000, meal: 200_000, car: 0, child: 0 },
+      { ...blankEmployee(year, month), id: crypto.randomUUID(), name: "예시 직원C", department: "기술팀", title: "사원", birthDate: "1998-01-21", joinDate: `${year}-${String(Math.max(1, month - 1)).padStart(2, "0")}-06`, probationMonths: 3, annualSalary: 30_000_000, meal: 200_000, car: 0, child: 0 },
     ]);
     setMessage("예시 명부 3명을 불러왔습니다.");
   }

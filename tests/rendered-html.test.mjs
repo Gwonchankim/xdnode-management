@@ -13,46 +13,43 @@ async function render(pathname = "/") {
   );
 }
 
-test("renders the integrated ERP finance workspace", async () => {
+// R1(M1-3): 셸은 인사관리·임금 계산·감사 로그 세 탭만 둔다. 재무·영업 모듈, 오늘 업무(워크벤치),
+// 데이터 통제, 알림 센터는 셸에서 뺐다(Design §12.5). 첫 화면은 HR이다.
+test("renders the HR-first shell with only the hr, compensation and audit tabs", async () => {
   const response = await render("/");
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
   assert.match(html, /<title>XD NODE ERP · 통합 운영 관리<\/title>/);
-  assert.match(html, /2024년부터 오늘까지, 하나의 재무 흐름으로/);
-  assert.doesNotMatch(html, /class="attention-strip"/);
-  assert.doesNotMatch(html, /class="topbar"/);
-  assert.doesNotMatch(html, /계좌, 거래처, 전표 검색/);
-  assert.doesNotMatch(html, /2026년 8월/);
-  assert.match(html, /aria-label="재무회계 메뉴"/);
-  assert.match(html, /임금 계산/);
-  assert.match(html, /<strong>재무회계<\/strong>/);
-  assert.match(html, /class="finance-side-alert"/);
-  assert.match(html, /알림 센터/);
-  assert.match(html, /내보내기/);
-  assert.match(html, /통합 대시보드/);
-  assert.match(html, /일일 자금일보/);
-  assert.match(html, /손익·재무상태/);
-  assert.match(html, /자금·채권채무/);
-  assert.match(html, /원장·데이터 점검/);
-  assert.match(html, /회사 재무정책/);
-  assert.match(html, /재무 경보 조치/);
-  assert.match(html, /매입·매출 분석/);
-  assert.match(html, /외상·미수 관리/);
-  assert.match(html, /차입금·상환·약정/);
-  assert.match(html, /재무 데이터 어시스턴트/);
-  assert.match(html, /세금계산서 매출/);
-  assert.match(html, /잔액형 · 20\d\d-\d\d-\d\d~20\d\d-\d\d-\d\d 관측/);
-  assert.doesNotMatch(html, />연동매출</);
-  assert.match(html, /실제 재무 업무를 확인하고 있습니다/);
-  assert.match(html, /최신 자금일보와 동결 스냅샷을 불러오는 중입니다/);
+  assert.match(html, /aria-label="ERP 모듈"/);
+  assert.match(html, /class="hr-module-shell"/);
+  assert.match(html, /<strong>XD NODE<\/strong>/);
+  assert.match(html, /class="erp-module-tab active"[^>]*aria-current="page"[\s\S]*?<strong>인사관리<\/strong>/);
+  assert.match(html, /<strong>임금 계산<\/strong>/);
+  assert.match(html, /<strong>감사 로그<\/strong>/);
+  assert.equal((html.match(/class="erp-module-tab( active)?"/g) ?? []).length, 3);
+  assert.doesNotMatch(html, /<strong>재무회계<\/strong>|<strong>영업<\/strong>/);
+  assert.doesNotMatch(html, /erp-alarm-button|erp-workbench-button|erp-data-governance-button|erp-sync-state/);
+  assert.doesNotMatch(html, /2024년부터 오늘까지, 하나의 재무 흐름으로|aria-label="재무회계 메뉴"|Clobe · 2026 데이터/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|codex-preview/);
 });
 
-test("keeps the finance connection notice in the alarm center configuration", async () => {
+test("shell source keeps only the hr, compensation and audit modules", async () => {
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /title: "2024~2026년 재무 데이터 연결 완료"/);
-  assert.match(source, /destination: \{ module: "finance", financeView: "quality" \}/);
+  assert.match(source, /type ModuleKey = "hr" \| "compensation" \| "audit";/);
+  assert.match(source, /const validModuleKeys: ModuleKey\[\] = \["hr", "compensation", "audit"\];/);
+  // 저장된 모듈이 더 이상 없으면(예: finance) 'hr'로 돌아간다.
+  assert.match(source, /validModuleKeys\.includes\(saved as ModuleKey\) \? saved as ModuleKey : "hr"/);
+  assert.match(source, /useState<ModuleKey>\("hr"\)/);
+  // 감사 로그는 data-governance-center 대신 셸의 탭으로 마운트한다. 서버 게이트(settings:admin)는 그대로다.
+  assert.match(source, /import AuditLogWorkspace from "\.\/audit-log-workspace";/);
+  assert.match(source, /<main className="admin-page">\s*<AuditLogWorkspace \/>/);
+  const auditRoute = await readFile(new URL("../app/api/audit-log/route.ts", import.meta.url), "utf8");
+  assert.match(auditRoute, /authorizeErpRequest\(db, "settings", "admin"\)/);
+  // HR 화면 이동 핸드셰이크는 남긴다.
+  assert.match(source, /<HRWorkspace requestedView=\{hrNavigation\.view\} navigationRequestKey=\{hrNavigation\.requestKey\} \/>/);
+  assert.doesNotMatch(source, /financeView|FinanceDashboard|SalesDashboard|HrDashboard|SalesWorkspace|OperationsWorkbench|DataGovernanceCenter|ApprovalCenter|finance-current-data|finance-decision-model|결재 대기/);
+  assert.doesNotMatch(source, /fetch\("\/api\/(operations|finance|sales)/);
 });
 
 test("renders the incentive calculator analysis workspace", async () => {

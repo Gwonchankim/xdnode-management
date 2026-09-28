@@ -1856,3 +1856,7 @@ tr.leave-dim td { color: #a1a1aa; }
 .condensed .modal-header { padding-block: 10px; }
 .lifecycle-section-heading { min-height: 48px; align-items: center; }
 .checklist-group-heading { min-height: 52px; padding-block: 12px; }
+
+/* R1(M1-3): 직원 명부를 API에서 받는 동안의 로딩 표시 */
+.hr-employees-loading { margin: 24px; padding: 32px 24px; display: grid; gap: 6px; justify-items: center; color: #52525b; text-align: center; font-size: 13px; }
+.hr-employees-loading span { color: #a1a1aa; font-size: 12px; }
