@@ -569,7 +569,8 @@ export default function IncentiveCalculator({ embedded = false }: { embedded?: b
   return (
     <main className={`${styles.page} ${embedded ? styles.embedded : ""}`}>
       {!embedded && <header className={styles.topbar}>
-        <Link href="/" className={styles.brand}><span>XD</span><div><strong>인센티브 계산기</strong></div></Link>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 정적 로고 */}
+        <Link href="/" className={styles.brand}><img className={styles.brandLogo} src="/brand/xdnode-symbol.png" alt="XDNODE" width={40} height={40} /><div><strong>인센티브 계산기</strong></div></Link>
         <div className={styles.saved}><i /> 이 브라우저에 자동 저장</div>
       </header>}
 

@@ -13,8 +13,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "XDnode management · 경영지원실",
     description: "경영지원실의 인사·임금 계산·감사 기록을 한곳에서 다루는 XDnode management",
     icons: {
-      icon: "/favicon.svg",
-      shortcut: "/favicon.svg",
+      icon: [
+        { url: "/brand/xdnode-favicon-32.png", sizes: "32x32", type: "image/png" },
+        { url: "/brand/xdnode-favicon-64.png", sizes: "64x64", type: "image/png" },
+      ],
+      shortcut: "/brand/xdnode-favicon-32.png",
+      apple: "/brand/apple-touch-icon.png",
     },
     openGraph: {
       title: "XDnode management",

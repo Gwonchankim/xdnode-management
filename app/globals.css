@@ -104,6 +104,8 @@ body { letter-spacing: -.011em; }
   border: 0;
 }
 .erp-top-brand .brand-mark { width: 48px; height: 48px; box-shadow: none; }
+/* 회사 심볼 이미지(public/brand/xdnode-symbol.png). 예전 "XD" 글자 칸의 배경·둥근 모서리는 쓰지 않는다. */
+.erp-top-brand .brand-mark.brand-logo { background: transparent; border-radius: 50%; object-fit: contain; padding: 0; }
 .erp-top-brand strong { font-family: var(--font-display); font-weight: 700; letter-spacing: -.02em; }
 .erp-top-brand small { color: var(--color-slate); font-family: var(--font-mono); }
 .erp-module-tabs { align-self: auto; gap: 4px; }

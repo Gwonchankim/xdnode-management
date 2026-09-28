@@ -25,7 +25,8 @@ function ERPTopNavigation({ active, onChange }: { active: ModuleKey; onChange: (
   return (
     <header className="erp-top-nav">
       <div className="erp-top-brand">
-        <span className="brand-mark">XD</span>
+        {/* eslint-disable-next-line @next/next/no-img-element -- 정적 로고. /_vinext/image 최적화가 필요 없다. */}
+        <img className="brand-mark brand-logo" src="/brand/xdnode-symbol.png" alt="XDNODE" width={48} height={48} />
         <div>
           <strong>XDnode management</strong>
 
