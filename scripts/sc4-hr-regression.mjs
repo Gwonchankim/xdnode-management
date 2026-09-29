@@ -21,11 +21,15 @@
 // 재무·영업·결재 표의 행 수가 바뀌지 않았는지는 이 스크립트가 아니라, 서버를 멈춘 사본에 대해
 // `node scripts/verify-state-snapshot.mjs <사본> --compare <실행 전 사본>` 으로 확인한다(DB 를 직접 읽지 않는다).
 //
-// 옵션: --cookie <값> 또는 환경변수 SC4_COOKIE — R3 세션 로그인 뒤 점검 인스턴스에 쓸 쿠키.
+// 로그인(R3): API 는 세션이 필요하고, 쓰기 요청은 Origin 이 Host 와 같아야 한다(app/request-guard.ts).
+//   XDM_EMAIL·XDM_PASSWORD 환경변수가 있으면 scripts/xdm-login.mjs 로 로그인한다(점검 인스턴스의 관리자 계정).
+//   --cookie <값> 또는 환경변수 SC4_COOKIE(xdm_session=…)가 있으면 로그인하지 않고 그 쿠키를 쓴다.
+//   모든 요청에 쿠키를, GET 이 아닌 요청에 `Origin: <base>` 를 붙인다.
 // 종료 코드: FAIL 이 있으면 1, FAIL 없이 SKIP 만 있으면 3, 전부 PASS 면 0. 사용법 오류는 2.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import vm from "node:vm";
+import { loginXdm, xdmHeaders } from "./xdm-login.mjs";
 
 const args = process.argv.slice(2);
 const option = (name) => { const index = args.indexOf(name); return index >= 0 ? args[index + 1] : undefined; };
@@ -33,7 +37,7 @@ const BASE = (option("--base") ?? "").replace(/\/+$/, "");
 const PHASE = option("--phase") ?? "all";
 const STATE_FILE = option("--state");
 const OFFLINE_DIR = option("--offline-prep");
-const COOKIE = option("--cookie") ?? process.env.SC4_COOKIE ?? "";
+let COOKIE = option("--cookie") ?? process.env.SC4_COOKIE ?? "";
 
 function usage(message) {
   console.error(`${message}\n사용법: node scripts/sc4-hr-regression.mjs --base <url> [--phase all|main|due] [--state <file>]\n       node scripts/sc4-hr-regression.mjs --offline-prep <stoppedStateDir> --state <file>`);
@@ -44,6 +48,7 @@ else {
   if (!/^https?:\/\/[^/]+$/.test(BASE)) usage("--base 가 필요합니다(예: http://127.0.0.1:3100).");
   if (!["all", "main", "due"].includes(PHASE)) usage("--phase 는 all, main, due 중 하나입니다.");
   if (PHASE !== "all" && !STATE_FILE) usage("--phase main|due 에는 --state 가 필요합니다.");
+  if (!COOKIE && !(process.env.XDM_EMAIL && process.env.XDM_PASSWORD)) usage("세션이 필요합니다: XDM_EMAIL·XDM_PASSWORD 환경변수나 --cookie(SC4_COOKIE)를 주세요.");
 }
 
 // ── 결과 출력 ─────────────────────────────────────────────────────────────────────────────────
@@ -79,12 +84,11 @@ function expect(response, expectedStatus, expectedState, actualState) {
 
 // ── HTTP ──────────────────────────────────────────────────────────────────────────────────────
 async function api(method, path, body, { form = false, raw = false } = {}) {
-  const headers = {};
-  if (COOKIE) headers.Cookie = COOKIE;
+  const headers = xdmHeaders(BASE, method, COOKIE);
   const init = { method, headers, redirect: "manual" };
   if (body !== undefined) {
     if (form) init.body = body;
-    else { headers["Content-Type"] = "application/json"; init.body = JSON.stringify(body); }
+    else { headers.set("Content-Type", "application/json"); init.body = JSON.stringify(body); }
   }
   const response = await fetch(`${BASE}${path}`, init);
   const type = response.headers.get("content-type") ?? "";
@@ -134,6 +138,9 @@ async function phaseMain(state) {
   await step("0.1 인증·HR 운영 조회(스키마 생성)", async () => {
     const response = await api("GET", "/api/hr/operations");
     state.principalEmployeeId = response.body?.principal?.employeeId ?? "";
+    // R3: 인사기록에 연결된 계정인지(본인 이의제기 단계에 필요). /api/me 의 user.linkedEmployee.
+    const me = await api("GET", "/api/me");
+    state.principalLinked = me.body?.user?.linkedEmployee === true;
     // R3: 역할 대신 탭 권한(access.hr, access.isAdmin)을 받는다.
     const access = response.body?.access ?? {};
     return expect(response, 200, { canWrite: true }, { canWrite: access.isAdmin === true || access.hr === "edit" });
@@ -447,6 +454,13 @@ async function phaseDue(state) {
     return expect(response, 200, { cycle: "FINALIZED", participants: ["FINALIZED", "FINALIZED"] }, { cycle: current.cycle, participants: current.participants });
   });
   await step("13.2 확정된 주기 재확정 → 409", async () => expect(await api("POST", "/api/hr/performance", { action: "SUBMIT_FINALIZATION", cycleId }), 409));
+  // 이의제기는 본인만 낼 수 있고, 본인 판정은 인사기록에 연결된 계정만 한다(Design §10.4-8). 연결되지 않은 계정(acct_…)이면 건너뛴다.
+  if (state.principalLinked === false) {
+    for (const name of ["13.3 이의제기 제출", "13.4 이의제기 처리결과 ACCEPTED → 400", "13.5 이의제기 수용·기각"]) {
+      skip(name, "로그인 계정이 인사기록에 연결되어 있지 않습니다(점검용 관리자를 인사기록에 연결한 계정으로 실행하세요)");
+    }
+    return;
+  }
   for (const [label, outcome] of [["수용", "RESOLVED"], ["기각", "REJECTED"]]) {
     let appealId = "";
     await step(`13.3 이의제기 제출(${label}용)`, async () => {
@@ -521,6 +535,15 @@ async function offlinePrep() {
 if (OFFLINE_DIR) await offlinePrep();
 else {
   console.log(`INFO SC-4 HR 회귀 · base ${BASE} · phase ${PHASE} · today(KST) ${koreaToday()}`);
+  if (!COOKIE) {
+    try {
+      COOKIE = await loginXdm(BASE);
+      console.log("INFO XDM_EMAIL 계정으로 로그인했습니다.");
+    } catch (error) {
+      console.error(`로그인 실패: ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(2);
+    }
+  }
   const state = PHASE === "due" ? loadState() : {};
   if (PHASE === "due" && !state.run) usage("상태 파일에 main 단계 결과가 없습니다.");
   if (PHASE !== "due") { await phaseMain(state); saveState(state); }

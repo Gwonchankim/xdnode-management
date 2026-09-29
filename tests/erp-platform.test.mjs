@@ -1069,21 +1069,6 @@ test("offer creation follows the linked requisition organization and counts onbo
   assert.match(workspace, /className="applicant-screening-hint offer-error" role="alert"/);
 });
 
-test("demo USB packager ships the app without secrets and with the files the dev server needs", async () => {
-  const packager = await read("scripts/Package-XDNodeDemo.ps1");
-  // 비밀 값(.env*)은 옮기지 않고 로컬 신원 두 줄만 새로 쓴다.
-  assert.match(packager, /"\.env\*"/);
-  assert.match(packager, /LOCAL_ERP_USER_EMAIL\|LOCAL_ERP_USER_NAME/);
-  // vite.config.ts 가 ./build/sites-vite-plugin 과 ./.openai/hosting.json 을 불러오므로 build 는 제외 목록에 없어야 한다.
-  assert.doesNotMatch(packager, /"dist", "build"/);
-  assert.match(packager, /sites-vite-plugin/);
-  // 260자를 넘는 경로에서는 workerd 가 DB 파일을 열지 못한다. 패키저가 미리 막는다.
-  assert.match(packager, /\$AppPath\.Length \+ 130\) -gt 250/);
-  // 동봉 Node 를 PATH 앞에 두고 기존 실행 스크립트를 그대로 부른다.
-  assert.match(packager, /runtime\\node;%PATH%/);
-  assert.match(packager, /Start-XDNodeManagement\.ps1/);
-});
-
 test("no browser-side code calls the desktop-only Claude bridges directly", async () => {
   // 브라우저가 127.0.0.1 다리를 직접 부르면 태블릿 등 다른 기기에서는 그 기기 자신을 가리켜 실패한다.
   // AI 호출은 모두 서버 라우트(/api/assistant, /api/hr/resume-analysis)를 거친다.

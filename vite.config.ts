@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import vinext from "vinext";
 import { defineConfig, loadEnv } from "vite";
 import hostingConfig from "./.openai/hosting.json";
+import { localPeerPlugin } from "./build/local-peer-vite-plugin";
 import { sites } from "./build/sites-vite-plugin";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
@@ -33,11 +34,11 @@ export default defineConfig(async ({ command, mode }) => {
   process.env.MINIFLARE_REGISTRY_PATH ??= ".wrangler/registry";
 
   const fileEnv = command === "serve" ? loadEnv(mode, process.cwd(), "") : {};
-  // LOCAL_ERP_USER_* 는 혼자 로컬에서 돌릴 때 쓰는 신원이다. Sign-in with ChatGPT 헤더가 없는
-  // 환경에서만 app/chatgpt-auth.ts 가 이 값을 사용하고, 값이 없으면 예전처럼 로그인을 요구한다.
+  // Worker 로 넘기는 값은 이 허용 목록 5개뿐이다(Design §10.3). preview 는 같은 목록을 scripts/write-dev-vars.mjs 가
+  // dist/server/.dev.vars 에 쓴다. 두 목록이 같은지는 tests/lan-exposure-guards.test.mjs 가 확인한다.
+  // build 에서는 fileEnv 가 비어 있어 dist/server/wrangler.json 의 vars 에 비밀값이 들어가지 않는다.
   const localRuntimeVars = Object.fromEntries(
-    ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN",
-      "LOCAL_ERP_USER_EMAIL", "LOCAL_ERP_USER_NAME",
+    ["CLOUDFLARE_ACCOUNT_ID", "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_TRANSCRIPTION_MODEL",
       // 이력서 분석은 Claude CLI 다리 하나만 쓴다(scripts/claude-resume-bridge.mjs).
       // 값이 없으면 http://127.0.0.1:3120 을 쓴다.
       "CLAUDE_BRIDGE_URL",
@@ -73,16 +74,25 @@ export default defineConfig(async ({ command, mode }) => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    // allowedHosts 는 기본값([] = IP·localhost 만)을 둔다. DNS rebinding 을 막는 층이 Vite hostValidation 뿐이라
+    // PC 이름을 더하지 않는다(Design §7.3, 부록 C #8). 접속 주소는 IP 로 안내한다.
     server: {
       fs: { deny: DEV_FS_DENY },
+      // vinext dev 는 --strictPort 를 읽지 않는다. 3100 이 차 있으면 다른 포트로 옮겨 가지 않고 실패하게 여기서 건다(부록 C #25).
+      strictPort: true,
       ...(isCodexSeatbeltSandbox ? { watch: { useFsEvents: false, usePolling: true } } : {}),
     },
+    preview: { strictPort: true },
+    // local-peer 플러그인은 배열 첫 항목이고 enforce:"pre" 다(Design §7.6). 정렬 기준이 바뀌어도 디스패처보다 앞에 선다.
     plugins: [
+      localPeerPlugin(),
       vinext(),
       sites(),
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         config: localBindingConfig,
+        // 인스펙터(dev 9229·preview 9230)를 열지 않는다. /__debug 도 next() 로 넘어간다.
+        inspectorPort: false,
       }),
     ],
   };

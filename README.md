@@ -40,8 +40,10 @@ the xdnode-management Design document (§4.2, §7).
 
 ## Useful Commands
 
-- `npm run dev`: start local development
+- `npm run dev`: start local development (`127.0.0.1:3100`)
 - `npm run build`: verify the vinext build output
+- `npm run start` / `npm run serve:lan`: serve the build with `vite preview` on `127.0.0.1:3000` / `0.0.0.0:3000`
+  (operations: `scripts/Start-XDNodeManagement.ps1`, `docs/lan-operations-runbook.md`)
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 

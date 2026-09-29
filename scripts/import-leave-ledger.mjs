@@ -1,21 +1,25 @@
 // 엑셀 연차관리대장 → ERP 연차관리 이관 (1회용).
 //   node scripts/import-leave-ledger.mjs "<xlsx 경로>"            미리보기만
-//   node scripts/import-leave-ledger.mjs "<xlsx 경로>" --apply    ERP 에 저장 (앱이 http://localhost:3000 에 떠 있어야 함)
+//   node scripts/import-leave-ledger.mjs "<xlsx 경로>" --apply    ERP 에 저장 (앱이 http://127.0.0.1:3000 에 떠 있어야 함)
 //   --map 이름=사번   시트 이름과 인사기록카드 이름이 다를 때 (여러 번 가능)
 //   --base http://…   다른 주소의 앱
+//   --cookie <값>     이미 받은 세션 쿠키(xdm_session=…). 없으면 XDM_EMAIL·XDM_PASSWORD 환경변수로 로그인한다(scripts/xdm-login.mjs).
+// 미리보기도 인사기록을 읽으므로 로그인이 필요하다. 계정에는 인사관리 편집 권한(--apply)이 있어야 한다.
 // 시트 구조는 docs/hr-leave-management-plan.md 2·5절. 발생분은 저장하지 않고 엔진이 다시 계산하므로
 // 옮기는 것은 사용 기록(직원 탭 AI/AL 열)과 「제외」 표시(월차 만근 F열)뿐이다.
 import readAllSheets from "read-excel-file/node";
 import { computeLeaveLedger, expandDateRange, leaveKindFromLabel, normalizeDate } from "../app/hr-leave-accrual.ts";
+import { connectXdm } from "./xdm-login.mjs";
 
 const args = process.argv.slice(2);
 const xlsxPath = args.find((arg) => !arg.startsWith("--") && !args[args.indexOf(arg) - 1]?.startsWith("--"));
-if (!xlsxPath) { console.error("사용법: node scripts/import-leave-ledger.mjs <xlsx> [--apply] [--map 이름=사번] [--base http://localhost:3000]"); process.exit(2); }
+if (!xlsxPath) { console.error("사용법: node scripts/import-leave-ledger.mjs <xlsx> [--apply] [--map 이름=사번] [--base http://127.0.0.1:3000] [--cookie xdm_session=…]"); process.exit(2); }
 const apply = args.includes("--apply");
 // 인사기록카드에 없는 사람(ERP 도입 전 퇴사자)은 이 옵션이 있을 때만 건너뛰고 저장한다.
 const skipUnmatched = args.includes("--skip-unmatched");
 const baseIndex = args.indexOf("--base");
-const base = baseIndex >= 0 ? args[baseIndex + 1] : "http://localhost:3000";
+const base = baseIndex >= 0 ? args[baseIndex + 1] : "http://127.0.0.1:3000";
+const cookieIndex = args.indexOf("--cookie");
 const manualMap = new Map(args.flatMap((arg, index) => arg === "--map" ? [args[index + 1].split("=")] : []));
 const today = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
@@ -38,8 +42,10 @@ const people = manage.slice(7).filter((row) => text(row[0]) && normalizeDate(row
   sheetUsed: number(row[6]), sheetGranted: number(row[9]), sheetBalance: number(row[10]),
 }));
 
-// 2) 인사기록카드에서 사번 찾기
-const employeeResponse = await fetch(`${base}/api/hr/employee-records`);
+// 2) 인사기록카드에서 사번 찾기 — R3 부터 API 는 세션이 필요하다
+const client = await connectXdm(base, { cookie: cookieIndex >= 0 ? args[cookieIndex + 1] : "" })
+  .catch((error) => { console.error(error instanceof Error ? error.message : String(error)); process.exit(2); });
+const employeeResponse = await client.fetch("/api/hr/employee-records");
 if (!employeeResponse.ok) { console.error(`인사기록을 읽지 못했습니다 (${employeeResponse.status}). 앱이 떠 있는지 확인하세요.`); process.exit(2); }
 const { records } = await employeeResponse.json();
 const idByName = new Map(records.map((record) => [record.name.replace(/\s+/g, ""), record.employeeId]));
@@ -101,7 +107,7 @@ if (unmappedLabels.length) console.log(`종류를 모르는 내용 ${unmappedLab
 
 if (!apply) { console.log("\n--apply 를 붙이면 ERP 에 저장합니다."); process.exit(0); }
 if ((unmatched.length && !skipUnmatched) || badDates.length || unmappedLabels.length) { console.error("\n미매칭·오류가 남아 있어 저장하지 않았습니다. 위 항목을 정리한 뒤 다시 실행하세요."); process.exit(1); }
-const response = await fetch(`${base}/api/hr/leave`, {
+const response = await client.fetch("/api/hr/leave", {
   method: "POST", headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ resource: "import", records: usageRecords.map(({ employeeId, date, leaveType, label }) => ({ employeeId, date, leaveType, note: label })), adjustments: adjustments.map(({ employeeId, grantKey, note }) => ({ employeeId, grantKey, note })) }),
 });

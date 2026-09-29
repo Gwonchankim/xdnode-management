@@ -3,15 +3,22 @@
 // 배포가 취소되면서 D1 을 직접 읽을 방법이 사라졌고, 앱 API 로도 더는 반출할 수 없다.
 // 여기 담긴 것은 작업 중 실제로 조회해 응답으로 확인한 값뿐이다. 추측으로 채운 값은 없다.
 //
-// 실행:  node scripts/restore-known-data.mjs            (기본 http://localhost:3000)
-//        node scripts/restore-known-data.mjs --dry-run  (무엇을 넣을지만 출력)
-//        BASE_URL=http://localhost:5173 node scripts/restore-known-data.mjs
+// 실행:  XDM_EMAIL=… XDM_PASSWORD=… node scripts/restore-known-data.mjs            (기본 http://127.0.0.1:3000)
+//        node scripts/restore-known-data.mjs --dry-run  (무엇을 넣을지만 출력. 조회는 하므로 로그인은 필요하다)
+//        node scripts/restore-known-data.mjs --cookie xdm_session=…   (이미 받은 세션 쿠키)
+//        BASE_URL=http://127.0.0.1:3001 node scripts/restore-known-data.mjs
 //
 // DB 에 직접 쓰지 않고 앱 API 만 호출한다. 감사기록과 상태 전이 규칙이 그대로 적용되고,
 // 이미 있는 항목은 건너뛰므로 두 번 돌려도 중복이 생기지 않는다.
+// R3 부터 API 는 세션이 필요하다. scripts/xdm-login.mjs 로 로그인하고, 쓰기 요청에는 Origin 을 붙인다.
+// 계정에는 인사관리 편집 권한이 있어야 한다.
+import { connectXdm } from "./xdm-login.mjs";
 
-const BASE = process.env.BASE_URL ?? "http://localhost:3000";
+const BASE = process.env.BASE_URL ?? "http://127.0.0.1:3000";
 const DRY = process.argv.includes("--dry-run");
+const cookieIndex = process.argv.indexOf("--cookie");
+const COOKIE = cookieIndex >= 0 ? process.argv[cookieIndex + 1] ?? "" : "";
+let client;
 
 // 실서버 /api/hr/recruitment-requisitions 응답에서 확인한 값.
 const REQUISITIONS = [
@@ -30,7 +37,7 @@ const REQUISITIONS = [
 const log = (...args) => console.log(...args);
 
 async function api(path, init) {
-  const response = await fetch(`${BASE}${path}`, init);
+  const response = await client.fetch(path, init);
   const text = await response.text();
   let payload;
   try { payload = JSON.parse(text); } catch { payload = { raw: text.slice(0, 200) }; }
@@ -51,15 +58,18 @@ async function restoreRequisitions() {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "CREATE_DRAFT", ...draft }),
     });
-    log(created.ok ? `  넣음   ${item.role} · ${created.payload.autoApproved ? "모집 중" : "작성 중"} (${note})`
+    // D2-개정: 결재 없이 곧바로 모집을 시작한다. 모집 시작이 거부되면(opened:false) 작성 중으로 남는다.
+    log(created.ok ? `  넣음   ${item.role} · ${created.payload.opened ? "모집 중" : `작성 중${created.payload.openError ? ` — ${created.payload.openError}` : ""}`} (${note})`
       : `  실패   ${item.role} — ${created.payload.error ?? created.status}`);
   }
 }
 
 async function main() {
   log(`대상 서버: ${BASE}${DRY ? "  (미리보기 — 아무것도 쓰지 않음)" : ""}`);
+  client = await connectXdm(BASE, { cookie: COOKIE });
   const health = await api("/api/hr/recruitment-requisitions");
-  if (health.status === 401) throw new Error("401 — .env.local 의 LOCAL_ERP_USER_EMAIL 설정 후 서버를 다시 시작하세요.");
+  if (health.status === 401) throw new Error("401 — 세션이 없거나 만료됐습니다. XDM_EMAIL·XDM_PASSWORD 로 다시 로그인하세요.");
+  if (health.status === 403) throw new Error(`403 ${health.payload.code ?? ""} — 이 계정에 인사관리 권한이 없거나 비밀번호 변경이 필요합니다.`);
   if (!health.ok) throw new Error(`서버 응답 이상 (${health.status}). 로컬 서버가 실행 중인지 확인하세요.`);
 
   // 퇴직요청 4건과 생애주기 업무 40건은 로컬 DB 에 그대로 남아 있어 손대지 않는다.
