@@ -165,6 +165,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Stop-XDN
   - 암호는 **Windows 로그인 비밀번호**다(PIN·Windows Hello 불가, 빈 암호 불가). 계정은 서버 사용자(`DESKTOP-HVUV0RL\user`)이고 `CodexSandbox*` 계정이 아니다. 계정 선택 창이 헷갈리면 `$cred = New-Object PSCredential("DESKTOP-HVUV0RL\user", (Read-Host -AsSecureString))` 뒤 `& ...\Register-XDNodeManagementTasks.ps1 -Credential $cred`.
   - **Windows 비밀번호를 바꾸면 이 스크립트를 다시 실행한다.** 저장된 옛 암호로는 두 작업이 로그온 실패로 돌지 않는다(자동 기동·03:00 백업 모두).
 - **기동 경로는 하나다**: 재부팅·백업 재기동·Deploy·수동 재기동은 모두 `Start-ScheduledTask XDnodeManagement-Autostart`로 한다. 대화형 세션에서 스크립트를 직접 띄우지 않는다(로그오프하면 서버가 같이 멈추고, 세션 종류가 달라 브리지 자격 증명 동작도 달라진다). 바탕화면 바로가기(Start 스크립트, `-Headless` 없음)는 작업이 있으면 알아서 작업을 실행한다.
+- **감독자(R4.2)**: 작업이 '로그온 여부와 관계없이' 띄운 프로세스는 다른 로그온 세션(대화형 창, Deploy, 03:00 백업)에서 `taskkill`하면 '액세스가 거부되었습니다'로 끌 수 없다(2026-09-29 첫 Deploy가 이것으로 exit 3). 그래서 `Start -Headless`는 끝나지 않고 감독자로 남고(작업 상태 '실행 중'이 정상), `Stop`은 `C:\xdm\run\stop-<포트>.request`를 써서 감독자가 같은 세션에서 끄게 한다. 감독자가 없거나(`xdm-supervisor-<포트>.pid` 없음) 응답하지 않으면 예전처럼 pid 파일·포트로 끈다. 그래도 액세스 거부면 관리자 PowerShell에서 Stop을 실행하거나 재부팅한다.
 - 수동 재기동: `Stop-XDNodeManagement.ps1` → `Start-ScheduledTask XDnodeManagement-Autostart` → `C:\xdm\logs\xdm-yyyyMMdd.log`에 `ready: ... -> 401`.
 - 상태 확인: `Get-ScheduledTaskInfo XDnodeManagement-Autostart`(LastTaskResult 0), `Get-ScheduledTaskInfo XDnodeManagement-Backup`.
 - 적용 때 확인: 관리자 권한 없이 `Start-ScheduledTask XDnodeManagement-Autostart`가 되는지(백업 작업·Deploy·바로가기가 이 호출을 쓴다). 안 되면 작업의 보안 설정에서 서버 사용자에게 실행 권한을 준다.

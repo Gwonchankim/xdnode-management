@@ -98,6 +98,25 @@ test('R4: the register script creates the D19 startup task with a stored passwor
   assert.doesNotMatch(code, /Unregister-ScheduledTask|powercfg|netsh|New-NetFirewallRule/);
 });
 
+test('R4.2: task-started servers are stopped by their own supervisor, because other logon sessions get access denied', () => {
+  const start = codeOf(read('scripts/Start-XDNodeManagement.ps1'));
+  const stop = codeOf(read('scripts/Stop-XDNodeManagement.ps1'));
+  // Start -Headless 는 띄운 프로세스가 있으면 감독자로 남고, 요청 파일을 보면 자기 프로세스를 끈 뒤 pid·요청 파일을 지운다.
+  assert.ok(start.includes('$StopRequest = Join-Path $RunDir "stop-$Port.request"'));
+  assert.ok(start.includes('$SupervisorPidFile = Join-Path $RunDir "xdm-supervisor-$Port.pid"'));
+  assert.ok(start.includes('if ($serverProcess -or $script:OwnedBridges.Count -gt 0) { Invoke-Supervisor $serverProcess }'));
+  const clearStale = start.indexOf('Remove-Item -LiteralPath $StopRequest', start.indexOf('Write-Log "INFO" ("begin port='));
+  assert.ok(clearStale > 0 && clearStale < start.indexOf('$portProxy = @('), 'a stale stop request is cleared before starting');
+  const supervisor = start.slice(start.indexOf('function Invoke-Supervisor'), start.indexOf('# 로그 회전'));
+  assert.match(supervisor, /Stop-OwnedTree \$ServerProcess\.Id/);
+  assert.match(supervisor, /finally \{[\s\S]*Remove-Item -LiteralPath \$SupervisorPidFile[\s\S]*Remove-Item -LiteralPath \$StopRequest/);
+  // Stop 은 감독자에게 먼저 요청하고(끝날 때까지 기다림), 그다음 pid 파일·포트 대체 경로로 간다.
+  assert.ok(stop.indexOf('Set-Content -LiteralPath $stopRequest') < stop.indexOf('foreach ($target in $targets) { Stop-FromPidFile'));
+  assert.ok(stop.includes('$supervisor.ProcessName -ieq "powershell"'), 'only a PowerShell supervisor is waited for');
+  // 다른 세션 프로세스는 StartTime 을 읽을 수 없다. 읽지 못한 것을 pid 재사용으로 보면 pid 파일만 지우고 서버는 남는다.
+  assert.ok(stop.includes('if ($startedAt -and $startedAt -gt $NotStartedAfter) {'));
+});
+
 // ── 실제 실행(거부 경로만) ───────────────────────────────────────────────────────
 function runPowerShell(script, args) {
   return new Promise((resolve) => {

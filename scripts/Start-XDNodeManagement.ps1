@@ -13,7 +13,9 @@
 #   수동(바로가기): powershell -ExecutionPolicy Bypass -File scripts\Start-XDNodeManagement.ps1
 #   점검 인스턴스:  powershell -ExecutionPolicy Bypass -File scripts\Start-XDNodeManagement.ps1 -Port 3001   (C:\xdm\staging)
 #   -Rebuild   커밋이 같아도 다시 빌드한다(작업 트리를 고친 폴더에서 점검할 때). 작업 위임을 건너뛴다
-#   -Headless  Read-Host·브라우저 없음. 실패하면 로그를 남기고 종료 코드 1(작업 스케줄러가 5분 간격 3회 재시도)
+#   -Headless  Read-Host·브라우저 없음. 실패하면 로그를 남기고 종료 코드 1(작업 스케줄러가 5분 간격 3회 재시도).
+#              성공하면 끝나지 않고 감독자로 남는다(작업 상태 '실행 중'). Stop 이 <RunDir>\stop-<포트>.request 를 쓰면
+#              자기가 띄운 preview·브리지를 끄고 끝난다. 작업이 띄운 프로세스는 다른 로그온 세션에서 끌 수 없기 때문이다.
 #
 # pid 파일: <RunDir>\xdm-management.pid(3000, preview 를 띄운 cmd.exe 하나의 pid. reset-admin-password·백업 기록이 읽는다),
 #           그 밖의 포트는 xdm-management-<포트>.pid, 브리지는 xdm-bridge-<포트>.pid. Stop-XDNodeManagement.ps1 이 이 파일들로 끈다.
@@ -125,7 +127,52 @@ function Start-Bridge([int]$BridgePort, [string]$NpmScript, [string]$Name) {
     -RedirectStandardError "$bridgeLog.err" `
     -PassThru
   Set-Content -LiteralPath (Join-Path $RunDir "xdm-bridge-$BridgePort.pid") -Value $bridge.Id -Encoding ascii
+  $script:OwnedBridges += @{ Port = $BridgePort; Id = $bridge.Id }
   Write-Log "INFO" "bridge $Name started on 127.0.0.1:$BridgePort (pid $($bridge.Id))"
+}
+
+# 감독 모드(-Headless). 작업 스케줄러가 '로그온 여부와 관계없이'(암호 저장) 띄운 프로세스는 다른 로그온 세션
+# (대화형 창, Deploy, 03:00 백업 작업)에서 taskkill 하면 '액세스가 거부되었습니다'로 끌 수 없다. 그래서 이 스크립트가
+# 끝나지 않고 남아 있다가, Stop-XDNodeManagement.ps1 이 남긴 정지 요청 파일을 보면 자기가 띄운 프로세스를 같은 세션에서 끈다.
+$StopRequest = Join-Path $RunDir "stop-$Port.request"
+$SupervisorPidFile = Join-Path $RunDir "xdm-supervisor-$Port.pid"
+$script:OwnedBridges = @()
+
+function Stop-OwnedTree([int]$ProcessId, [string]$Label) {
+  if (-not (Get-Process -Id $ProcessId -ErrorAction SilentlyContinue)) { return }
+  $priorPreference = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try { $output = & taskkill.exe /T /F /PID $ProcessId 2>&1 | ForEach-Object { if ($_ -is [System.Management.Automation.ErrorRecord]) { $_.Exception.Message } else { "$_" } } } finally { $ErrorActionPreference = $priorPreference }
+  Write-Log "INFO" ("supervisor: {0}: taskkill /T /F /PID {1} -> {2}" -f $Label, $ProcessId, (($output | Select-Object -First 1) -join " "))
+}
+
+function Invoke-Supervisor($ServerProcess) {
+  Set-Content -LiteralPath $SupervisorPidFile -Value $PID -Encoding ascii
+  Write-Log "INFO" "supervisor: waiting for $StopRequest (pid $PID)"
+  try {
+    while ($true) {
+      if (Test-Path -LiteralPath $StopRequest) { break }
+      if ($ServerProcess -and $ServerProcess.HasExited) {
+        Write-Log "ERROR" "supervisor: preview on port $Port exited without a stop request (see $LogPath)"
+        break
+      }
+      Start-Sleep -Seconds 2
+    }
+    $keepBridges = (Test-Path -LiteralPath $StopRequest) -and ((Get-Content -Raw -LiteralPath $StopRequest -ErrorAction SilentlyContinue) -match "keep-bridges")
+    if ($ServerProcess) { Stop-OwnedTree $ServerProcess.Id "preview:$Port" }
+    Remove-Item -LiteralPath $PidFile -Force -ErrorAction SilentlyContinue
+    if (-not $keepBridges) {
+      foreach ($bridge in $script:OwnedBridges) {
+        Stop-OwnedTree $bridge.Id "bridge:$($bridge.Port)"
+        Remove-Item -LiteralPath (Join-Path $RunDir "xdm-bridge-$($bridge.Port).pid") -Force -ErrorAction SilentlyContinue
+      }
+    }
+  }
+  finally {
+    Remove-Item -LiteralPath $SupervisorPidFile -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $StopRequest -Force -ErrorAction SilentlyContinue
+  }
+  Write-Log "INFO" "supervisor: stopped port $Port"
 }
 
 # 로그 회전: 날짜별 로그와 프로세스 출력 로그를 14일 보관한다. 지금 쓰는 파일은 지워지지 않으므로 오류를 무시한다.
@@ -135,6 +182,8 @@ Get-ChildItem -LiteralPath $LogRoot -File -ErrorAction SilentlyContinue |
   ForEach-Object { try { Remove-Item -LiteralPath $_.FullName -Force -ErrorAction Stop } catch { } }
 
 Write-Log "INFO" ("begin port={0} headless={1} project={2}" -f $Port, [bool]$Headless, $ProjectPath)
+# 지난 실행이 남긴 정지 요청(감독자가 처리하기 전에 재부팅 등)은 새 서버를 곧바로 끄므로 지운다.
+Remove-Item -LiteralPath $StopRequest -Force -ErrorAction SilentlyContinue
 
 # D21: 서버 PC 에서 온 요청(루프백)만 로그인 잠금을 건너뛰고 첫 관리자를 만들 수 있다. 포트 프록시·포워딩이 있으면
 # LAN 요청이 루프백으로 보이므로, 하나라도 있으면 기동하지 않는다(Design §7.4 8번, 부록 C #7).
@@ -244,6 +293,10 @@ foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort)) {
   if (-not (Test-LocalPort $bridgePort)) { Write-Log "WARN" "bridge 127.0.0.1:$bridgePort is not listening yet. See $LogRoot\bridge-*.log." }
 }
 
-if ($Headless) { exit 0 }
+if ($Headless) {
+  # 이미 떠 있던 서버를 확인만 했으면(이 실행이 띄운 프로세스가 없으면) 감독할 것이 없다.
+  if ($serverProcess -or $script:OwnedBridges.Count -gt 0) { Invoke-Supervisor $serverProcess }
+  exit 0
+}
 Write-Host "Ready. Opening the browser..." -ForegroundColor Green
 Start-Process $Url

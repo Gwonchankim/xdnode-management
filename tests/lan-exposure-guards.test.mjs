@@ -193,7 +193,8 @@ test("R4: the launcher runs headless without prompts, writes a pid file, health-
   assert.match(code, /\[switch\]\$Headless/);
   // -Headless 에서는 Read-Host 가 없다. Read-Host 는 모두 if (-not $Headless) 아래에 있다.
   for (const line of code.split("\n").filter((line) => /Read-Host/.test(line))) assert.match(line, /if \(-not \$Headless\) \{ Read-Host/, line);
-  assert.match(code, /if \(\$Headless\) \{ exit 0 \}\s*Write-Host "Ready\. Opening the browser\.\.\." -ForegroundColor Green\s*Start-Process \$Url/);
+  // -Headless 는 브라우저를 열지 않는다. 띄운 프로세스가 있으면 감독자로 남았다가(R4.2) 끝난다.
+  assert.match(code, /if \(\$Headless\) \{\s*if \(\$serverProcess -or \$script:OwnedBridges\.Count -gt 0\) \{ Invoke-Supervisor \$serverProcess \}\s*exit 0\s*\}\s*Write-Host "Ready\. Opening the browser\.\.\." -ForegroundColor Green\s*Start-Process \$Url/);
   // pid 파일: 3000 은 reset-admin-password·백업 기록이 읽는 고정 경로이고, 한 줄에 pid 하나다.
   assert.ok(code.includes('[string]$RunDir = "C:\\xdm\\run"'));
   assert.ok(code.includes('Join-Path $RunDir "xdm-management.pid"'));

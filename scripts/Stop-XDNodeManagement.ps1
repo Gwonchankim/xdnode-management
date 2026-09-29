@@ -47,10 +47,11 @@ function Stop-ProcessTree([int]$ProcessId, [string]$Label, $NotStartedAfter = $n
   $process = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue
   if (-not $process) { return $false }
   # pid 재사용 방지: pid 파일을 쓴 뒤에 시작한 프로세스는 그 pid 를 물려받은 다른 프로그램이다(재부팅 뒤 남은 pid 파일 등).
+  # 다른 로그온 세션(작업 스케줄러)의 프로세스는 StartTime 을 읽을 수 없다. 읽지 못한 것은 재사용으로 보지 않는다.
   if ($NotStartedAfter) {
     $startedAt = $null
     try { $startedAt = $process.StartTime } catch { $startedAt = $null }
-    if (-not $startedAt -or $startedAt -gt $NotStartedAfter) {
+    if ($startedAt -and $startedAt -gt $NotStartedAfter) {
       Write-Log "WARN" "$Label pid $ProcessId was reused by another process (started after the pid file was written); left running"
       return $false
     }
@@ -84,6 +85,30 @@ if ($Port -eq 3000 -and -not $KeepBridges) {
 }
 
 Write-Log "INFO" ("begin ports={0}" -f (($targets | ForEach-Object { $_.Port }) -join ","))
+
+# 0) 감독자(Start-XDNodeManagement.ps1 -Headless, 작업 스케줄러)에게 정지 요청. 작업이 띄운 프로세스는 다른 로그온 세션에서
+#    taskkill 하면 액세스 거부이므로, 감독자가 같은 세션에서 끄고 끝날 때까지 기다린다. 감독자가 없으면 아래 1)·2)로 넘어간다.
+$supervisorFile = Join-Path $RunDir "xdm-supervisor-$Port.pid"
+$stopRequest = Join-Path $RunDir "stop-$Port.request"
+if (Test-Path -LiteralPath $supervisorFile) {
+  $supervisorId = 0
+  $rawSupervisor = Get-Content -Raw -LiteralPath $supervisorFile -ErrorAction SilentlyContinue
+  $supervisor = $null
+  if ($rawSupervisor -and [int]::TryParse($rawSupervisor.Trim(), [ref]$supervisorId)) { $supervisor = Get-Process -Id $supervisorId -ErrorAction SilentlyContinue }
+  if ($supervisor -and $supervisor.ProcessName -ieq "powershell") {
+    Set-Content -LiteralPath $stopRequest -Value $(if ($KeepBridges -or $Port -ne 3000) { "keep-bridges" } else { "all" }) -Encoding ascii
+    Write-Log "INFO" "stop request sent to supervisor pid $supervisorId"
+    $supervisorDeadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $supervisorDeadline -and (Get-Process -Id $supervisorId -ErrorAction SilentlyContinue)) { Start-Sleep -Milliseconds 500 }
+    if (Get-Process -Id $supervisorId -ErrorAction SilentlyContinue) { Write-Log "WARN" "supervisor pid $supervisorId did not exit within ${TimeoutSeconds}s" }
+    else { Write-Log "INFO" "supervisor pid $supervisorId exited" }
+  }
+  else {
+    Write-Log "INFO" "supervisor pid file is stale; removing it"
+    Remove-Item -LiteralPath $supervisorFile -Force -ErrorAction SilentlyContinue
+  }
+  Remove-Item -LiteralPath $stopRequest -Force -ErrorAction SilentlyContinue
+}
 
 # 1) pid 파일 기준
 foreach ($target in $targets) { Stop-FromPidFile $target.PidFile $target.Label }
