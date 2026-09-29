@@ -378,8 +378,9 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.match(contract, /FIXED_TERM: "\/hr\/employment-contract-fixed-term\.docx",/);
   assert.match(contract, /REGULAR: "\/hr\/employment-contract-regular\.docx",/);
   assert.match(contract, /export const FIXED_TERM_MONTHS = 3;/);
-  // 첫 계약 종료일은 시작일 + 3개월 − 1일. 화면에서 고르지 않고 계산한다.
-  assert.match(contract, /nextStart\.setDate\(nextStart\.getDate\(\) - 1\);/);
+  // 첫 계약 종료일은 시작일 + 3개월 − 1일이고, 끝나는 달에 같은 날이 없으면 그 달 말일이다(2026-09-28 확정). 화면에서 고르지 않고 계산한다.
+  assert.match(contract, /if \(start\.getDate\(\) > lastDayOfEndMonth\.getDate\(\)\) return isoDate\(lastDayOfEndMonth\);/);
+  assert.match(contract, /startDate: resolvedKind === "FIXED_TERM" \? joined : firstTermNextStart\(joined\),/);
   assert.match(contract, /export const MONTHLY_WAGE_HOURS = 182\.5;/);
   assert.match(contract, /Math\.round\(basePay \/ MONTHLY_WAGE_HOURS\)/);
   assert.match(contract, /await import\("fflate"\)/);
@@ -520,7 +521,9 @@ test("applicant popup owns screening and interview, and the list only reports st
   // 지원 정보 상세의 「변경사항 저장」은 팝업의 저장과 같은 함수를 타고, 저장이 되면 창을 닫는다.
   assert.match(workspace, /onClick=\{\(\) => \{ if \(saveChanges\(\)\) setFieldsModalOpen\(false\); \}\}>변경사항 저장<\/button>/);
   assert.match(workspace, /function saveChanges\(\) \{/);
-  assert.match(workspace, /import \{ addMonths, buildEmploymentContract, contractFileName, contractKindLabels, contractPay, contractTokens, defaultContractOptions, downloadBlob, FIXED_TERM_MONTHS, fixedTermEndDate, type ContractKind, type ContractOptions \} from "\.\/hr-employment-contract";/);
+  assert.match(workspace, /import \{ buildEmploymentContract, contractFileName, contractKindLabels, contractPay, contractTokens, defaultContractOptions, downloadBlob, FIXED_TERM_MONTHS, firstTermNextStart, fixedTermEndDate, type ContractKind, type ContractOptions \} from "\.\/hr-employment-contract";/);
+  // 대시보드의 정규직 전환일은 첫 계약 종료 다음 날이다 — 월말 입사자도 종료일과 겹치지 않는다.
+  assert.match(workspace, /firstTerm: \(joinDate\) => \(\{ endDate: fixedTermEndDate\(joinDate\), nextStart: firstTermNextStart\(joinDate\) \}\),/);
   assert.match(workspace, /<label><span>계약 종료일 \(자동, 3개월\)<\/span><input readOnly value=\{fixedTermEndDate\(contractOptions\.startDate\)/);
   assert.match(workspace, /근로계약서 다운로드<\/button>/);
   assert.match(workspace, /downloadBlob\(await buildEmploymentContract\(employee, contractOptions\), contractFileName\(employee, contractOptions\)\)/);
@@ -1293,4 +1296,28 @@ test("employee roster seed is server-only and client screens load employees from
   assert.match(incentive, /if \(!response\.ok\) throw new Error\(data\.error \|\| "직원 목록을 불러오지 못했습니다\."\)/);
   assert.match(incentive, /role="alert">\{employeesError\}/);
   assert.match(harness, /'server-only'\]\.includes\(specifier\)/);
+});
+
+test("임금 계산은 수습(첫 계약) 표시를 인사기록과 맞춰 보고, 바로 고칠 버튼을 준다", async () => {
+  const calculator = await readFile("app/compensation-calculator.tsx", "utf8");
+  const engine = await readFile("app/compensation-calculation.ts", "utf8");
+  const styles = await readFile("app/compensation-calculator.css", "utf8");
+  // 임금안과 그 달 인사기록 스냅숏을 한 번에 받고, 월이 맞을 때만 점검에 쓴다.
+  // R3(D20): 임금 계산 API 는 /api/compensation 으로 옮겼다.
+  assert.match(calculator, /fetch\(`\/api\/compensation\?period=\$\{key\}&include=hr`\)/);
+  assert.match(calculator, /const hrSnapshot = hrSnapshotState\?\.period === key \? hrSnapshotState\.employees : null;/);
+  assert.match(calculator, /const probation = useMemo\(\(\) => reviewProbation\(rows, hrSnapshot, year, month\)/);
+  for (const label of ["수습 누락", "수습 지급률 불일치", "수습 종료", "이 달 수습 종료", "첫 3개월 · 100% 지급"]) assert.ok(calculator.includes(`<b>${label} {`), label);
+  assert.match(calculator, /onClick=\{\(\) => applyHrFixes\(probation\.missing\)\}>인사기록대로 맞추기<\/button>/);
+  assert.match(calculator, /onClick=\{\(\) => applyHrFixes\(probation\.mismatch\)\}>인사기록대로 맞추기<\/button>/);
+  assert.match(calculator, /onClick=\{\(\) => applyHrFixes\(probation\.ended\)\}>수습 해제<\/button>/);
+  // 방법 1(2026-09-28 확정), 말일 규칙, 수습 칸이 곧 적용 여부.
+  assert.match(engine, /\(fullMonthly - reducedMonthly\) \* segments\[0\]\.days \/ totalDays/);
+  assert.match(engine, /if \(join\.getUTCDate\(\) > lastDay\) return new Date\(Date\.UTC\(year, targetMonth, lastDay\)\);/);
+  assert.match(engine, /const endOfProbation = employee\.probationMonths > 0/);
+  assert.match(styles, /\.wage-alerts>div\.info\{/);
+  // 입·퇴사일도 인사기록카드와 대조한다(2026-09-28: 인사기록이 기준).
+  assert.match(calculator, /const hrDates = useMemo\(\(\) => reviewHrDates\(rows, hrSnapshot\), \[rows, hrSnapshot\]\);/);
+  assert.ok(calculator.includes("<b>입·퇴사일 불일치 {"));
+  assert.match(calculator, /onClick=\{\(\) => applyHrFixes\(hrDates\)\}>인사기록대로 맞추기<\/button>/);
 });

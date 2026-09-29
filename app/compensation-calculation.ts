@@ -87,13 +87,19 @@ const overlapDays = (aStart: Date, aEnd: Date, bStart: Date, bEnd: Date) => {
   const end = aEnd < bEnd ? aEnd : bEnd;
   return start > end ? 0 : Math.round((end.getTime() - start.getTime()) / DAY) + 1;
 };
-const probationEnd = (join: Date | null, months: number) => {
+/** 수습(첫 계약) 종료일. 입사일 + 개월수 − 1일이고, 끝나는 달에 입사일과 같은 날이 없으면 그 달 말일이다
+ *  (민법 제160조 제3항, 2026-09-28 확정). 1/31 입사 → 4/30, 11/30 입사 → 2/28. 근로계약서의 fixedTermEndDate 와 같은 규칙이다. */
+export const probationEnd = (join: Date | null, months: number) => {
   if (!join || !months) return null;
   const year = join.getUTCFullYear();
   const targetMonth = join.getUTCMonth() + months;
-  const day = Math.min(join.getUTCDate(), new Date(Date.UTC(year, targetMonth + 1, 0)).getUTCDate());
-  return new Date(Date.UTC(year, targetMonth, day) - DAY);
+  const lastDay = new Date(Date.UTC(year, targetMonth + 1, 0)).getUTCDate();
+  if (join.getUTCDate() > lastDay) return new Date(Date.UTC(year, targetMonth, lastDay));
+  return new Date(Date.UTC(year, targetMonth, join.getUTCDate()) - DAY);
 };
+
+/** 첫 계약은 3개월이다(hr-employment-contract.ts 의 FIXED_TERM_MONTHS). 엔진이 계약서 모듈을 끌어오지 않도록 여기 둔다. */
+const FIRST_TERM_MONTHS = 3;
 
 export function calculateCompensation(employee: CompensationEmployee, year: number, month: number, rounding: CompensationRounding, columns: CompensationColumns): CompensationRow {
   const totalDays = daysInCompensationMonth(year, month);
@@ -104,7 +110,10 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
   const start = join && join > monthStart ? join : monthStart;
   const end = leave && leave < monthEnd ? leave : monthEnd;
   const days = start > end ? 0 : Math.round((end.getTime() - start.getTime()) / DAY) + 1;
-  const endOfProbation = employee.probationEndDate ? parseDate(employee.probationEndDate) : probationEnd(join, employee.probationMonths);
+  // 수습 칸을 「—」(0개월)로 두면 인사기록의 종료일이 남아 있어도 수습을 적용하지 않는다. 칸이 곧 적용 여부다.
+  const endOfProbation = employee.probationMonths > 0
+    ? (employee.probationEndDate ? parseDate(employee.probationEndDate) : probationEnd(join, employee.probationMonths))
+    : null;
   const probationDays = days && join && endOfProbation ? overlapDays(start, end, join, endOfProbation) : 0;
   const segments = days ? [
     ...(probationDays ? [{ days: probationDays, rate: employee.probationRate ?? 0.9 }] : []),
@@ -118,11 +127,21 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
     basic = !days ? 0 : days === totalDays ? monthlyBasic : Math.floor(monthlyBasic * 12 / 365 * days);
   }
   else if (days && employee.annualSalary > 0) {
-    basic = days === totalDays && segments.length === 1
+    if (days === totalDays && segments.length === 1) {
       // 회사 규칙: 기본급 = ceil(연봉×지급률/12) − 식대 − 육아 − 자가운전. 근로계약서(hr-employment-contract.ts)와 같은 식이라
       // 단수 처리 설정과 무관하게 항상 올림한다. 설정값은 일할 구간에만 쓴다.
-      ? Math.max(0, Math.ceil(employee.annualSalary * segments[0].rate / 12) - allowanceMonthly)
-      : segments.reduce((sum, segment) => sum + Math.max(0, roundPay((employee.annualSalary * segment.rate - allowanceMonthly * 12) / 365 * segment.days, rounding)), 0);
+      basic = Math.max(0, Math.ceil(employee.annualSalary * segments[0].rate / 12) - allowanceMonthly);
+    } else if (days === totalDays) {
+      // 한 달을 다 근무했는데 수습이 달 중간에 끝난 달(방법 1, 2026-09-28 확정).
+      // 정상 월 기본급에서 (정상 월급 − 수습 월급) × 수습 일수 ÷ 그 달 일수를 뺀다. 수습 일수가 0이면 정상 월급,
+      // 한 달 전부면 수습 월급과 같다. 예전처럼 365일법을 쓰면 31일 달은 정상 월보다 많이, 2월은 크게 적게 나왔다.
+      const fullMonthly = Math.ceil(employee.annualSalary / 12);
+      const reducedMonthly = Math.ceil(employee.annualSalary * segments[0].rate / 12);
+      basic = Math.max(0, roundPay(fullMonthly - allowanceMonthly - (fullMonthly - reducedMonthly) * segments[0].days / totalDays, rounding));
+    } else {
+      // 입사·퇴사로 일부만 근무한 달은 회사가 확정한 365일법이다. 수습이 걸치면 구간마다 따로 센다.
+      basic = segments.reduce((sum, segment) => sum + Math.max(0, roundPay((employee.annualSalary * segment.rate - allowanceMonthly * 12) / 365 * segment.days, rounding)), 0);
+    }
   }
   const allowance = (value: number) => !value || !days ? 0 : days === totalDays ? value : Math.floor(value * 12 / 365 * days);
   const incentive = monthly.incentive ?? 0;
@@ -150,4 +169,110 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
     probationWithoutJoin: employee.probationMonths > 0 && !join,
     probationOver: Boolean(endOfProbation && employee.probationMonths > 0 && days > 0 && probationDays === 0),
   };
+}
+
+/** 이 달 임금표의 수습 표시를 인사기록카드와 맞춰 본다. 임금 계산 화면의 경고 칸이 쓴다.
+ *  회사 기준: 경력직 100%, 신입은 첫 3개월 동안 인사기록카드의 첫 계약 지급률(보통 90%). */
+export type ProbationReviewItem = {
+  id: string;
+  name: string;
+  /** 수습(첫 계약) 종료일. YYYY-MM-DD. */
+  endDate: string;
+  /** 임금표에 적용된 지급률. 수습이 꺼져 있으면 null. */
+  rowRate: number | null;
+  /** 인사기록카드의 지급률. 100%(경력직)이면 null. */
+  hrRate: number | null;
+  /** 「인사기록대로 맞추기」·「수습 해제」를 누르면 이 행에 덮어쓸 값. 고칠 것이 없으면 없다. */
+  fix?: Pick<CompensationEmployee, "probationMonths" | "probationRate" | "probationEndDate">;
+};
+
+export type ProbationReview = {
+  /** 인사기록은 첫 계약 지급률(100% 미만)인데 이 달 임금표에 수습이 꺼져 있다. */
+  missing: ProbationReviewItem[];
+  /** 임금표의 수습 지급률이 인사기록과 다르다. 인사기록은 100%인데 수습이 켜진 경우도 여기다. */
+  mismatch: ProbationReviewItem[];
+  /** 첫 3개월 안인데 인사기록·임금표 모두 100%. 경력직이 맞는지 확인할 목록이다. */
+  confirmFull: ProbationReviewItem[];
+  /** 종료일이 이 달보다 앞인데 수습 칸이 남아 있다. 금액은 이미 100%로 계산된다. */
+  ended: ProbationReviewItem[];
+  /** 이 달 중간에 수습이 끝나 두 구간으로 나눠 계산했다. */
+  boundary: ProbationReviewItem[];
+};
+
+/** 임금표 행에 해당하는 인사기록 행. 사번이 같으면 그 사람이고, 엑셀로 들여와 사번이 없는 행은
+ *  이름이 한 사람에게만 맞을 때 그 사람으로 본다. 동명이인이면 찾지 않는다. */
+function hrMatcher(hrEmployees: CompensationEmployee[]) {
+  const byId = new Map(hrEmployees.map((employee) => [employee.id, employee]));
+  const byName = new Map<string, CompensationEmployee | null>();
+  for (const employee of hrEmployees) {
+    const name = employee.name.trim();
+    byName.set(name, byName.has(name) ? null : employee);
+  }
+  return (employee: CompensationEmployee) => byId.get(employee.id) ?? byName.get(employee.name.trim()) ?? null;
+}
+
+const isoOf = (date: Date | null) => date ? date.toISOString().slice(0, 10) : "";
+const PROBATION_OFF = { probationMonths: 0, probationRate: undefined, probationEndDate: undefined };
+
+export function reviewProbation(rows: CompensationRow[], hrEmployees: CompensationEmployee[] | null, year: number, month: number): ProbationReview {
+  const review: ProbationReview = { missing: [], mismatch: [], confirmFull: [], ended: [], boundary: [] };
+  const monthStart = `${compensationMonthKey(year, month)}-01`;
+  const monthEnd = `${compensationMonthKey(year, month)}-${String(daysInCompensationMonth(year, month)).padStart(2, "0")}`;
+  const hrOf = hrMatcher(hrEmployees ?? []);
+  for (const row of rows) {
+    if (!row.days) continue;
+    const { employee } = row;
+    const checked = employee.probationMonths > 0;
+    const rowRate = checked ? employee.probationRate ?? 0.9 : null;
+    const item = (hrRate: number | null, endDate: string, fix?: ProbationReviewItem["fix"]): ProbationReviewItem => ({
+      id: employee.id, name: employee.name || "이름 미입력", endDate, rowRate, hrRate, ...(fix ? { fix } : {}),
+    });
+    if (row.probationOver) review.ended.push(item(null, isoOf(row.probationEnd), PROBATION_OFF));
+    if (row.mixedProbation) review.boundary.push(item(null, isoOf(row.probationEnd)));
+    if (!hrEmployees) continue;
+    const hr = hrOf(employee);
+    if (!hr) continue;
+    const hrRate = hr.probationMonths > 0 && hr.probationRate !== undefined ? hr.probationRate : null;
+    const hrEnd = hr.probationEndDate || isoOf(probationEnd(parseDate(hr.joinDate), FIRST_TERM_MONTHS));
+    const inFirstTerm = Boolean(hrEnd) && hr.joinDate <= monthEnd && hrEnd >= monthStart;
+    const hrFix = hrRate === null ? PROBATION_OFF
+      : { probationMonths: hr.probationMonths, probationRate: hr.probationRate, probationEndDate: hr.probationEndDate };
+    if (hrRate !== null && inFirstTerm && !checked) review.missing.push(item(hrRate, hrEnd, hrFix));
+    else if (row.probationApplied && (hrRate === null || Math.abs((rowRate ?? 0) - hrRate) > 0.0001)) {
+      review.mismatch.push(item(hrRate, hrRate === null ? isoOf(row.probationEnd) : hrEnd, hrFix));
+    } else if (hrRate === null && inFirstTerm && !checked) review.confirmFull.push(item(null, hrEnd));
+  }
+  return review;
+}
+
+/** 임금표의 입·퇴사일이 인사기록카드와 다른 행. 인사기록이 기준이다(2026-09-28 확인: 8월 임금안의 입사일이 전원 하루씩 빨랐다).
+ *  근무일과 일할 계산이 이 날짜로 정해지므로, 다르면 확정 전에 알리고 「인사기록대로 맞추기」로 고친다. */
+export type HrDateMismatch = {
+  id: string;
+  name: string;
+  rowJoinDate: string;
+  hrJoinDate: string;
+  rowLeaveDate: string;
+  hrLeaveDate: string;
+  fix: Pick<CompensationEmployee, "joinDate" | "leaveDate">;
+};
+
+export function reviewHrDates(rows: CompensationRow[], hrEmployees: CompensationEmployee[] | null): HrDateMismatch[] {
+  if (!hrEmployees) return [];
+  const hrOf = hrMatcher(hrEmployees);
+  const mismatches: HrDateMismatch[] = [];
+  for (const { employee } of rows) {
+    const hr = hrOf(employee);
+    if (!hr) continue;
+    const rowJoinDate = employee.joinDate || "";
+    const rowLeaveDate = employee.leaveDate || "";
+    const hrJoinDate = hr.joinDate || "";
+    const hrLeaveDate = hr.leaveDate || "";
+    if (rowJoinDate === hrJoinDate && rowLeaveDate === hrLeaveDate) continue;
+    mismatches.push({
+      id: employee.id, name: employee.name || "이름 미입력", rowJoinDate, hrJoinDate, rowLeaveDate, hrLeaveDate,
+      fix: { joinDate: hrJoinDate, leaveDate: hrLeaveDate },
+    });
+  }
+  return mismatches;
 }

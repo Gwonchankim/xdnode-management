@@ -11,6 +11,8 @@ import { randomId, readScoped, writeScoped } from "./client-runtime";
 import {
   calculateCompensation,
   compensationMonthKey,
+  reviewHrDates,
+  reviewProbation,
   type CompensationEmployee as Employee,
   type CompensationMonthlyPay as MonthlyPay,
   type CompensationRounding as Rounding,
@@ -57,6 +59,10 @@ const dateString = (value: unknown) => {
   const matched = String(value ?? "").match(/(\d{4})\D{1,3}(\d{1,2})\D{1,3}(\d{1,2})/);
   return matched ? `${matched[1]}-${matched[2].padStart(2, "0")}-${matched[3].padStart(2, "0")}` : "";
 };
+
+/** 수습 경고에 쓰는 표기. 지급률 없음(null)은 100%다. */
+const probationPercent = (rate: number | null) => `${Math.round((rate ?? 1) * 100)}%`;
+const shortDate = (iso: string) => iso ? `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}` : "날짜 미상";
 
 function blankEmployee(year: number, month: number): Employee {
   return { id: randomId(), name: "", department: "", title: "", birthDate: "", joinDate: `${year}-${String(month).padStart(2, "0")}-01`, leaveDate: "", probationMonths: 0, annualSalary: 0, basePay: 0, manualBasic: false, meal: 200_000, car: 0, child: 0, monthly: {} };
@@ -130,6 +136,9 @@ function WageCalculatorClient() {
   // 「HR 기본값 불러오기」(LOAD_HR)는 명단을 통째로 다시 만들어 손본 값이 사라지므로, 중도 입사자 한 명을 더할 때는 이쪽을 쓴다.
   const [hrPicker, setHrPicker] = useState<{ candidates: Employee[]; selected: string[] } | null>(null);
   const [hrPickerLoading, setHrPickerLoading] = useState(false);
+  // 이 달 HR 급여 대상 스냅숏(인사기록카드 기준 첫 계약 지급률·종료일). 수습 점검 경고가 임금표와 맞춰 본다.
+  // 월을 함께 들고 있다가 지금 월과 맞을 때만 쓴다. 월을 바꾼 직후 이전 달 인사기록으로 점검하지 않게 한다.
+  const [hrSnapshotState, setHrSnapshot] = useState<{ period: string; employees: Employee[] } | null>(null);
   // 식대 금액을 눌러 수기 입력으로 바꾼 직원. 새로 뜬 입력칸에 커서를 자동으로 두기 위한 표시다 —
   // 저장된 수기값으로 화면이 처음 그려질 때는 포커스를 가로채지 않는다.
   const [mealEditingId, setMealEditingId] = useState<string | null>(null);
@@ -155,11 +164,12 @@ function WageCalculatorClient() {
   const currentSettings = useEffectEvent(() => ({ rounding, columns, standards }));
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/compensation?period=${key}`).then(async (response) => {
-      const payload = await response.json() as { run?: typeof run; error?: string };
+    fetch(`/api/compensation?period=${key}&include=hr`).then(async (response) => {
+      const payload = await response.json() as { run?: typeof run; hrEmployees?: Employee[]; error?: string };
       if (!response.ok) throw new Error(payload.error || "임금안을 불러오지 못했습니다.");
       if (cancelled) return;
       setRun(payload.run ?? null);
+      setHrSnapshot(payload.hrEmployees ? { period: key, employees: payload.hrEmployees } : null);
       const restoredEmployees = payload.run?.employees ?? [];
       const restoredSettings = payload.run?.settings;
       setEmployees(restoredEmployees);
@@ -220,7 +230,12 @@ function WageCalculatorClient() {
     }).map(({ row }) => row);
   }, [rows, sort]);
   const totals = useMemo(() => rows.reduce((sum, row) => ({ people: sum.people + (row.days ? 1 : 0), basic: sum.basic + row.basic, allowances: sum.allowances + row.meal + row.car + row.child, variable: sum.variable + row.incentive + row.bonus + row.extra + row.research + row.severance, total: sum.total + row.total }), { people: 0, basic: 0, allowances: 0, variable: 0, total: 0 }), [rows]);
-  const alerts = useMemo(() => ({ noJoin: rows.filter((row) => row.probationWithoutJoin), probationOver: rows.filter((row) => row.probationOver), partial: rows.filter((row) => row.days > 0 && row.days < row.daysInMonth), mixed: rows.filter((row) => row.mixedProbation), zero: rows.filter((row) => row.days === 0) }), [rows]);
+  const alerts = useMemo(() => ({ noJoin: rows.filter((row) => row.probationWithoutJoin), partial: rows.filter((row) => row.days > 0 && row.days < row.daysInMonth), zero: rows.filter((row) => row.days === 0) }), [rows]);
+  // 수습(첫 계약) 점검: 인사기록카드의 지급률과 이 달 임금표를 맞춰 본다. 경력직 100%, 신입 첫 3개월은 인사기록의 지급률.
+  const hrSnapshot = hrSnapshotState?.period === key ? hrSnapshotState.employees : null;
+  const probation = useMemo(() => reviewProbation(rows, hrSnapshot, year, month), [rows, hrSnapshot, year, month]);
+  // 입·퇴사일 대조. 인사기록카드가 기준이다 — 다르면 근무일과 일할 계산이 달라진다.
+  const hrDates = useMemo(() => reviewHrDates(rows, hrSnapshot), [rows, hrSnapshot]);
   const departments = useMemo(() => Array.from(new Set(employees.map((employee) => employee.department).filter(Boolean))).sort(), [employees]);
   const titles = useMemo(() => Array.from(new Set(employees.map((employee) => employee.title).filter(Boolean))).sort(), [employees]);
   const hiddenColumnSet = useMemo(() => new Set(hiddenColumns), [hiddenColumns]);
@@ -325,6 +340,11 @@ function WageCalculatorClient() {
   }, [employees, hydrated, run, saving, autoSaving, key]);
 
   function updateEmployee(id: string, patch: Partial<Employee>) { setEmployees((current) => current.map((employee) => employee.id === id ? { ...employee, ...patch } : employee)); }
+  // 경고의 「인사기록대로 맞추기」·「수습 해제」. 경고가 알려 준 값으로 해당 행의 칸을 덮어쓴다.
+  function applyHrFixes(items: Array<{ id: string; fix?: Partial<Employee> }>) {
+    const fixes = new Map(items.filter((item) => item.fix).map((item) => [item.id, item.fix!]));
+    setEmployees((current) => current.map((employee) => fixes.has(employee.id) ? { ...employee, ...fixes.get(employee.id) } : employee));
+  }
   function updateMonthly(id: string, field: keyof MonthlyPay, value: string | number) {
     setEmployees((current) => current.map((employee) => employee.id === id ? { ...employee, monthly: { ...employee.monthly, [key]: { ...employee.monthly[key], [field]: value } } } : employee));
   }
@@ -602,7 +622,20 @@ function WageCalculatorClient() {
       </div>}
       <article className="panel wage-setup-card"><header><div data-korean-heading><h2>수당·표시 항목</h2></div></header><div className="allowance-standards">{(["meal", "car", "child"] as const).map((field) => <label key={field}>{field === "meal" ? "식대" : field === "car" ? "자가운전" : "육아"}<WonInput value={standards[field]} ariaLabel={`${field === "meal" ? "식대" : field === "car" ? "자가운전" : "육아"} 기준액`} onValueChange={(value) => { setStandards((current) => ({ ...current, [field]: value })); setEmployees((current) => current.map((employee) => employee[field] === standards[field] ? { ...employee, [field]: value } : employee)); }} /></label>)}</div><div className="column-toggles">{(["research", "extra", "annualLeave", "personalExpense", "welfare", "severance", "deduction"] as const).map((field) => <label key={field}><input type="checkbox" checked={columns[field]} onChange={(event) => setColumns((current) => ({ ...current, [field]: event.target.checked }))} />{field === "research" ? "연구수당" : field === "extra" ? "추가수당" : field === "annualLeave" ? "연차수당" : field === "personalExpense" ? "개인비용지급" : field === "welfare" ? "복지기금" : field === "severance" ? "퇴직금" : "공제"}</label>)}</div><details className="column-visibility"><summary>표시할 열 선택</summary><div>{COLUMN_VISIBILITY_OPTIONS.filter(([field]) => (["deduction", "deductionNote"] as string[]).includes(field) ? columns.deduction : (["personalExpense", "personalExpenseNote"] as string[]).includes(field) ? columns.personalExpense : !(["extra", "research", "severance", "welfare", "annualLeave"] as string[]).includes(field) || columns[field as keyof typeof columns]).map(([field, label]) => <label key={field}><input type="checkbox" checked={!hiddenColumnSet.has(field)} onChange={(event) => setHiddenColumns((current) => event.target.checked ? current.filter((value) => value !== field) : Array.from(new Set([...current, field])))} />{label}</label>)}</div></details><button type="button" className="incentive-pull" onClick={importIncentive}>저장된 인센티브 결과 가져오기</button></article>
     </section>
-    {(alerts.noJoin.length > 0 || alerts.probationOver.length > 0 || alerts.partial.length > 0 || alerts.mixed.length > 0 || alerts.zero.length > 0) && <section className="wage-alerts">{alerts.noJoin.length > 0 && <div className="critical"><b>입사일 없는 수습 대상 {alerts.noJoin.length}명</b><span>{alerts.noJoin.map((row) => row.employee.name || "이름 미입력").join(" · ")} — 수습 90%가 적용되지 않습니다.</span></div>}{alerts.probationOver.length > 0 && <div><b>수습 종료 {alerts.probationOver.length}명</b><span>현재 월은 100% 계산됩니다. 과거 계산 보존을 위해 수습 개월 값은 유지하세요.</span></div>}{alerts.mixed.length > 0 && <div><b>수습 종료가 걸친 달 {alerts.mixed.length}명</b><span>수습 90% 구간과 정상 100% 구간을 나눠 일할계산했습니다.</span></div>}{alerts.partial.length > 0 && <div className="ok"><b>일할계산 {alerts.partial.length}명</b><span>{alerts.partial.map((row) => `${row.employee.name || "이름 미입력"} ${row.days}일`).join(" · ")}</span></div>}{alerts.zero.length > 0 && <div><b>근무일 0일 {alerts.zero.length}명</b><span>해당 월 재직기간이 없어 전 항목을 0원 처리했습니다.</span></div>}</section>}
+    {/* 수습(첫 계약) 점검과 일할 안내. 이름과 종료일을 보여 주고, 고칠 수 있는 것은 버튼으로 바로 맞춘다. */}
+    {(alerts.noJoin.length > 0 || alerts.partial.length > 0 || alerts.zero.length > 0 || Object.values(probation).some((list) => list.length > 0) || hrDates.length > 0) && <section className="wage-alerts">
+      {hrDates.length > 0 && <div className="critical"><b>입·퇴사일 불일치 {hrDates.length}명</b><span>{hrDates.map((item) => `${item.name} (${[
+        item.rowJoinDate !== item.hrJoinDate ? `입사 ${item.rowJoinDate || "없음"} → 인사기록 ${item.hrJoinDate || "없음"}` : "",
+        item.rowLeaveDate !== item.hrLeaveDate ? `퇴사 ${item.rowLeaveDate || "없음"} → 인사기록 ${item.hrLeaveDate || "없음"}` : "",
+      ].filter(Boolean).join(", ")})`).join(" · ")} — 인사기록카드가 기준입니다. 근무일과 일할 계산이 달라질 수 있습니다.</span><button type="button" disabled={locked || saving} onClick={() => applyHrFixes(hrDates)}>인사기록대로 맞추기</button></div>}
+      {alerts.noJoin.length > 0 && <div className="critical"><b>입사일 없는 수습 대상 {alerts.noJoin.length}명</b><span>{alerts.noJoin.map((row) => row.employee.name || "이름 미입력").join(" · ")} — 수습 지급률이 적용되지 않습니다.</span></div>}
+      {probation.missing.length > 0 && <div className="critical"><b>수습 누락 {probation.missing.length}명</b><span>{probation.missing.map((item) => `${item.name} (인사기록 ${probationPercent(item.hrRate)} · ${shortDate(item.endDate)}까지)`).join(" · ")} — 인사기록은 첫 계약 지급률인데 임금표에 수습이 꺼져 있습니다.</span><button type="button" disabled={locked || saving} onClick={() => applyHrFixes(probation.missing)}>인사기록대로 맞추기</button></div>}
+      {probation.mismatch.length > 0 && <div className="critical"><b>수습 지급률 불일치 {probation.mismatch.length}명</b><span>{probation.mismatch.map((item) => `${item.name} (임금표 ${probationPercent(item.rowRate)} · 인사기록 ${probationPercent(item.hrRate)})`).join(" · ")} — 인사기록카드와 임금표 중 맞는 쪽으로 고쳐 주세요.</span><button type="button" disabled={locked || saving} onClick={() => applyHrFixes(probation.mismatch)}>인사기록대로 맞추기</button></div>}
+      {probation.ended.length > 0 && <div><b>수습 종료 {probation.ended.length}명</b><span>{probation.ended.map((item) => `${item.name} (${shortDate(item.endDate)} 종료)`).join(" · ")} — 이 달은 이미 100%로 계산했습니다. 수습 칸이 남아 있어 해제하면 다음 달 표에도 남지 않습니다.</span><button type="button" disabled={locked || saving} onClick={() => applyHrFixes(probation.ended)}>수습 해제</button></div>}
+      {probation.boundary.length > 0 && <div><b>이 달 수습 종료 {probation.boundary.length}명</b><span>{probation.boundary.map((item) => `${item.name} (${shortDate(item.endDate)}까지 수습)`).join(" · ")} — 한 달 근무면 정상 월급에서 수습 차액을 그 달 일수로 나눠 수습 일수만큼 뺐습니다.</span></div>}
+      {probation.confirmFull.length > 0 && <div className="info"><b>첫 3개월 · 100% 지급 {probation.confirmFull.length}명</b><span>{probation.confirmFull.map((item) => `${item.name} (${shortDate(item.endDate)}까지)`).join(" · ")} — 인사기록 지급률이 100%입니다. 경력직이 맞는지 확인하세요. 신입이면 인사기록카드의 첫 계약 지급률을 고쳐 주세요.</span></div>}
+      {alerts.partial.length > 0 && <div className="ok"><b>일할계산 {alerts.partial.length}명</b><span>{alerts.partial.map((row) => `${row.employee.name || "이름 미입력"} ${row.days}일`).join(" · ")}</span></div>}{alerts.zero.length > 0 && <div><b>근무일 0일 {alerts.zero.length}명</b><span>해당 월 재직기간이 없어 전 항목을 0원 처리했습니다.</span></div>}
+    </section>}
     </fieldset>
     <section className="panel wage-table-panel"><header><div data-korean-heading><h2>{year}년 {month}월 임금 계산 결과</h2></div><div className="wage-table-hint"><span>열 제목 오른쪽 경계를 드래그해 너비를 조정할 수 있습니다.</span>
       {/* 화면을 열면 마지막으로 저장된 임금안이 그대로 뜬다. 그게 언제 것인지 여기서 밝힌다. */}

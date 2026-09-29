@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { calculateCompensation } from "../app/compensation-calculation.ts";
+import { calculateCompensation, probationEnd, reviewHrDates, reviewProbation } from "../app/compensation-calculation.ts";
+import { firstTermNextStart, fixedTermEndDate } from "../app/hr-employment-contract.ts";
 
 const columns = { research: true, extra: true, welfare: false, severance: true };
 
@@ -68,8 +69,9 @@ test("probation ending mid-month splits 90 and 100 percent salary segments", () 
   assert.equal(result.probationEnd?.toISOString().slice(0, 10), "2026-07-05");
   assert.equal(result.days, 31);
   assert.equal(result.mixedProbation, true);
-  assert.equal(result.basic, 2_303_013);
-  assert.equal(result.total, 2_503_013);
+  // 한 달 근무라 방법 1: 정상 기본급 2,300,000 − (2,500,000 − 2,250,000) × 5/31.
+  assert.equal(result.basic, 2_259_677);
+  assert.equal(result.total, 2_459_677);
 });
 
 test("manual monthly basic pay and optional columns stay explicit", () => {
@@ -250,11 +252,9 @@ test("full-month basic pay is ceil(annual × rate / 12) − allowances regardles
 test("the first-term pay rate applies through probationEndDate inclusively and full rate from the next day", () => {
   const base = { annualSalary: 36_000_000, meal: 0, car: 0, child: 0, joinDate: "2026-07-06", probationMonths: 3, probationRate: 0.8, probationEndDate: "2026-10-05" };
   const october = calculateCompensation(employee(base), 2026, 10, "round", columns);
-  // 10/1~10/5 (5일) 80%, 10/6~10/31 (26일) 100%, 365일법.
-  const reduced = Math.round((36_000_000 * 0.8) / 365 * 5);
-  const full = Math.round(36_000_000 / 365 * 26);
+  // 10/1~10/5 (5일) 80%, 10/6~10/31 (26일) 100%. 한 달 근무라 방법 1: 정상 월급 − (정상 − 수습 월급) × 5/31.
   assert.equal(october.mixedProbation, true);
-  assert.equal(october.basic, reduced + full);
+  assert.equal(october.basic, Math.round(3_000_000 - (3_000_000 - 2_400_000) * 5 / 31));
   const november = calculateCompensation(employee(base), 2026, 11, "round", columns);
   assert.equal(november.basic, 3_000_000);
   assert.equal(november.probationApplied, false);
@@ -282,7 +282,119 @@ test("전환 계약이 첫 계약 종료보다 앞서면 전환일 전날까지�
   // 7/1 입사, 첫 계약은 9/30 까지지만 8/15 에 정규직 전환 → 8월은 14일(90%) + 17일(100%)
   const result = calculateCompensation(employee({ joinDate: "2026-07-01", probationMonths: 3, probationEndDate: "2026-08-14", probationRate: 0.9 }), 2026, 8, "round", columns);
   assert.equal(result.mixedProbation, true);
-  const annual = 60_000_000, allowances = 7_200_000;
-  const expected = Math.round((annual * 0.9 - allowances) / 365 * 14) + Math.round((annual - allowances) / 365 * 17);
-  assert.equal(result.basic, expected);
+  // 한 달 근무라 방법 1: 정상 월급 5,000,000 − 수당 600,000 − (5,000,000 − 4,500,000) × 14/31.
+  assert.equal(result.basic, Math.round(5_000_000 - 600_000 - 500_000 * 14 / 31));
+});
+
+test("수습이 달 중간에 끝난 달은 정상 월급에서 수습 차액을 그 달 일수로 나눠 뺀다(방법 1)", () => {
+  // 연봉 3,000만·식대 20만: 정상 월 지급총액 2,500,000, 수습(90%) 월 2,250,000.
+  // 예전 365일법은 31일 달에 정상 월보다 많이(2,503,013), 2월에 크게 적게(2,300,822) 나왔다.
+  const base = { annualSalary: 30_000_000, meal: 200_000, car: 0, child: 0, probationMonths: 3 };
+  const cases = [
+    { joinDate: "2026-04-06", year: 2026, month: 7, probationDays: 5, total: 2_459_677 },
+    { joinDate: "2026-06-06", year: 2026, month: 9, probationDays: 5, total: 2_458_333 },
+    { joinDate: "2026-11-03", year: 2027, month: 2, probationDays: 2, total: 2_482_143 },
+    { joinDate: "2026-07-31", year: 2026, month: 10, probationDays: 30, total: 2_258_065 },
+  ];
+  for (const item of cases) {
+    const row = calculateCompensation(employee({ ...base, joinDate: item.joinDate }), item.year, item.month, "round", columns);
+    assert.equal(row.mixedProbation, true);
+    assert.equal(row.total, 200_000 + Math.round(2_300_000 - 250_000 * item.probationDays / row.daysInMonth));
+    assert.equal(row.total, item.total);
+    assert.ok(row.total > 2_250_000 && row.total < 2_500_000, `${item.year}-${item.month} 은 수습 월과 정상 월 사이여야 한다`);
+  }
+});
+
+test("수습 종료일은 입사일 + 3개월 − 1일, 끝나는 달에 같은 날이 없으면 그 달 말일이다", () => {
+  const cases = {
+    "2026-09-07": "2026-12-06", "2026-01-01": "2026-03-31", "2026-01-31": "2026-04-30",
+    "2026-11-30": "2027-02-28", "2027-11-30": "2028-02-29", "2027-11-29": "2028-02-28", "2026-12-31": "2027-03-30",
+  };
+  for (const [join, end] of Object.entries(cases)) {
+    assert.equal(probationEnd(new Date(`${join}T00:00:00Z`), 3).toISOString().slice(0, 10), end, join);
+    assert.equal(fixedTermEndDate(join), end, join);
+  }
+  assert.equal(firstTermNextStart("2026-01-31"), "2026-05-01");
+  assert.equal(firstTermNextStart("2026-11-30"), "2027-03-01");
+  // 임금 계산 엔진과 근로계약서가 4년 동안 하루도 어긋나지 않는다.
+  for (let day = new Date(Date.UTC(2025, 0, 1)); day < new Date(Date.UTC(2029, 0, 1)); day.setUTCDate(day.getUTCDate() + 1)) {
+    const iso = day.toISOString().slice(0, 10);
+    assert.equal(probationEnd(new Date(`${iso}T00:00:00Z`), 3).toISOString().slice(0, 10), fixedTermEndDate(iso), iso);
+  }
+  // 11/30 입사는 2월 말일까지 수습이라 2월은 온전히 수습 월이다.
+  const february = calculateCompensation(employee({ annualSalary: 30_000_000, meal: 200_000, car: 0, child: 0, joinDate: "2026-11-30", probationMonths: 3 }), 2027, 2, "round", columns);
+  assert.equal(february.mixedProbation, false);
+  assert.equal(february.total, 2_250_000);
+});
+
+test("수습 칸을 「—」로 두면 인사기록 종료일이 남아 있어도 100%로 계산한다", () => {
+  const hrRow = { joinDate: "2026-09-07", probationRate: 0.9, probationEndDate: "2026-12-06", annualSalary: 33_000_000, meal: 200_000, car: 0, child: 0 };
+  const on = calculateCompensation(employee({ ...hrRow, probationMonths: 3 }), 2026, 10, "round", columns);
+  const off = calculateCompensation(employee({ ...hrRow, probationMonths: 0 }), 2026, 10, "round", columns);
+  assert.equal(on.probationApplied, true);
+  assert.equal(on.basic, 2_275_000);
+  assert.equal(off.probationApplied, false);
+  assert.equal(off.basic, 2_550_000);
+});
+
+test("수습 점검은 인사기록카드의 첫 계약 지급률과 이 달 임금표를 맞춰 본다", () => {
+  const row = (patch) => calculateCompensation(employee({ annualSalary: 30_000_000, meal: 200_000, car: 0, child: 0, ...patch }), 2026, 10, "round", columns);
+  const hr = (patch) => employee({ annualSalary: 30_000_000, probationMonths: 0, ...patch });
+  const hrEmployees = [
+    hr({ id: "new-missing", name: "누락", joinDate: "2026-09-07", probationMonths: 3, probationRate: 0.9, probationEndDate: "2026-12-06" }),
+    hr({ id: "hr-full", name: "불일치", joinDate: "2026-08-10" }),
+    hr({ id: "rate-diff", name: "비율", joinDate: "2026-09-01", probationMonths: 3, probationRate: 0.8, probationEndDate: "2026-11-30" }),
+    hr({ id: "career", name: "경력", joinDate: "2026-09-17" }),
+    hr({ id: "ok", name: "정상", joinDate: "2026-09-07", probationMonths: 3, probationRate: 0.9, probationEndDate: "2026-12-06" }),
+    hr({ id: "hs", name: "엑셀행", joinDate: "2026-08-03", probationMonths: 3, probationRate: 0.9, probationEndDate: "2026-11-02" }),
+  ];
+  const rows = [
+    row({ id: "new-missing", name: "누락", joinDate: "2026-09-07", probationMonths: 0 }),
+    row({ id: "hr-full", name: "불일치", joinDate: "2026-08-10", probationMonths: 3 }),
+    row({ id: "rate-diff", name: "비율", joinDate: "2026-09-01", probationMonths: 3 }), // 임금표는 기본값 90%
+    row({ id: "career", name: "경력", joinDate: "2026-09-17", probationMonths: 0 }),
+    row({ id: "ok", name: "정상", joinDate: "2026-09-07", probationMonths: 3, probationRate: 0.9, probationEndDate: "2026-12-06" }),
+    row({ id: "uuid-1", name: "엑셀행", joinDate: "2026-08-03", probationMonths: 3 }), // id 는 달라도 이름이 한 사람에게만 맞으면 그 사람이다
+    row({ id: "ended", name: "종료", joinDate: "2026-06-01", probationMonths: 3 }), // 8/31 종료
+    row({ id: "boundary", name: "걸침", joinDate: "2026-07-31", probationMonths: 3 }), // 10/30 종료
+  ];
+  const review = reviewProbation(rows, hrEmployees, 2026, 10);
+  assert.deepEqual(review.missing.map((item) => item.name), ["누락"]);
+  assert.deepEqual(review.missing[0].fix, { probationMonths: 3, probationRate: 0.9, probationEndDate: "2026-12-06" });
+  assert.deepEqual(review.mismatch.map((item) => [item.name, item.rowRate, item.hrRate]), [["불일치", 0.9, null], ["비율", 0.9, 0.8]]);
+  assert.equal(review.mismatch[0].fix.probationMonths, 0);
+  assert.deepEqual(review.confirmFull.map((item) => [item.name, item.endDate]), [["경력", "2026-12-16"]]);
+  assert.deepEqual(review.ended.map((item) => [item.name, item.endDate]), [["종료", "2026-08-31"]]);
+  assert.equal(review.ended[0].fix.probationMonths, 0);
+  assert.deepEqual(review.boundary.map((item) => [item.name, item.endDate]), [["걸침", "2026-10-30"]]);
+  // 인사기록을 못 읽었으면 인사기록 비교는 건너뛰고 종료·걸침만 알린다.
+  const offline = reviewProbation(rows, null, 2026, 10);
+  assert.equal(offline.missing.length + offline.mismatch.length + offline.confirmFull.length, 0);
+  assert.equal(offline.ended.length, 1);
+});
+
+test("입·퇴사일 대조는 인사기록카드를 기준으로 다른 행만 골라 고칠 값을 준다", () => {
+  const row = (patch) => calculateCompensation(employee({ annualSalary: 30_000_000, meal: 200_000, car: 0, child: 0, ...patch }), 2026, 8, "round", columns);
+  const hrEmployees = [
+    employee({ id: "gc.kim", name: "하루빠름", joinDate: "2026-08-10" }),
+    employee({ id: "jy.oh", name: "퇴사다름", joinDate: "2025-09-08", leaveDate: "2026-08-20" }),
+    employee({ id: "same", name: "같음", joinDate: "2026-01-14" }),
+  ];
+  const rows = [
+    row({ id: "uuid-a", name: "하루빠름", joinDate: "2026-08-09" }), // 엑셀 행: 이름으로 찾는다
+    row({ id: "jy.oh", name: "퇴사다름", joinDate: "2025-09-08", leaveDate: "2026-08-31" }),
+    row({ id: "same", name: "같음", joinDate: "2026-01-14" }),
+    row({ id: "nobody", name: "인사기록없음", joinDate: "2026-01-01" }),
+  ];
+  const mismatches = reviewHrDates(rows, hrEmployees);
+  assert.deepEqual(mismatches.map((item) => [item.name, item.rowJoinDate, item.hrJoinDate, item.rowLeaveDate, item.hrLeaveDate]), [
+    ["하루빠름", "2026-08-09", "2026-08-10", "", ""],
+    ["퇴사다름", "2025-09-08", "2025-09-08", "2026-08-31", "2026-08-20"],
+  ]);
+  assert.deepEqual(mismatches[0].fix, { joinDate: "2026-08-10", leaveDate: "" });
+  // 고친 값으로 다시 계산하면 8월 근무일이 인사기록대로 22일이 된다.
+  const fixed = calculateCompensation(employee({ ...rows[0].employee, ...mismatches[0].fix }), 2026, 8, "round", columns);
+  assert.equal(rows[0].days, 23);
+  assert.equal(fixed.days, 22);
+  assert.deepEqual(reviewHrDates(rows, null), []);
 });

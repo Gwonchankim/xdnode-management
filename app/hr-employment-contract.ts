@@ -121,12 +121,23 @@ export function addMonths(value: string, months: number) {
   return isoDate(new Date(date.getFullYear(), targetMonth, Math.min(date.getDate(), lastDay)));
 }
 
-/** 첫 계약의 종료일. 시작일부터 꼭 3개월 — 9월 7일 시작이면 12월 6일까지다. */
+/** 첫 계약의 종료일. 시작일부터 꼭 3개월 — 9월 7일 시작이면 12월 6일까지다.
+ *  끝나는 달에 시작일과 같은 날이 없으면 그 달 말일에 끝난다(민법 제160조 제3항, 2026-09-28 확정).
+ *  1월 31일 시작이면 4월 30일, 11월 30일 시작이면 2월 28일까지다. 임금 계산 엔진의 probationEnd 와 같은 규칙이다. */
 export function fixedTermEndDate(startDate: string) {
-  const nextStart = parseIso(addMonths(startDate, FIXED_TERM_MONTHS));
-  if (!nextStart) return "";
-  nextStart.setDate(nextStart.getDate() - 1);
-  return isoDate(nextStart);
+  const start = parseIso(startDate);
+  if (!start) return "";
+  const lastDayOfEndMonth = new Date(start.getFullYear(), start.getMonth() + FIXED_TERM_MONTHS + 1, 0);
+  if (start.getDate() > lastDayOfEndMonth.getDate()) return isoDate(lastDayOfEndMonth);
+  return isoDate(new Date(start.getFullYear(), start.getMonth() + FIXED_TERM_MONTHS, start.getDate() - 1));
+}
+
+/** 첫 계약이 끝난 다음 날. 전환(기간의 정함이 없는) 계약이 시작되는 날이다. */
+export function firstTermNextStart(startDate: string) {
+  const end = parseIso(fixedTermEndDate(startDate));
+  if (!end) return "";
+  end.setDate(end.getDate() + 1);
+  return isoDate(end);
 }
 
 function datePart(value: string, index: 0 | 1 | 2) {
@@ -155,7 +166,7 @@ export function defaultContractOptions(employee: ContractEmployee, kind?: Contra
   return {
     kind: resolvedKind,
     // 전환 계약은 첫 계약(3개월)이 끝난 다음 날부터다.
-    startDate: resolvedKind === "FIXED_TERM" ? joined : addMonths(joined, FIXED_TERM_MONTHS),
+    startDate: resolvedKind === "FIXED_TERM" ? joined : firstTermNextStart(joined),
     firstTermPayPercent: String(employee.firstTermPayPercent ?? 100),
     duty: employee.jobTitle && employee.jobTitle !== "조직장" ? employee.jobTitle : "",
     contractDate: isoDate(today),
