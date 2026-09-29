@@ -166,3 +166,100 @@ test("R3: operations scripts log in through xdm-login and the demo packager is g
   assert.match(xdmLogin, /process\.env\.XDM_PASSWORD/);
   assert.doesNotMatch(xdmLogin, /writeFile/);
 });
+
+// ── R4(r4-scripts·r4-backup): 무인 기동·정지·백업(Design §8.6 lan-exposure-guards R4 행, §11.5.4·§11.5.8, 부록 C #6) ──────────
+const codeOf = (source) => source.split(/\r?\n/).filter((line) => !/^\s*#/.test(line)).join("\n");
+const ddlIn = (source, name) => source.match(new RegExp(`(?:export )?const ${name} = \`([^\`]*)\`;`))?.[1];
+
+test("R4: ops_backup_runs DDL in erp-platform.ts is the same string the backup recorder runs while the server is stopped", async () => {
+  const [platform, recorder] = await Promise.all([read("app/erp-platform.ts"), read("scripts/verify-state-snapshot.mjs")]);
+  for (const name of ["OPS_BACKUP_RUNS_DDL", "OPS_BACKUP_RUNS_INDEX_DDL"]) {
+    const left = ddlIn(platform, name);
+    assert.ok(left && left.length > 40, `${name} missing in app/erp-platform.ts`);
+    assert.equal(ddlIn(recorder, name), left, `${name} differs between app/erp-platform.ts and scripts/verify-state-snapshot.mjs`);
+  }
+  assert.match(ddlIn(platform, "OPS_BACKUP_RUNS_DDL"), /status TEXT NOT NULL CHECK \(status IN \('OK','FAILED'\)\)/);
+  // 부록 C #6: 새 파일을 두지 않고 erp-platform.ts 의 batch 에 audit → auth → ops 순서로 넣는다.
+  assert.match(platform, /await db\.batch\(\[\.\.\.auditStatements\(db\), \.\.\.authSchemaStatements\(db\), \.\.\.opsSchemaStatements\(db\)\]\);/);
+  assert.match(platform, /function opsSchemaStatements\(db: D1Database\) \{\s*return \[db\.prepare\(OPS_BACKUP_RUNS_DDL\), db\.prepare\(OPS_BACKUP_RUNS_INDEX_DDL\)\];/);
+  // 기록 모드만 운영 파일을 연다. 서버가 떠 있으면(pid·포트) 거부한다.
+  assert.match(recorder, /const running = await runningServerReason\(\{ pidFile: option\("--pid-file"\) \?\? DEFAULT_PID_FILE, port \}\);\s*if \(running\) \{/);
+  assert.ok(recorder.includes('const DEFAULT_PID_FILE = "C:\\\\xdm\\\\run\\\\xdm-management.pid";'), "record-run reads the production pid file by default");
+  assert.doesNotMatch(recorder, /VACUUM INTO/);
+});
+
+test("R4: the launcher runs headless without prompts, writes a pid file, health-checks /api/me for 401 and rotates logs", async () => {
+  const code = codeOf(await read("scripts/Start-XDNodeManagement.ps1"));
+  assert.match(code, /\[switch\]\$Headless/);
+  // -Headless 에서는 Read-Host 가 없다. Read-Host 는 모두 if (-not $Headless) 아래에 있다.
+  for (const line of code.split("\n").filter((line) => /Read-Host/.test(line))) assert.match(line, /if \(-not \$Headless\) \{ Read-Host/, line);
+  assert.match(code, /if \(\$Headless\) \{ exit 0 \}\s*Write-Host "Ready\. Opening the browser\.\.\." -ForegroundColor Green\s*Start-Process \$Url/);
+  // pid 파일: 3000 은 reset-admin-password·백업 기록이 읽는 고정 경로이고, 한 줄에 pid 하나다.
+  assert.ok(code.includes('[string]$RunDir = "C:\\xdm\\run"'));
+  assert.ok(code.includes('Join-Path $RunDir "xdm-management.pid"'));
+  assert.ok(code.includes("Set-Content -LiteralPath $PidFile -Value $serverProcess.Id -Encoding ascii"));
+  assert.ok(code.includes("xdm-bridge-$BridgePort.pid"));
+  // 헬스체크: GET /api/me → 401 만 정상.
+  assert.ok(code.includes("http://127.0.0.1:$HealthPort/api/me"));
+  assert.ok(code.includes("if ($health -ne 401) {"));
+  // 날짜별 로그 14일.
+  assert.ok(code.includes('[string]$LogRoot = "C:\\xdm\\logs"'));
+  assert.ok(code.includes('"xdm-{0}.log" -f (Get-Date -Format "yyyyMMdd")'));
+  assert.ok(code.includes("[int]$LogRetentionDays = 14"));
+  assert.ok(code.includes("$_.LastWriteTime -lt $cutoff"));
+  // 기동 경로 하나: 작업이 등록된 PC 에서 수동 실행은 Start-ScheduledTask 로 넘긴다.
+  assert.match(code, /if \(-not \$Headless -and -not \$Rebuild -and \$Port -eq 3000 -and -not \(Test-LocalPort \$Port\)\) \{\s*\$autostart = Get-ScheduledTask -TaskName \$TaskName/);
+  assert.ok(code.includes("Start-ScheduledTask -TaskName $TaskName"));
+  assert.ok(code.includes('[string]$TaskName = "XDnodeManagement-Autostart"'));
+});
+
+test("R4: the stop script kills the preview tree and bridges by pid file, falls back to the port, and only kills node/workerd/cmd", async () => {
+  const stop = codeOf(await read("scripts/Stop-XDNodeManagement.ps1"));
+  assert.ok(stop.includes("& taskkill.exe /T /F /PID $ProcessId"));
+  assert.ok(stop.includes('$KillableNames = @("cmd", "node", "workerd")'));
+  assert.ok(stop.includes("if ($KillableNames -notcontains $process.ProcessName.ToLowerInvariant()) {"));
+  assert.ok(stop.includes('Join-Path $RunDir "xdm-management.pid"'));
+  assert.ok(stop.includes('Join-Path $RunDir "xdm-bridge-$bridgePort.pid"'));
+  // 브리지는 운영 포트(3000)를 끌 때만 끈다. 점검·리허설 포트는 운영 브리지를 건드리지 않는다.
+  assert.ok(stop.includes("if ($Port -eq 3000 -and -not $KeepBridges) {"));
+  assert.ok(stop.includes("[int[]]$BridgePorts = @(3120, 3130)"));
+  // 포트 대체 경로와 pid 재사용 방지.
+  assert.ok(stop.includes("Get-NetTCPConnection -State Listen -LocalPort $ListenPort"));
+  assert.ok(stop.includes("$startedAt -gt $NotStartedAfter"));
+  assert.match(stop, /exit 1\s*\}\s*Write-Log "INFO" "stopped \(all target ports closed\)"\s*exit 0/);
+});
+
+test("R4: the backup script stops, copies, verifies, records, restarts through the task, then prunes — in that order", async () => {
+  const backup = codeOf(await read("scripts/Backup-XDNodeManagement.ps1"));
+  const order = [
+    "-File $StopScript -Port $Port",
+    "Wait-FilesReleased $sqliteFiles",
+    '@("*.sqlite", "*.sqlite-wal", "*.sqlite-shm", "/E")',
+    '$BlobStore @("/E", "/XF", "*.sqlite", "*.sqlite-wal", "*.sqlite-shm")',
+    '"--out", $ReportPath, "--blob-store", $BlobStore',
+    'Invoke-Native "attrib.exe" @("+R", "$BackupDir\\*", "/S")',
+    '"--record-run", $StateV3',
+    "Start-ScheduledTask -TaskName $TaskName",
+    "Remove-OldDatedFolders $BackupRoot $Keep",
+    "Invoke-Robocopy $BackupDir (Join-Path $MirrorRoot $runId)",
+  ];
+  let last = -1;
+  for (const marker of order) {
+    const index = backup.indexOf(marker);
+    assert.ok(index > last, `backup order: ${marker}`);
+    last = index;
+  }
+  // blob 은 증분(/E)이다. /MIR 는 원본에서 지운 blob 을 백업에서도 지운다(부록 B #24).
+  assert.doesNotMatch(backup, /\/MIR\b|\/PURGE\b/);
+  assert.doesNotMatch(backup, /VACUUM INTO|\.env\.local/);
+  // 서버를 직접 띄우지 않는다: 재기동은 자동 기동 작업 하나로.
+  assert.doesNotMatch(backup, /Start-XDNodeManagement\.ps1|npm\.cmd run serve:lan|vite\.js preview/);
+  assert.ok(backup.includes('[string]$BackupRoot = "C:\\xdm\\backup"'));
+  assert.ok(backup.includes("[int]$Keep = 14"));
+  assert.ok(backup.includes('if ("$BackupDir\\".Length -gt 120)'));
+  assert.ok(backup.includes('$StateV3 = Join-Path $ProdRoot ".wrangler\\state\\v3"'));
+  assert.ok(backup.includes("if (Test-Inside $BackupRoot $ProdRoot) {"));
+  // 실패도 기록한다(--error). 기록은 서버 정지 중(재기동 finally 보다 앞).
+  assert.ok(backup.includes('if ($failure) { $recordArgs += @("--error", $failure) }'));
+  assert.ok(backup.indexOf('"--record-run"') < backup.indexOf("\nfinally {"), "record before the restart block");
+});

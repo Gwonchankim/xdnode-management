@@ -225,3 +225,21 @@ test("R3 r3-shell: client files use the insecure-context helpers and never injec
   }
   assert.deepEqual(offenders, []);
 });
+
+// ── R4(r4-backup, Design §11.5.8, 부록 C #6, Plan §4 '온라인 백업 제외') ─────────────────────
+test("R4: no online backup (VACUUM INTO), and ops_backup_runs is created only by erp-platform.ts and the stopped-server recorder", async () => {
+  const offenders = [];
+  const creators = [];
+  const files = [...await listSources(), ...(await readdir(path.join(root, "scripts"))).filter((name) => name.endsWith(".ps1")).map((name) => `scripts/${name}`)];
+  for (const file of files) {
+    const source = stripComments(await read(file));
+    if (/VACUUM\s+INTO/i.test(source)) offenders.push(`${file}: VACUUM INTO`);
+    if (/CREATE TABLE(?: IF NOT EXISTS)?\s+ops_backup_runs\b/.test(source)) creators.push(file);
+  }
+  assert.deepEqual(offenders, []);
+  assert.deepEqual(creators.sort(), ["app/erp-platform.ts", "scripts/verify-state-snapshot.mjs"]);
+  // 백업 결과는 라우트가 쓰지 않는다(서버 정지 중 스크립트만 쓴다). /api/admin/backups 는 GET 만 있다.
+  const route = await read("app/api/admin/backups/route.ts");
+  assert.deepEqual([...route.matchAll(/export async function (\w+)/g)].map((match) => match[1]), ["GET"]);
+  assert.doesNotMatch(stripComments(route), /INSERT|UPDATE|DELETE/);
+});

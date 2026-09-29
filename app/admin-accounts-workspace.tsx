@@ -3,6 +3,7 @@
 // 계정 관리 탭(Design §4.2.6, §5.4 AdminAccountsWorkspace, D7·D12·D13·D14·D23). 관리자 전용이고, 서버가 admin:read·admin:write 로
 // 다시 검사한다. 임시 비밀번호는 응답에 한 번만 오므로 대화상자에 한 번만 보여 주고 어디에도 저장하지 않는다.
 // 오류는 status·code 로 분기하고, LAST_ADMIN·DUPLICATE 문구는 서버 문구를 그대로 보여 준 뒤 목록을 다시 읽어 폼을 되돌린다.
+// R4: /api/admin/backups 의 stale·실패를 상단 경고로 보여 준다.
 
 import { FormEvent, useCallback, useEffect, useId, useState, type ReactNode } from "react";
 import type { GrantableTabKey, TabLevel } from "./access-tabs";
@@ -18,6 +19,8 @@ type AccountDto = {
 type EmployeeOption = { employeeId: string; name: string; department: string; status: string; linkedAccountId: string | null };
 type GrantableTab = { key: GrantableTabKey; label: string };
 type AccountsPayload = { accounts: AccountDto[]; employees: EmployeeOption[]; grantableTabs: GrantableTab[] };
+/** GET /api/admin/backups(R4, Design §4.2.6). */
+type BackupStatus = { lastSuccessAt: number | null; lastRun: { id: string; status: string; finishedAt: number; error: string } | null; stale: boolean };
 
 const LEVEL_LABELS: Array<[TabLevel, string]> = [["none", "숨김"], ["view", "보기"], ["edit", "편집"]];
 
@@ -239,6 +242,7 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
   const [linking, setLinking] = useState<AccountDto | null>(null);
   const [issued, setIssued] = useState<{ account: AccountDto; password: string } | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  const [backup, setBackup] = useState<BackupStatus | null>(null);
 
   const load = useCallback(async () => {
     const result = await requestJson<AccountsPayload>("/api/admin/accounts");
@@ -251,12 +255,19 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
     }
   }, []);
 
+  // 백업 경고(R4, §5.4). 조회에 실패하면 경고를 띄우지 않는다(계정 관리 자체와 무관).
+  const loadBackup = useCallback(async () => {
+    const result = await requestJson<BackupStatus>("/api/admin/backups");
+    if (result.ok && typeof result.body.stale === "boolean") setBackup(result.body);
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- 첫 조회. load 가 끝난 뒤에만 상태를 바꾼다.
     void load();
+    void loadBackup();
     const timer = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => window.clearInterval(timer);
-  }, [load]);
+  }, [load, loadBackup]);
 
   const employeeName = (employeeId: string | null) => {
     if (!employeeId) return "연결 없음";
@@ -327,6 +338,16 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
         <button type="button" className="primary-button" onClick={() => setCreating(true)} disabled={!data}>계정 만들기</button>
       </header>
       <p className="admin-accounts-pinned" role="note">HR 탭에는 급여관리가 포함됩니다.</p>
+      {backup?.stale && (
+        <p className="admin-accounts-message error admin-accounts-backup" role="alert">
+          마지막 백업 성공: {formatDateTime(backup.lastSuccessAt)}. 36시간 넘게 성공한 백업이 없습니다.
+        </p>
+      )}
+      {backup?.lastRun?.status === "FAILED" && (
+        <p className="admin-accounts-message error admin-accounts-backup" role="alert">
+          마지막 백업 실패({formatDateTime(backup.lastRun.finishedAt)}): {backup.lastRun.error || "사유가 기록되지 않았습니다."}
+        </p>
+      )}
       {message && <p className={`admin-accounts-message ${message.tone}`} role={message.tone === "error" ? "alert" : "status"}>{message.text}</p>}
       {loadError && <p className="admin-accounts-message error" role="alert">{loadError}</p>}
       {!data && !loadError && <p className="admin-accounts-empty" role="status">계정 목록을 불러오는 중입니다.</p>}

@@ -67,3 +67,54 @@ export function r2BlobStats(stateDir) {
   walk(root);
   return { count, bytes };
 }
+
+/**
+ * R2 메타데이터(`r2/miniflare-R2BucketObject/*.sqlite`)의 객체 수와 본문 blob id(R4 백업 검증).
+ * 키·메타데이터 같은 행 내용은 돌려주지 않는다. 멀티파트 객체는 완료된 조각의 blob 을 센다.
+ */
+export function r2ObjectStats(stateDir) {
+  const dir = join(resolveV3(stateDir), "r2", "miniflare-R2BucketObject");
+  let count = 0;
+  const blobIds = new Set();
+  for (const file of sqliteFiles(dir)) {
+    const db = new DatabaseSync(file, { readOnly: true });
+    try {
+      const has = (table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
+      if (has("_mf_objects")) {
+        count += Number(db.prepare("SELECT COUNT(*) AS n FROM _mf_objects").get().n);
+        for (const row of db.prepare("SELECT blob_id FROM _mf_objects WHERE blob_id IS NOT NULL").all()) blobIds.add(String(row.blob_id));
+      }
+      if (has("_mf_multipart_parts")) {
+        for (const row of db.prepare("SELECT blob_id FROM _mf_multipart_parts WHERE object_key IS NOT NULL").all()) blobIds.add(String(row.blob_id));
+      }
+    } finally {
+      db.close();
+    }
+  }
+  return { count, blobIds: [...blobIds].sort() };
+}
+
+/**
+ * blob 저장소(`<ns>/blobs/<id>` 모양. 상태 폴더의 `v3/r2` 나 백업의 `r2-blobs`)의 본문 파일 이름·수·바이트.
+ * sqlite 메타 파일은 빼고 센다.
+ */
+export function blobStoreFiles(root) {
+  const names = new Set();
+  let count = 0;
+  let bytes = 0;
+  const walk = (dir, parentName) => {
+    if (!existsSync(dir)) return;
+    for (const name of readdirSync(dir)) {
+      const path = join(dir, name);
+      const info = statSync(path);
+      if (info.isDirectory()) walk(path, name);
+      else if (!/\.sqlite(-wal|-shm)?$/.test(name)) {
+        count += 1;
+        bytes += info.size;
+        if (parentName === "blobs") names.add(name);
+      }
+    }
+  };
+  walk(resolve(root), "");
+  return { names, count, bytes };
+}

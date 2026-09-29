@@ -48,13 +48,33 @@ function auditStatements(db: D1Database) {
   ];
 }
 
+// ── 운영 (R4, Design §3.3·§11.5.8, 부록 C #6) ──────────────────────────────────────
+// 백업 스크립트(scripts/verify-state-snapshot.mjs --record-run)가 서버 정지 중에 같은 DDL 로 표를 만들고 한 행을 쓴다.
+// 두 파일의 문자열이 같은지는 tests/lan-exposure-guards.test.mjs 가 대조한다. 여기서 바꾸면 스크립트도 같이 바꾼다.
+const OPS_BACKUP_RUNS_DDL = `CREATE TABLE IF NOT EXISTS ops_backup_runs (
+  id TEXT PRIMARY KEY NOT NULL,
+  started_at INTEGER NOT NULL,
+  finished_at INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('OK','FAILED')),
+  backup_dir TEXT NOT NULL,
+  integrity TEXT NOT NULL DEFAULT '',
+  r2_object_count INTEGER NOT NULL DEFAULT 0,
+  row_counts_json TEXT NOT NULL DEFAULT '{}',
+  error TEXT NOT NULL DEFAULT ''
+)`;
+const OPS_BACKUP_RUNS_INDEX_DDL = `CREATE INDEX IF NOT EXISTS idx_ops_backup_runs_finished ON ops_backup_runs(finished_at)`;
+
+function opsSchemaStatements(db: D1Database) {
+  return [db.prepare(OPS_BACKUP_RUNS_DDL), db.prepare(OPS_BACKUP_RUNS_INDEX_DDL)];
+}
+
 /**
  * 공용 스키마. 조건 없이, 멱등으로 한 batch 에서 만든다. 추가만 하고 DROP 은 하지 않는다(D4).
  * 결재(erp_approval_*)·업무(erp_tasks)·동기화(erp_sync_runs)는 R1, hr_authorized_users·erp_user_access 와 gc.kim 시드는
- * R3 에서 더 만들지 않는다(Design §3.4). 기존 DB 의 테이블과 행은 그대로 남는다.
+ * R3 에서 더 만들지 않는다(Design §3.4). 기존 DB 의 테이블과 행은 그대로 남는다. 순서는 audit → auth → ops(R4) → chat(R5)이다.
  */
 export async function ensureErpPlatformSchema(db: D1Database) {
-  await db.batch([...auditStatements(db), ...authSchemaStatements(db)]);
+  await db.batch([...auditStatements(db), ...authSchemaStatements(db), ...opsSchemaStatements(db)]);
 }
 
 let schemaGate: Promise<void> | null = null;

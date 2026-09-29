@@ -1,8 +1,8 @@
-# XDnode management LAN 운영 runbook (R3)
+# XDnode management LAN 운영 runbook (R3·R4)
 
 > 근거: Plan `docs/01-plan/features/xdnode-management.plan.md` §2.1 R3(M5a, 운영 전환 순서), D10·D15·D16·D18·D19·D21.
 > Design `docs/02-design/features/xdnode-management.design.md` §7(보안), §8.4(수동 시나리오), §11.5(운영 설계), 부록 C #7·#8·#25.
-> R4에서 무인 기동(`-Headless`)·Stop·백업·Deploy·작업 스케줄러를 이 문서에 더한다.
+> R4(M5b): 무인 기동(`-Headless`)·Stop·백업·복구·Deploy·작업 스케줄러는 §1.1·§1.2와 §9~§13에 있다.
 >
 > 이 문서에는 비밀값을 적지 않는다. 환경변수와 파일은 이름만 적는다.
 
@@ -17,7 +17,10 @@
 | 서버 PC 점검용 | `npm run start` = `vite preview --host 127.0.0.1 --port 3000 --strictPort` |
 | 브리지 | 3120(이력서), 3130(어시스턴트). 둘 다 `127.0.0.1` 전용. 3110 Codex 브리지는 띄우지 않는다 |
 | 열리지 않아야 하는 포트 | 9229·9230(인스펙터, `inspectorPort:false`). 8765 견적 툴은 건드리지 않는다 |
-| 시작 | `powershell -ExecutionPolicy Bypass -File scripts\Start-XDNodeManagement.ps1` (점검 인스턴스는 `-Port 3001`) |
+| 시작 | R4부터 `Start-ScheduledTask XDnodeManagement-Autostart` 하나(§9). 작업이 없을 때만 `powershell -ExecutionPolicy Bypass -File scripts\Start-XDNodeManagement.ps1` (점검 인스턴스는 `-Port 3001`) |
+| 정지 | `scripts\Stop-XDNodeManagement.ps1` (§1.2) |
+| 백업 | `C:\xdm\backup\yyyy-MM-dd\` + blob 저장소 `C:\xdm\backup\r2-blobs\`, 매일 03:00(§10) |
+| 로그·pid | `C:\xdm\logs\xdm-yyyyMMdd.log`(14일), `C:\xdm\run\xdm-management.pid` |
 
 ### 1.1 시작 스크립트가 하는 일 (`scripts/Start-XDNodeManagement.ps1`)
 
@@ -25,15 +28,23 @@
 2. `$env:X_LOCAL_EXPLORER="false"`, `$env:XD_NODE_PROJECT_PATH=<이 폴더>`를 설정한다.
 3. `dist\.build-rev`가 `git rev-parse HEAD`와 다르면 `npm run build`(로그: `.vinext\preview\build.log`). `-Rebuild`는 항상 빌드한다.
 4. `node scripts\write-dev-vars.mjs`: `.env.local`에서 허용 목록 5개(`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_TRANSCRIPTION_MODEL`, `CLAUDE_BRIDGE_URL`, `CLAUDE_ASSISTANT_BRIDGE_URL`)만 `dist\server\.dev.vars`에 쓴다. 키 이름만 출력한다. `vinext build`는 dist를 매번 지우므로 기동할 때마다 다시 쓴다.
-5. preview(3000은 `npm run serve:lan`, 그 밖의 포트는 같은 옵션의 `vite preview`)를 띄우고 포트가 열릴 때까지 기다린다.
-6. 브리지 3120·3130을 띄운다(이미 떠 있으면 건너뛴다).
+5. preview(3000은 `npm run serve:lan`, 그 밖의 포트는 같은 옵션의 `vite preview`)를 띄우고 포트가 열릴 때까지 기다린다. preview를 띄운 `cmd.exe`의 pid를 `C:\xdm\run\xdm-management.pid`(3000) 또는 `xdm-management-<포트>.pid`에 쓴다.
+6. 브리지 3120·3130을 띄운다(이미 떠 있으면 건너뛴다). pid는 `xdm-bridge-3120.pid`·`xdm-bridge-3130.pid`.
+7. 헬스체크: `GET http://127.0.0.1:<포트>/api/me`가 **401**이면 정상이다. 아니면 실패(종료 코드 1).
+8. R4: `-Headless`(작업 스케줄러용)면 Read-Host와 브라우저가 없다. `-Headless` 없이 3000에 실행했는데 `XDnodeManagement-Autostart` 작업이 등록돼 있으면, 직접 띄우지 않고 그 작업을 실행한 뒤 브라우저만 연다(기동 경로 하나, §9).
 
-로그: `<폴더>\.vinext\preview\preview.log(.err)`, `claude-resume-bridge.log`, `claude-assistant.log`.
+로그(R4): `C:\xdm\logs\xdm-yyyyMMdd.log`(Start·Stop·Backup·Deploy 공용), `preview-<포트>-<시각>.log(.err)`, `bridge-resume-*.log`, `bridge-assistant-*.log`, `build-*.log`. 14일이 지나면 시작할 때 지운다. 로그에는 요청 본문·Cookie·비밀값을 남기지 않는다.
 
-### 1.2 정지 (R4 전까지 수동)
+### 1.2 정지 (`scripts/Stop-XDNodeManagement.ps1`, R4)
 
-- preview를 띄운 `cmd.exe`/`node.exe`를 `taskkill /T /F /PID <pid>`로 끈다. `/T`가 없으면 `workerd.exe`가 남아 D1 파일을 잡고 있다.
-- 브리지도 같은 방식으로 끈다. 정지 뒤 3000·3120·3130이 LISTEN 상태가 아닌지 `netstat -ano | findstr LISTENING`으로 확인한다.
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Stop-XDNodeManagement.ps1
+```
+
+- pid 파일로 `taskkill /T /F /PID <pid>`(workerd까지. `/T`가 없으면 `workerd.exe`가 남아 D1 파일을 잡고 있다). pid 파일을 쓴 뒤에 시작한 프로세스(pid 재사용)는 끄지 않는다.
+- 3초 뒤에도 포트가 열려 있으면 그 포트를 LISTEN 하는 `node.exe`·`workerd.exe`를 끈다(포트 대체 경로). 다른 이름의 프로세스(견적 툴 등)는 건드리지 않는다.
+- 브리지 3120·3130은 `-Port 3000`을 끌 때만 끈다(`-KeepBridges`로 남길 수 있다). `-Port 3001`(점검 인스턴스)은 운영 브리지를 남긴다.
+- 종료 코드 0 = 대상 포트가 모두 닫힘, 1 = 아직 열려 있음. 확인: `netstat -ano | findstr LISTENING`.
 
 ### 1.3 지원하지 않는 런타임
 
@@ -63,7 +74,7 @@
 2. 운영 폴더 준비: `C:\xdm\prod`에 clone → R3 태그 checkout → `npm ci` → `npm run build`. 운영 폴더 `.env.local`에는 허용 목록 5개 키만 둔다. 롤백용으로 개발 폴더 `.env.local`의 `LOCAL_ERP_USER_EMAIL`·`LOCAL_ERP_USER_NAME` 두 줄을 저장소 밖에 따로 보관한다.
 3. 개발 폴더의 dev 서버와 브리지를 `taskkill /T`로 정지한다(workerd 포함).
 4. 데이터 이전(한 번만): 개발 폴더 `.wrangler\state\v3` 전체를 저장소 밖 날짜 폴더(R3 직전 스냅샷)와 `C:\xdm\prod\.wrangler\state\v3`에 복사한다. `node scripts/verify-state-snapshot.mjs <사본> --compare <다른 사본>`으로 원본·두 사본의 integrity·행 수·R2 수를 비교한다. 하나라도 다르면 멈춘다(SC-13).
-5. 방화벽 3000 규칙을 끈 채 운영 폴더에서 `Start-XDNodeManagement.ps1`을 실행한다. R4 전까지는 대화형 세션에 묶여 있으므로 로그오프하지 않는다(화면 잠금만).
+5. 방화벽 3000 규칙을 끈 채 운영 폴더에서 `Start-XDNodeManagement.ps1`을 실행한다. R4 전까지는 대화형 세션에 묶여 있으므로 로그오프하지 않는다(화면 잠금만). R4 뒤에는 §9의 작업으로만 기동한다.
 6. 서버 PC의 `http://localhost:3000`에서 첫 관리자를 만든다(§3). 기존 HR 직원 조회, R2 녹음 1건 다운로드, HR 전사 1건(`.dev.vars` 확인)으로 이전을 확인한다.
 7. 3000 규칙의 RemoteAddress를 점검 PC IP로 바꿔 켜고, 점검 PC에서 운영 데이터를 바꾸지 않는 스모크(§5)를 한다. SC-4는 점검 인스턴스(§5.2)에서 한다.
 8. 규칙을 `LocalSubnet`으로 넓힌다. LAN이 열리고 D16 기간이 끝난다.
@@ -142,3 +153,79 @@
 - **쿠키는 포트를 구분하지 않는다(R-2)**: 같은 호스트의 견적 툴(8765)이 `xdm_session`을 받는다. CSRF는 Origin 검사로 막고, 견적 툴이 헤더를 기록하지 않는지 확인한다.
 - **접속 주소는 IP로 안내한다**: DNS rebinding 방어가 Vite의 호스트 검사에 달려 있어 `allowedHosts`에 PC 이름을 넣지 않는다(부록 C #8). `http://<PC이름>:3000`은 403이다.
 - **의존성 업그레이드(R-15)**: vite·@cloudflare/vite-plugin·vinext를 올린 뒤에는 `npm test`(local-peer-plugin, lan-exposure-guards)와 §5.1 스모크를 다시 한다.
+- **백업은 정지 후 복사다(R4)**: 매일 03:00에 서버가 1~2분 멈춘다. 온라인 백업(`VACUUM INTO`)은 쓰지 않는다.
+
+## 9. 작업 스케줄러와 기동 경로 (R4, D19)
+
+- 작업 두 개(`scripts/Register-XDNodeManagementTasks.ps1`, **관리자 PowerShell**, 사용자와 함께 한 번):
+  - `XDnodeManagement-Autostart`: 시스템 시작 시(1분 지연), 서버 사용자, **로그온 여부와 관계없이 실행(암호 저장)**, 실패하면 5분 간격 3회 재시도, 실행 시간 제한 없음, 겹쳐 실행하지 않음. 동작 = `powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Start-XDNodeManagement.ps1 -Headless`. 스크립트는 헬스체크 뒤 끝나고 서버 프로세스는 남는다.
+  - `XDnodeManagement-Backup`: 매일 03:00, 같은 사용자. 놓친 실행을 나중에 몰아서 돌리지 않는다(업무 시간 정지 방지). 2시간 제한.
+  - `XDNODE 견적서 서버` 작업은 건드리지 않는다.
+  - 다시 실행하면 두 작업을 덮어쓴다. `-WhatIf`는 정의만 출력한다. 암호는 `Get-Credential`로 받아 작업 스케줄러에만 넘긴다(S4U는 브리지의 Claude CLI 자격 증명을 읽지 못하므로 쓰지 않는다).
+- **기동 경로는 하나다**: 재부팅·백업 재기동·Deploy·수동 재기동은 모두 `Start-ScheduledTask XDnodeManagement-Autostart`로 한다. 대화형 세션에서 스크립트를 직접 띄우지 않는다(로그오프하면 서버가 같이 멈추고, 세션 종류가 달라 브리지 자격 증명 동작도 달라진다). 바탕화면 바로가기(Start 스크립트, `-Headless` 없음)는 작업이 있으면 알아서 작업을 실행한다.
+- 수동 재기동: `Stop-XDNodeManagement.ps1` → `Start-ScheduledTask XDnodeManagement-Autostart` → `C:\xdm\logs\xdm-yyyyMMdd.log`에 `ready: ... -> 401`.
+- 상태 확인: `Get-ScheduledTaskInfo XDnodeManagement-Autostart`(LastTaskResult 0), `Get-ScheduledTaskInfo XDnodeManagement-Backup`.
+- 적용 때 확인: 관리자 권한 없이 `Start-ScheduledTask XDnodeManagement-Autostart`가 되는지(백업 작업·Deploy·바로가기가 이 호출을 쓴다). 안 되면 작업의 보안 설정에서 서버 사용자에게 실행 권한을 준다.
+- **대체안(D19)**: 재부팅 리허설(§13 9단계, SC-12)에서 로그온 없이 브리지가 자격 증명 오류로 실패하면 `Register-XDNodeManagementTasks.ps1 -Mode Logon`으로 다시 등록한다. 자동 기동은 '로그온 시' 트리거, 두 작업 모두 '사용자가 로그온할 때만 실행'이 된다. Windows 자동 로그온은 사용자와 함께 따로 켜고(예: Sysinternals Autologon), 서버 PC 화면 잠금 등 물리 보안 보완책을 정한다. 같은 리허설을 다시 한다.
+- 전원(사용자와 함께, 관리자): `powercfg /change standby-timeout-ac 0`, `powercfg /change hibernate-timeout-ac 0`, Windows Update 사용 시간 08:00~20:00.
+
+## 10. 백업 (`scripts/Backup-XDNodeManagement.ps1`, R4)
+
+```
+powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Backup-XDNodeManagement.ps1 [-MirrorRoot E:\xdm-backup]
+```
+
+순서(Design §11.5.8. 기록을 서버 정지 중에 하려고 검증·기록을 재기동보다 앞에 둔다):
+
+1. `Stop-XDNodeManagement.ps1`로 정지하고, state의 sqlite 파일 잠금이 풀릴 때까지 기다린다(최대 60초).
+2. `C:\xdm\prod\.wrangler\state\v3` 아래 모든 `*.sqlite`·`-wal`·`-shm`(d1과 r2 메타데이터)을 `C:\xdm\backup\yyyy-MM-dd\v3\`로 복사한다. 같은 날 다시 돌면 `yyyy-MM-ddTHHmm`. 경로는 120자 이하.
+3. R2 본문 blob을 `C:\xdm\backup\r2-blobs\`로 `robocopy /E`(증분, 지우지 않음).
+4. `verify-state-snapshot.mjs <날짜폴더>\v3 --out backup-report.json --blob-store r2-blobs`: 사본 read-only 검사(integrity_check, 테이블별 행 수, R2 객체 수, R2 객체 본문이 blob 저장소에 모두 있는지). 보고서에는 개수와 무결성만 있다. 그 뒤 사본에 `attrib +R`.
+5. `verify-state-snapshot.mjs --record-run`: 멈춘 운영 D1의 `ops_backup_runs`에 한 행(성공·실패 모두). pid 파일의 프로세스가 살아 있거나 3000이 열려 있으면 거부한다.
+6. `Start-ScheduledTask XDnodeManagement-Autostart` → 헬스체크 401(백업이 실패해도 재기동은 한다).
+7. 성공한 날만 날짜 폴더를 14개로 줄인다. blob 저장소는 지우지 않는다.
+8. `-MirrorRoot`가 있으면 날짜 폴더와 blob 저장소를 2차 매체로 복사한다(매체는 물리적으로 보관).
+
+- 성공 = 복사 완료 + integrity ok + 보고서 기록 + R2 본문 누락 0. `.env.local`은 넣지 않는다.
+- 종료 코드: 0 성공, 1 백업 실패(기록됨), 2 재기동 실패, 3 거부(개발 폴더, 운영 폴더 안의 백업 경로, 다른 백업 실행 중).
+- 개발 폴더(문서 폴더 아래 작업 사본)는 대상으로 받지 않는다. 리허설은 `%TEMP%` 같은 곳의 가짜 운영 폴더로 `-ProdRoot … -BackupRoot … -RunDir … -LogRoot … -Port <빈 포트> -Restart None`.
+- **관리자 화면 경고**: 계정 관리 탭이 `GET /api/admin/backups`를 읽는다. 36시간 넘게 성공이 없으면 "마지막 백업 성공: yyyy-MM-dd HH:mm. 36시간 넘게 성공한 백업이 없습니다.", 마지막 실행이 실패면 그 사유를 띄운다. 정지 단계에서 실패하면(서버가 떠 있어 기록 불가) 행이 남지 않으므로 36시간 뒤 stale 경고로 드러난다. 그때는 `C:\xdm\logs\xdm-yyyyMMdd.log`의 `backup:` 줄을 본다.
+- `C:\xdm\*` ACL은 서버 사용자로 제한한다. 백업에는 급여·비밀번호 해시·세션 해시가 들어 있다.
+
+## 11. 복구 (SC-7)
+
+1. `Stop-XDNodeManagement.ps1`.
+2. 현재 state를 저장소 밖으로 옮겨 둔다: `robocopy C:\xdm\prod\.wrangler\state C:\xdm\snapshots\pre-restore-yyyyMMdd-HHmm /E`.
+3. 복구할 날짜 폴더의 `v3`를 복사한다: `robocopy C:\xdm\backup\<날짜>\v3 C:\xdm\prod\.wrangler\state\v3 /E`, 이어서 blob: `robocopy C:\xdm\backup\r2-blobs C:\xdm\prod\.wrangler\state\v3\r2 /E`.
+4. 복사본의 읽기 전용 속성을 푼다: `attrib -R C:\xdm\prod\.wrangler\state\v3\* /S`.
+5. `Start-ScheduledTask XDnodeManagement-Autostart` → 로그인, HR 직원 조회, 녹음 1건 다운로드.
+6. 리허설은 운영이 아니라 새 폴더(점검 인스턴스 `C:\xdm\staging`, 포트 3001)에 3~4단계를 해서 확인한다. 복구본을 멈춘 상태에서 `verify-state-snapshot.mjs <복구본 v3>`의 integrity·행 수·R2 객체 수가 그날 `backup-report.json`과 같아야 한다. 끝나면 staging과 3001 규칙을 지운다. R5 뒤에 채팅 기록·첨부로 한 번 더 한다.
+
+## 12. 배포 (`scripts/Deploy-XDNodeManagement.ps1`, R4)
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Deploy-XDNodeManagement.ps1 -Tag <태그>
+```
+
+- 업무 시간 밖에 한다. lint·test는 개발 폴더에서 태그를 달기 전에 한다(운영 폴더에서 `npm test`를 돌리지 않는다: build가 dist를 지운다).
+- 순서: 태그 확인(`git fetch --tags`, 작업 트리 깨끗함) → Stop → 정지 후 스냅샷 `C:\xdm\snapshots\deploy-<태그>-yyyyMMdd-HHmm\`과 검증 → `git checkout --detach <태그>` → (lock이 바뀌었으면) `npm ci` → `npm run build` → `write-dev-vars.mjs`와 `dist\.build-rev` → `Start-ScheduledTask` → 헬스체크 401.
+- 실패하면 직전 커밋으로 다시 빌드해 같은 경로로 올린다(종료 코드 1). 그것도 실패하면 2: §11 복구나 수동 기동.
+- 중단 시간(Stop부터 헬스체크까지)을 `xdm-yyyyMMdd.log`와 `C:\xdm\logs\deploy-history.log`에 남긴다.
+- 대상은 `C:\xdm\prod`·`C:\xdm\staging`뿐이다. 개발 폴더나 그 밖의 경로는 아무것도 하기 전에 거부한다(종료 코드 3). 자동 기동 작업이 없어도 거부한다.
+
+## 13. R4 적용 순서 (운영, 업무 시간 밖, 사용자와 함께)
+
+**UAC** 표시는 관리자 권한 PowerShell이 필요한 단계다.
+
+1. 개발 폴더에서 `npm run lint`·`npm test`가 통과한 커밋에 R4 태그를 단다.
+2. 운영 폴더에 R4 코드를 올린다. 이때는 작업이 없어 Deploy가 거부하므로 수동으로 한다: 서버 PC 대화형 세션에서 운영 preview·브리지 정지(R3 방식 `taskkill /T`, 또는 R4 태그의 `Stop-XDNodeManagement.ps1`) → 정지 후 스냅샷 `C:\xdm\snapshots\r4-pre-yyyyMMdd-HHmm\`과 `verify-state-snapshot.mjs` → `git -C C:\xdm\prod fetch --tags` → `git -C C:\xdm\prod checkout --detach <R4 태그>` → (lock이 바뀌었으면) `npm ci` → `npm run build` → `node scripts\write-dev-vars.mjs`.
+3. `C:\xdm\run`, `C:\xdm\logs`, `C:\xdm\backup`을 만들고 ACL을 서버 사용자로 제한한다(**UAC**, `icacls`).
+4. **UAC**: `Register-XDNodeManagementTasks.ps1`(기본 `-Mode Startup`, 서버 사용자 암호 입력).
+5. `Start-ScheduledTask XDnodeManagement-Autostart` → 로그에 `ready`, 다른 PC에서 로그인·HR 조회, 어시스턴트·이력서 분석 1건씩. 계정 관리 탭에 백업 경고(아직 성공 없음)가 보이는 것이 정상이다.
+6. 백업 1회: `Start-ScheduledTask XDnodeManagement-Backup` → `C:\xdm\backup\<오늘>\backup-report.json`, 계정 관리 탭 경고가 사라짐(`GET /api/admin/backups` `stale:false`). 중단 시간을 로그로 확인한다.
+7. 복구 리허설(§11 6단계, SC-7).
+8. **UAC**: 전원 설정(§9).
+9. 재부팅 리허설(SC-12): 재부팅 후 **로그온하지 않은 채로** 다른 PC에서 로그인 화면, `xdm-yyyyMMdd.log`의 `ready`, 어시스턴트·이력서 분석 응답. 실패하면 대체안(§9, **UAC** 재등록 + 자동 로그온).
+10. 첫 03:00 백업 뒤와 첫 Deploy 뒤에도 어시스턴트·이력서 분석을 확인한다(SC-12). 첫 Deploy에서 중단 시간을 한 번 재서 기록한다.
+
+**롤백(R4)**: `Disable-ScheduledTask XDnodeManagement-Autostart`, `Disable-ScheduledTask XDnodeManagement-Backup`(필요하면 **UAC**), 그 뒤 R3 방식(대화형 세션에서 Start 스크립트. 작업이 비활성이면 스크립트가 작업에 넘기지 않고 직접 띄운다)으로 수동 기동. 데이터 영향은 없다(`ops_backup_runs`는 추가만 한 표).
