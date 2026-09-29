@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { compactLeaveContext, recentAssistantConversation } from "../app/hr-assistant-context.ts";
+import { compactLeaveContext, compactOperationsContext, recentAssistantConversation } from "../app/hr-assistant-context.ts";
 import { validateRecruitmentInterview, formatRecruitmentQuestions } from "../app/assistant-recruitment.ts";
 
 test("recruitment interview validates real dates and paired times, and formats editable questions", () => {
@@ -33,6 +33,30 @@ test("assistant leave evidence retains source date and negative balance without 
   assert.equal(result.employees[0].overdraft, 1);
   assert.equal("usages" in result.employees[0], false);
   assert.equal("email" in result.employees[0], false);
+});
+
+test("assistant operations context drops old leave history, reasons and done tasks so HR questions fit the bridge limit", async () => {
+  const leaveRequests = Array.from({ length: 407 }, (_, i) => ({
+    id: `leave-${i}`, employee_id: `emp-${i % 30}`, leave_type: "ANNUAL", start_date: `2025-${String(1 + (i % 12)).padStart(2, "0")}-10`,
+    end_date: `2025-${String(1 + (i % 12)).padStart(2, "0")}-10`, units: 1, reason: "private detail ".repeat(10), status: "APPROVED",
+    source: "LEDGER_IMPORT", created_at: "2026-09-01T00:00:00Z", updated_at: "2026-09-01T00:00:00Z",
+  }));
+  leaveRequests.push({ id: "upcoming", employee_id: "emp-1", leave_type: "ANNUAL", start_date: "2026-10-02", end_date: "2026-10-02", units: 1, reason: "private detail", status: "APPROVED" });
+  leaveRequests.push({ id: "pending", employee_id: "emp-2", leave_type: "ANNUAL", start_date: "2025-01-01", end_date: "2025-01-01", units: 1, reason: "x", status: "PENDING" });
+  const lifecycleTasks = Array.from({ length: 104 }, (_, i) => ({ id: `task-${i}`, employee_id: "emp-3", lifecycle_type: "OFFBOARDING", task_group: "HR", title: `Task ${i}`, due_date: "2026-10-01", status: i < 26 ? "DONE" : "OPEN", created_at: "x", updated_at: "x" }));
+  const payrollRuns = Array.from({ length: 250 }, (_, i) => ({ period: `p${i}` }));
+  const raw = { leaveRequests, lifecycleTasks, payrollRuns, severanceEstimates: [{ employeeId: "emp-3" }] };
+  const result = compactOperationsContext(raw, "2026-09-29");
+  assert.equal(result.leaveRequests.totalCount, 409);
+  assert.deepEqual(result.leaveRequests.items.map((row) => row.start_date), ["2025-01-01", "2026-10-02"]);
+  assert.equal(JSON.stringify(result).includes("private detail"), false);
+  assert.equal(result.lifecycleTasks.doneCount, 26);
+  assert.equal(result.lifecycleTasks.items.length, 78);
+  assert.equal(result.payrollRuns.length, 200);
+  assert.deepEqual(result.severanceEstimates, [{ employeeId: "emp-3" }]);
+  assert.ok(JSON.stringify(result).length < JSON.stringify(raw).length / 5);
+  const component = await read("app/local-codex-assistant.tsx");
+  assert.match(component, /operations: operationsResponse\.ok \? compactOperationsContext\(operationsPayload, asOf\)/);
 });
 
 test("local Codex assistant is mounted for HR, payroll and incentive while its bridge stays read-only", async () => {

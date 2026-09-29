@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useMemo, useState } from "react";
 import readXlsxFile from "read-excel-file/browser";
 import { calculateCompensation, type CompensationColumns, type CompensationEmployee, type CompensationRounding } from "./compensation-calculation";
-import { compactLeaveContext, hrAssistantTopics, recentAssistantConversation, type AssistantExchange, type HrAssistantTopic } from "./hr-assistant-context";
+import { compactLeaveContext, compactOperationsContext, hrAssistantTopics, recentAssistantConversation, type AssistantExchange, type HrAssistantTopic } from "./hr-assistant-context";
 import { emptyRecruitmentInterview, formatRecruitmentQuestions, recruitmentHelperRequest, validateRecruitmentInterview } from "./assistant-recruitment";
 import { HrModalBackdrop } from "./hr-ui";
 import type { ResolvedTabs, TabKey } from "./access-tabs";
@@ -341,12 +341,13 @@ export default function LocalCodexAssistant({ module, tabs }: { module: Assistan
     const currentRecruiterIds = Array.isArray(recruitmentPayload.recruiterIds) ? recruitmentPayload.recruiterIds : [];
     setRecruitmentApplicants(applicants);
     setRecruiterIds(currentRecruiterIds);
+    const asOf = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
     return {
       ...base,
       sources,
       leave,
-      asOf: new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10),
-      operations: operationsResponse.ok ? operationsPayload : { unavailable: true },
+      asOf,
+      operations: operationsResponse.ok ? compactOperationsContext(operationsPayload, asOf) : { unavailable: true },
       recruitment: {
         applicantCount: applicants.length,
         recruiters: currentRecruiterIds.map((id) => ({ id, name: records.find((employee) => employee.employeeId === id)?.name ?? "미지정" })),

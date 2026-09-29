@@ -21,6 +21,42 @@ type LeaveSummary = {
   promotions?: Array<{ label: string; remaining: number; expiresAt: string; daysLeft: number; stage: string }>;
 };
 
+type OperationsRow = Record<string, unknown>;
+const OPERATIONS_ROW_LIMIT = 200;
+const RECENT_LEAVE_DAYS = 30;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const rowsOf = (value: unknown): OperationsRow[] => Array.isArray(value) ? value.filter((row): row is OperationsRow => Boolean(row) && typeof row === "object") : [];
+const pick = (row: OperationsRow, keys: string[]) => Object.fromEntries(keys.filter((key) => row[key] !== undefined).map((key) => [key, row[key]]));
+
+// /api/hr/operations 응답을 어시스턴트 맥락 크기로 줄인다. 원본을 그대로 보내면 가져온 연차 사용 기록(수백 건)만으로
+// 브리지 한도(192KB)를 넘어 모든 HR 질문이 "첨부한 자료가 너무 큽니다"로 실패했다.
+// 휴가 신청: 연차 잔여는 compactLeaveContext 가 따로 보낸다. 여기서는 최근 30일 이후 일정과 결정 대기 건만, 사유·출처 없이 보낸다.
+// 입·퇴사 체크리스트: 끝나지 않은 항목만 보내고 완료 건은 개수만 남긴다.
+export function compactOperationsContext(payload: Record<string, unknown>, today: string) {
+  const since = new Date(Date.parse(`${today}T00:00:00Z`) - RECENT_LEAVE_DAYS * DAY_MS).toISOString().slice(0, 10);
+  const leaves = rowsOf(payload.leaveRequests);
+  const relevantLeaves = leaves.filter((row) => row.status !== "APPROVED" || String(row.end_date ?? row.start_date ?? "") >= since)
+    .sort((a, b) => String(a.start_date ?? "").localeCompare(String(b.start_date ?? "")));
+  const tasks = rowsOf(payload.lifecycleTasks);
+  const openTasks = tasks.filter((row) => row.status !== "DONE");
+  const rest = Object.entries(payload).filter(([key]) => key !== "leaveRequests" && key !== "lifecycleTasks");
+  const bounded = Object.fromEntries(rest.map(([key, value]) => [key, Array.isArray(value) ? value.slice(0, OPERATIONS_ROW_LIMIT) : value]));
+  return {
+    ...bounded,
+    leaveRequests: {
+      scope: `최근 ${RECENT_LEAVE_DAYS}일(${since}) 이후 일정과 결정 대기 건. 그 이전 사용 기록과 사유는 포함하지 않음(잔여는 leave 참고).`,
+      totalCount: leaves.length, includedCount: Math.min(relevantLeaves.length, OPERATIONS_ROW_LIMIT),
+      items: relevantLeaves.slice(0, OPERATIONS_ROW_LIMIT).map((row) => pick(row, ["employee_id", "leave_type", "start_date", "end_date", "units", "status", "deducts"])),
+    },
+    lifecycleTasks: {
+      scope: "끝나지 않은 입·퇴사 체크리스트 항목",
+      totalCount: tasks.length, doneCount: tasks.length - openTasks.length,
+      items: openTasks.slice(0, OPERATIONS_ROW_LIMIT).map((row) => pick(row, ["employee_id", "lifecycle_type", "task_group", "title", "owner_employee_id", "due_date", "status"])),
+    },
+  };
+}
+
 export function compactLeaveContext(payload: { today?: string; ledgers?: LeaveSummary[] }) {
   const rows = Array.isArray(payload.ledgers) ? payload.ledgers : [];
   return {
