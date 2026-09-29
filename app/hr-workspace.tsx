@@ -12,7 +12,7 @@ import HrAnalyticsView from "./hr-analytics-view";
 import AudioTranscriptionControl from "./audio-transcription-control";
 import WonInput from "./won-input";
 import { HrModalBackdrop, InterviewAudio, useKoreanToday } from "./hr-ui";
-import { addMonths, buildEmploymentContract, contractFileName, contractKindLabels, contractPay, contractTokens, defaultContractOptions, downloadBlob, FIXED_TERM_MONTHS, fixedTermEndDate, type ContractKind, type ContractOptions } from "./hr-employment-contract";
+import { buildEmploymentContract, contractFileName, contractKindLabels, contractPay, contractTokens, defaultContractOptions, downloadBlob, FIXED_TERM_MONTHS, firstTermNextStart, fixedTermEndDate, type ContractKind, type ContractOptions } from "./hr-employment-contract";
 import { buildDashboardModel, koreanWon, type DashboardLeaveLedger, type DashboardLifecycleTask, type DashboardPayrollRun, type InboxPriority } from "./hr-dashboard-model";
 import { CompositionBar, FillMeter, HorizontalBars, MonthlyFlowChart, PayrollStepper } from "./hr-dashboard-charts";
 import LeaveManagementView, { LeaveLedgerPanel } from "./hr-leave-view";
@@ -4725,7 +4725,7 @@ function Dashboard({ employees, organizations, applicants, requisitions, lifecyc
     isCurrent: (employee) => isCurrentEmployee(employee as Employee),
     isRejectedStage: (stage) => REJECTED_STAGES.includes(stage),
     funnelStages: [SCREENING_PENDING_STAGE, SCREENING_PASSED_STAGE, "면접", INTERVIEW_PASSED_STAGE, OFFER_PREPARED_STAGE, "입사 예정", "입사 완료"],
-    firstTerm: (joinDate) => ({ endDate: fixedTermEndDate(joinDate), nextStart: addMonths(joinDate, FIXED_TERM_MONTHS) }),
+    firstTerm: (joinDate) => ({ endDate: fixedTermEndDate(joinDate), nextStart: firstTermNextStart(joinDate) }),
   });
   const { dDay, dayGap } = model;
 
