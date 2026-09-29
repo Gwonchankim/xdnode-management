@@ -62,7 +62,7 @@ test('#1 bootstrap from a loopback peer with zero accounts creates the admin, on
   const token = /^xdm_session=([A-Za-z0-9_-]{43});/.exec(result.setCookies[0])[1];
   const session = expectCode(await me(token), 200);
   assert.equal(session.isAdmin, true);
-  assert.deepEqual(session.tabs, { hr: 'edit', compensation: 'edit', audit: 'edit', admin: 'edit' });
+  assert.deepEqual(session.tabs, { hr: 'edit', compensation: 'edit', chat: 'edit', audit: 'edit', admin: 'edit' });
   const [audit] = rows(sql, 'BOOTSTRAP_ADMIN_CREATED');
   assert.equal(audit.module, 'auth'); assert.equal(after(audit).peer, '127.0.0.1');
   const created = sql.prepare('SELECT * FROM auth_accounts').get();
@@ -117,7 +117,7 @@ test('#5 login issues an HttpOnly Lax session cookie without Secure and records 
   const [audit] = rows(sql, 'LOGIN_SUCCEEDED');
   assert.equal(audit.actor_user_id, user.id); assert.equal(after(audit).peer, '192.0.2.10');
   const session = expectCode(await me(result.cookie), 200);
-  assert.deepEqual(session.tabs, { hr: 'view', compensation: 'none', audit: 'none', admin: 'none' });
+  assert.deepEqual(session.tabs, { hr: 'view', compensation: 'none', chat: 'none', audit: 'none', admin: 'none' });
   assert.equal(session.isAdmin, false);
   const stored = sql.prepare('SELECT * FROM auth_sessions WHERE account_id = ?').get(user.id);
   assert.equal(stored.peer, '192.0.2.10'); assert.equal(stored.expires_at - stored.created_at, 30 * DAY);
@@ -385,13 +385,13 @@ test('#18 an admin-created account gets a one-time 12-character temporary passwo
   assert.match(created.temporaryPassword, /^[ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789]{12}$/);
   assert.equal(created.account.email, 'new.hire@example.test');
   assert.equal(created.account.mustChangePassword, true);
-  assert.deepEqual(created.account.tabs, { hr: 'view', compensation: 'edit' });
+  assert.deepEqual(created.account.tabs, { hr: 'view', compensation: 'edit', chat: 'none' });
   const [audit] = rows(sql, 'ACCOUNT_CREATED');
   assert.equal(after(audit).temporaryPasswordIssued, true);
   assert.equal(audit.after_json.includes(created.temporaryPassword), false);
   const list = expectCode(await callApi('admin/accounts'), 200);
   assert.equal(JSON.stringify(list).includes(created.temporaryPassword), false);
-  assert.deepEqual(list.grantableTabs, [{ key: 'hr', label: '인사관리' }, { key: 'compensation', label: '임금 계산' }]);
+  assert.deepEqual(list.grantableTabs, [{ key: 'hr', label: '인사관리' }, { key: 'compensation', label: '임금 계산' }, { key: 'chat', label: '메신저' }]);
   assert.ok(list.employees.length > 0 && list.employees.some((row) => row.linkedAccountId === TEST_ADMIN_ACCOUNT_ID));
   const session = await login(created.account.email, created.temporaryPassword);
   assert.equal(expectCode(session, 200).mustChangePassword, true);

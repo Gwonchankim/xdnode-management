@@ -5,6 +5,7 @@ import HRWorkspace from "./hr-workspace";
 import CompensationCalculator from "./compensation-calculator";
 import AuditLogWorkspace from "./audit-log-workspace";
 import AdminAccountsWorkspace from "./admin-accounts-workspace";
+import ChatWorkspace from "./chat-workspace";
 import LocalCodexAssistant from "./local-codex-assistant";
 import { ErpDialogProvider, useErpDialog } from "./erp-dialog";
 import { TAB_REGISTRY, type ResolvedTabs, type TabKey } from "./access-tabs";
@@ -12,6 +13,7 @@ import ShellTopNav, { resolveActiveTab } from "./shell-top-nav";
 import { SessionGate, SessionNotice } from "./auth-screens";
 import { readScoped, writeScoped } from "./client-runtime";
 import { useSession, type SessionMe } from "./session-client";
+import { useChatPoll, type ChatPoll } from "./chat-client";
 
 // R3(r3-shell, Design §5.1~§5.3): 셸은 useSession() 상태기계와 탭 레지스트리(app/access-tabs.ts)로 그린다.
 // SSR 과 첫 렌더는 AuthLoadingShell(data-auth-gate="loading")뿐이고 탭 DOM 이 없다. 권한 없는 탭은 버튼도 패널도 없다.
@@ -27,6 +29,7 @@ type PanelContext = {
   hrNavigation: { view: string; requestKey: number };
   compensationAssistantModule: "compensation" | "incentive";
   setCompensationAssistantModule: (module: "compensation" | "incentive") => void;
+  chatPoll: ChatPoll;
 };
 
 // 탭마다 패널 하나. Record<TabKey, …> 라서 레지스트리에 탭을 더하고 여기를 빠뜨리면 타입 오류가 되고,
@@ -44,6 +47,7 @@ const TAB_PANELS: Record<TabKey, (ctx: PanelContext) => ReactNode> = {
       <LocalCodexAssistant module={ctx.compensationAssistantModule} tabs={ctx.tabs} />
     </>
   ),
+  chat: (ctx) => <ChatWorkspace accountId={ctx.me.user.accountId} poll={ctx.chatPoll} />,
   audit: () => (
     <main className="admin-page">
       <AuditLogWorkspace />
@@ -63,6 +67,8 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
   const [compensationAssistantModule, setCompensationAssistantModule] = useState<"compensation" | "incentive">("compensation");
   // 권한이 줄어 현재 탭이 사라지면(60초 재조회·FORBIDDEN 뒤) 첫 허용 탭으로 옮긴다.
   const active = resolveActiveTab(me.tabs, selected);
+  // 메신저 폴링은 셸에서 한 번만 돈다. 다른 탭에 있어도 15초마다 안 읽은 수를 받아 탭 배지·문서 제목을 갱신한다(§4.2.8).
+  const chatPoll = useChatPoll({ enabled: me.tabs.chat !== "none", chatActive: active === "chat" });
 
   function select(tab: TabKey) {
     setSelected(tab);
@@ -71,7 +77,7 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
 
   const navigation = (
     <ShellTopNav tabs={me.tabs} active={active} onSelect={select} userName={me.user.name} userEmail={me.user.email}
-      onChangePassword={onChangePassword} onLogout={onLogout} />
+      onChangePassword={onChangePassword} onLogout={onLogout} badges={{ chat: chatPoll.unread?.total ?? 0 }} />
   );
 
   if (!active) {
@@ -89,7 +95,7 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
   return (
     <div className={definition.shellClass}>
       {navigation}
-      {TAB_PANELS[active]({ me, tabs: me.tabs, hrNavigation, compensationAssistantModule, setCompensationAssistantModule })}
+      {TAB_PANELS[active]({ me, tabs: me.tabs, hrNavigation, compensationAssistantModule, setCompensationAssistantModule, chatPoll })}
     </div>
   );
 }

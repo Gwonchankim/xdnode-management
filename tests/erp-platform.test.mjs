@@ -36,6 +36,8 @@ test("every mutating API route calls the authorization helper and writes an audi
     } else {
       assert.match(source, /authorizeErpRequest\(/, `${route}: missing authorizeErpRequest`);
     }
+    // R5(Design §4.2.8): 읽음 위치 PUT 은 감사하지 않는 유일한 쓰기 라우트다(읽을 때마다 감사 행이 쌓이지 않게).
+    if (route === "chat/read-state/route.ts") { assert.doesNotMatch(source, /writeErpAudit\(/, route); continue; }
     assert.match(source, /writeErpAudit\(/, `${route}: missing writeErpAudit`);
   }
   assert.ok(mutating >= 20, `only ${mutating} mutating routes found`);

@@ -172,7 +172,8 @@ const codeOf = (source) => source.split(/\r?\n/).filter((line) => !/^\s*#/.test(
 const ddlIn = (source, name) => source.match(new RegExp(`(?:export )?const ${name} = \`([^\`]*)\`;`))?.[1];
 
 test("R4: ops_backup_runs DDL in erp-platform.ts is the same string the backup recorder runs while the server is stopped", async () => {
-  const [platform, recorder] = await Promise.all([read("app/erp-platform.ts"), read("scripts/verify-state-snapshot.mjs")]);
+  // 작업 사본의 줄바꿈(core.autocrlf 로 CRLF/LF)은 파일마다 다를 수 있다. SQL 문자열 비교에서는 같게 본다.
+  const [platform, recorder] = (await Promise.all([read("app/erp-platform.ts"), read("scripts/verify-state-snapshot.mjs")])).map((text) => text.replace(/\r\n/g, "\n"));
   for (const name of ["OPS_BACKUP_RUNS_DDL", "OPS_BACKUP_RUNS_INDEX_DDL"]) {
     const left = ddlIn(platform, name);
     assert.ok(left && left.length > 40, `${name} missing in app/erp-platform.ts`);
@@ -180,7 +181,7 @@ test("R4: ops_backup_runs DDL in erp-platform.ts is the same string the backup r
   }
   assert.match(ddlIn(platform, "OPS_BACKUP_RUNS_DDL"), /status TEXT NOT NULL CHECK \(status IN \('OK','FAILED'\)\)/);
   // 부록 C #6: 새 파일을 두지 않고 erp-platform.ts 의 batch 에 audit → auth → ops 순서로 넣는다.
-  assert.match(platform, /await db\.batch\(\[\.\.\.auditStatements\(db\), \.\.\.authSchemaStatements\(db\), \.\.\.opsSchemaStatements\(db\)\]\);/);
+  assert.match(platform, /await db\.batch\(\[\.\.\.auditStatements\(db\), \.\.\.authSchemaStatements\(db\), \.\.\.opsSchemaStatements\(db\), \.\.\.chatSchemaStatements\(db\)\]\);/);
   assert.match(platform, /function opsSchemaStatements\(db: D1Database\) \{\s*return \[db\.prepare\(OPS_BACKUP_RUNS_DDL\), db\.prepare\(OPS_BACKUP_RUNS_INDEX_DDL\)\];/);
   // 기록 모드만 운영 파일을 연다. 서버가 떠 있으면(pid·포트) 거부한다.
   assert.match(recorder, /const running = await runningServerReason\(\{ pidFile: option\("--pid-file"\) \?\? DEFAULT_PID_FILE, port \}\);\s*if \(running\) \{/);

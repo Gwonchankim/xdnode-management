@@ -10,7 +10,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 const { default: ShellTopNav, resolveActiveTab } = await import('../app/shell-top-nav.tsx');
 const { TAB_REGISTRY } = await import('../app/access-tabs.ts');
 
-const none = { hr: 'none', compensation: 'none', audit: 'none', admin: 'none' };
+const none = { hr: 'none', compensation: 'none', chat: 'none', audit: 'none', admin: 'none' };
 const noop = () => {};
 const render = (tabs, active = resolveActiveTab(tabs, null)) => renderToStaticMarkup(createElement(ShellTopNav, {
   tabs, active, onSelect: noop, userName: '테스트 사용자', userEmail: 'someone@example.test', onChangePassword: noop, onLogout: noop,
@@ -36,7 +36,7 @@ test('#2 an admin sees every registry tab, in registry order', () => {
   const all = Object.fromEntries(TAB_REGISTRY.map((tab) => [tab.key, 'edit']));
   const html = render(all, 'admin');
   assert.deepEqual(tabButtons(html), TAB_REGISTRY.map((tab) => tab.key));
-  assert.equal(TAB_REGISTRY.length, 4, 'R3: hr, compensation, audit, admin (R5 adds chat)');
+  assert.equal(TAB_REGISTRY.length, 5, 'R5: hr, compensation, chat, audit, admin');
   assert.match(html, /class="erp-module-tab active"[^>]*data-tab="admin"[^>]*aria-current="page"/);
   for (const tab of TAB_REGISTRY) assert.match(html, new RegExp(`<strong>${tab.label}</strong>`));
 });

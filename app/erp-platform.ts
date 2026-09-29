@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { crossSiteViolation, CROSS_ORIGIN_ERROR } from "./request-guard";
 import { authSchemaStatements, resolveSession, toPrincipal, type AccountPrincipal } from "./auth-session";
+import { chatSchemaStatements } from "./chat-schema";
 import { accessDecision, type ErpAction, type ErpModule } from "./access-tabs";
 
 // R3(Design §3·§4.3.1): 신원은 세션 쿠키로 정한다. 인사기록 연결은 선택이다(D14).
@@ -74,7 +75,7 @@ function opsSchemaStatements(db: D1Database) {
  * R3 에서 더 만들지 않는다(Design §3.4). 기존 DB 의 테이블과 행은 그대로 남는다. 순서는 audit → auth → ops(R4) → chat(R5)이다.
  */
 export async function ensureErpPlatformSchema(db: D1Database) {
-  await db.batch([...auditStatements(db), ...authSchemaStatements(db), ...opsSchemaStatements(db)]);
+  await db.batch([...auditStatements(db), ...authSchemaStatements(db), ...opsSchemaStatements(db), ...chatSchemaStatements(db)]);
 }
 
 let schemaGate: Promise<void> | null = null;

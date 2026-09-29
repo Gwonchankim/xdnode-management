@@ -19,9 +19,11 @@ export type ShellTopNavProps = {
   userEmail?: string;
   onChangePassword: () => void;
   onLogout: () => void;
+  /** 탭별 숫자 배지(메신저 안 읽은 수). 0 이면 그리지 않는다. */
+  badges?: Partial<Record<TabKey, number>>;
 };
 
-export default function ShellTopNav({ tabs, active, onSelect, userName, userEmail, onChangePassword, onLogout }: ShellTopNavProps) {
+export default function ShellTopNav({ tabs, active, onSelect, userName, userEmail, onChangePassword, onLogout, badges }: ShellTopNavProps) {
   const allowed = permittedTabs(tabs);
   const empty = allowed.length === 0;
   return (
@@ -49,6 +51,9 @@ export default function ShellTopNav({ tabs, active, onSelect, userName, userEmai
               <span>
                 <strong>{tab.label}</strong>
               </span>
+              {(badges?.[tab.key] ?? 0) > 0 && (
+                <span className="erp-tab-badge" aria-label={`안 읽은 글 ${badges?.[tab.key]}개`}>{Math.min(badges?.[tab.key] ?? 0, 99)}{(badges?.[tab.key] ?? 0) > 99 ? "+" : ""}</span>
+              )}
             </button>
           ))}
         </nav>

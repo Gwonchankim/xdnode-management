@@ -14,38 +14,39 @@ const {
 const { verifyPassword, hashPassword, PBKDF2_ITERATIONS } = await import('../app/auth-password.ts');
 const { crossOriginWriteViolation, crossSiteViolation } = await import('../app/request-guard.ts');
 
-const none = { hr: 'none', compensation: 'none', audit: 'none', admin: 'none' };
+const none = { hr: 'none', compensation: 'none', chat: 'none', audit: 'none', admin: 'none' };
 const principal = (grants = {}, isAdmin = false) => ({ isAdmin, tabs: { ...none, ...grants } });
 const ACTIONS = ['read', 'write', 'approve', 'delete', 'admin'];
 
 // ── 레지스트리 무결성 ─────────────────────────────────────────────────
-test('registry: unique keys, R3 tabs in order, audit and admin are admin-only, every entry has the declared fields', () => {
+test('registry: unique keys, R5 tabs in order, audit and admin are admin-only, every entry has the declared fields', () => {
   const keys = TAB_REGISTRY.map((tab) => tab.key);
   assert.equal(new Set(keys).size, keys.length);
-  assert.deepEqual(keys, ['hr', 'compensation', 'audit', 'admin']);
+  assert.deepEqual(keys, ['hr', 'compensation', 'chat', 'audit', 'admin']);
   for (const tab of TAB_REGISTRY) {
     assert.deepEqual(Object.keys(tab).sort(), ['adminOnly', 'apiPrefixes', 'glyph', 'key', 'label', 'modules', 'shellClass']);
     assert.ok(tab.modules.length > 0 && tab.apiPrefixes.every((prefix) => prefix.startsWith('/api/')), tab.key);
   }
   assert.deepEqual(TAB_REGISTRY.filter((tab) => tab.adminOnly).map((tab) => tab.key), ['audit', 'admin']);
-  assert.deepEqual(GRANTABLE_TABS, [{ key: 'hr', label: '인사관리' }, { key: 'compensation', label: '임금 계산' }]);
-  for (const key of ['hr', 'compensation']) assert.equal(isGrantableTabKey(key), true);
-  for (const key of ['audit', 'admin', 'chat', '__proto__', 'constructor']) assert.equal(isGrantableTabKey(key), false, key);
+  assert.deepEqual(GRANTABLE_TABS, [{ key: 'hr', label: '인사관리' }, { key: 'compensation', label: '임금 계산' }, { key: 'chat', label: '메신저' }]);
+  for (const key of ['hr', 'compensation', 'chat']) assert.equal(isGrantableTabKey(key), true);
+  for (const key of ['audit', 'admin', 'quote', '__proto__', 'constructor']) assert.equal(isGrantableTabKey(key), false, key);
 });
 
 test('registry: MODULE_TAB is derived from the modules arrays, and a module on two tabs or a duplicate key throws', () => {
   assert.ok(MODULE_TAB instanceof Map);
-  assert.deepEqual([...MODULE_TAB], [['hr', 'hr'], ['recruitment', 'hr'], ['compensation', 'compensation'], ['audit', 'audit'], ['admin', 'admin']]);
+  assert.deepEqual([...MODULE_TAB], [['hr', 'hr'], ['recruitment', 'hr'], ['compensation', 'compensation'], ['chat', 'chat'], ['audit', 'audit'], ['admin', 'admin']]);
   assert.throws(() => deriveModuleTab([{ key: 'hr', modules: ['hr'] }, { key: 'quote', modules: ['quote', 'hr'] }]), /두 탭/);
   assert.throws(() => deriveModuleTab([{ key: 'hr', modules: ['hr'] }, { key: 'hr', modules: ['other'] }]), /중복/);
   assert.equal(deriveModuleTab([{ key: 'quote', modules: ['quote'] }]).get('quote'), 'quote', 'a new tab needs only a registry entry (FR-16)');
 });
 
 test('registry: removed and prototype-looking modules have no tab', () => {
-  for (const moduleName of ['finance', 'sales', 'operations', 'settings', 'chat', '__proto__', 'constructor', 'toString', 'hasOwnProperty', '', 'HR']) {
+  for (const moduleName of ['finance', 'sales', 'operations', 'settings', 'quote', '__proto__', 'constructor', 'toString', 'hasOwnProperty', '', 'HR']) {
     assert.equal(tabOfModule(moduleName), null, moduleName);
   }
   assert.equal(tabOfModule('recruitment'), 'hr');
+  assert.equal(tabOfModule('chat'), 'chat');
 });
 
 test('ASSISTANT_MODULES maps only hr, compensation and incentive onto registry modules, guarded by Object.hasOwn', () => {
@@ -64,22 +65,22 @@ test('requiredLevel: read→view, write·approve·delete→edit (D13), admin→a
 test('resolveTabs: missing keys are none, non-admins never get audit/admin or unknown values, admins get edit everywhere', () => {
   assert.deepEqual(resolveTabs('{}', false), none);
   assert.deepEqual(resolveTabs('{"hr":"view","compensation":"edit"}', false), { ...none, hr: 'view', compensation: 'edit' });
-  assert.deepEqual(resolveTabs('{"hr":"edit","audit":"edit","admin":"edit","chat":"edit","quote":"view"}', false), { ...none, hr: 'edit' });
+  assert.deepEqual(resolveTabs('{"hr":"edit","audit":"edit","admin":"edit","chat":"edit","quote":"view"}', false), { ...none, hr: 'edit', chat: 'edit' });
   assert.deepEqual(resolveTabs('{"hr":"admin","compensation":true}', false), none);
   for (const broken of ['', 'not json', '[]', 'null', '"hr"', '{"__proto__":{"hr":"edit"}}']) assert.deepEqual(resolveTabs(broken, false), none, broken);
-  assert.deepEqual(resolveTabs('{}', true), { hr: 'edit', compensation: 'edit', audit: 'edit', admin: 'edit' });
-  assert.deepEqual(resolveTabs('not json', true), { hr: 'edit', compensation: 'edit', audit: 'edit', admin: 'edit' });
+  assert.deepEqual(resolveTabs('{}', true), { hr: 'edit', compensation: 'edit', chat: 'edit', audit: 'edit', admin: 'edit' });
+  assert.deepEqual(resolveTabs('not json', true), { hr: 'edit', compensation: 'edit', chat: 'edit', audit: 'edit', admin: 'edit' });
 });
 
 test('canAccess: full module × action × grant table for non-admins', () => {
   const rank = { none: 0, view: 1, edit: 2 };
-  for (const moduleName of ['hr', 'recruitment', 'compensation']) {
+  for (const moduleName of ['hr', 'recruitment', 'compensation', 'chat']) {
     const tab = MODULE_TAB.get(moduleName);
     for (const level of ['none', 'view', 'edit']) {
       for (const action of ACTIONS) {
         const required = requiredLevel(action);
         // 다른 탭은 모두 edit 로 두어, 권한이 새지 않는지(그 탭의 부여만 본다) 함께 확인한다.
-        const others = Object.fromEntries(['hr', 'compensation'].filter((key) => key !== tab).map((key) => [key, 'edit']));
+        const others = Object.fromEntries(['hr', 'compensation', 'chat'].filter((key) => key !== tab).map((key) => [key, 'edit']));
         const allowed = required !== 'admin' && rank[level] >= rank[required];
         assert.equal(canAccess(principal({ ...others, [tab]: level }), moduleName, action), allowed, `${moduleName}:${action} with ${tab}=${level}`);
       }
@@ -88,16 +89,16 @@ test('canAccess: full module × action × grant table for non-admins', () => {
 });
 
 test('canAccess: admin-only tabs and the admin action need isAdmin even when the grants say edit', () => {
-  const forged = principal({ hr: 'edit', compensation: 'edit', audit: 'edit', admin: 'edit' });
+  const forged = principal({ hr: 'edit', compensation: 'edit', chat: 'edit', audit: 'edit', admin: 'edit' });
   for (const moduleName of ['audit', 'admin']) for (const action of ACTIONS) assert.equal(canAccess(forged, moduleName, action), false, `${moduleName}:${action}`);
-  for (const moduleName of ['hr', 'recruitment', 'compensation']) assert.equal(canAccess(forged, moduleName, 'admin'), false, moduleName);
+  for (const moduleName of ['hr', 'recruitment', 'compensation', 'chat']) assert.equal(canAccess(forged, moduleName, 'admin'), false, moduleName);
   const admin = principal({}, true);
-  for (const moduleName of ['hr', 'recruitment', 'compensation', 'audit', 'admin']) for (const action of ACTIONS) assert.equal(canAccess(admin, moduleName, action), true, `${moduleName}:${action}`);
+  for (const moduleName of ['hr', 'recruitment', 'compensation', 'chat', 'audit', 'admin']) for (const action of ACTIONS) assert.equal(canAccess(admin, moduleName, action), true, `${moduleName}:${action}`);
 });
 
 test('canAccess fails closed: unknown modules and actions are refused even for administrators, before the isAdmin check', () => {
   const admin = principal({}, true);
-  for (const moduleName of ['finance', 'sales', 'settings', 'operations', 'chat', '__proto__', 'constructor', 'toString', '']) {
+  for (const moduleName of ['finance', 'sales', 'settings', 'operations', 'quote', '__proto__', 'constructor', 'toString', '']) {
     for (const action of ACTIONS) assert.equal(canAccess(admin, moduleName, action), false, `${moduleName}:${action}`);
     assert.deepEqual(accessDecision(admin, moduleName, 'read'), { allowed: false, tab: null, required: 'view', granted: 'none' });
   }
@@ -123,7 +124,7 @@ test('isHrManager, hasTabLevel, permittedTabs and firstPermittedTab follow the r
   assert.equal(hasTabLevel(principal({ audit: 'edit' }), 'audit', 'view'), false);
   assert.equal(hasTabLevel(principal({}, true), 'admin', 'edit'), true);
   assert.deepEqual(permittedTabs({ ...none, compensation: 'view' }).map((tab) => tab.key), ['compensation']);
-  assert.deepEqual(permittedTabs(resolveTabs('{}', true)).map((tab) => tab.key), ['hr', 'compensation', 'audit', 'admin']);
+  assert.deepEqual(permittedTabs(resolveTabs('{}', true)).map((tab) => tab.key), ['hr', 'compensation', 'chat', 'audit', 'admin']);
   assert.equal(firstPermittedTab({ ...none, compensation: 'edit', hr: 'view' }), 'hr');
   assert.equal(firstPermittedTab(none), null);
 });

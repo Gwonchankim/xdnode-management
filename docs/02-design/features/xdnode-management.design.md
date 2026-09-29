@@ -2998,6 +2998,18 @@ docs/
   - SC-7 복원 리허설(점검 인스턴스, 운영 무관).
   - 비대화형 창에서 Deploy 가 감독자 경로로 정지되는지를 다음 배포 때 확인한다.
 
+**R5 구현 결과 (2026-09-29, 개발 폴더, 운영 미적용)**
+- r5-core·r5-poll·r5-attachments·r5-ui 를 한 묶음으로 넣었다. 되돌리기 단위는 레지스트리 chat 항목, 패널, 라우트 5개, `chatSchemaStatements` 이다.
+- 설계와 다른 점
+  - `GET /api/chat/channels?members=<channelId>` 를 더했다. 멤버 관리 화면이 공개·비공개 채널의 현재 멤버 id 를 읽는 데 쓴다. 접근 규칙은 다른 경로와 같다(비공개·DM 비멤버 404).
+  - `ChatChannelDto.dmMemberIds` 는 DM·그룹 DM 에만 둔다(설계대로).
+- 테스트
+  - `tests/chat-api.test.mjs` 는 #39~#52 와 members 조회, 소스 가드(raw HTML 0건, 한글 조합 중 Enter, 링크 스킴, 제목)를 다룬다. 17건이다.
+  - R3 기준(chat 없음)으로 고정했던 레지스트리·탭 기대값을 R5 로 바꿨다. 이 파일들은 access-policy, auth-session, tab-permissions, shell-tabs, lan-exposure-guards 다.
+  - `read-state` 는 감사 가드의 유일한 예외로 두었다(erp-platform, tab-permissions).
+- 실제 런타임 점검(개발 서버 3100, 빈 개발 DB, 테스트 계정 2개): 로그인, 목록, 전송, 상대 poll 수신(78ms), 멘션 수, png 업로드·다운로드 헤더, 26MB 413, svg 415, 교차 출처 403, 읽음 위치를 확인했다. 15항목 모두 통과했다.
+- 브라우저 화면 점검은 하지 못했다. Chrome 확장이 연결되지 않았다. 운영 적용 뒤 사용자와 SC-2(chat 열)·SC-6(3초)·SC-7 채팅 부분을 확인한다.
+
 #### 11.5.10 R6 폴더·저장소 리네임 (수동, FR-18, M7)
 사용자와 함께 하는 체크리스트이고 자동화하지 않는다(Plan R6).
 1. [ ] 개발 폴더의 앱(dev)과 브리지를 `taskkill /T`로 정지하고, 이 PC의 작업 세션(Claude Code·편집기·터미널)을 모두 닫는다. 운영 폴더(`C:\xdm\prod`)의 서비스는 D18에 따라 개발 폴더와 무관하므로 멈추지 않는다.
