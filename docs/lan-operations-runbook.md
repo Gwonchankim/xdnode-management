@@ -162,6 +162,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Stop-XDN
   - `XDnodeManagement-Backup`: 매일 03:00, 같은 사용자. 놓친 실행을 나중에 몰아서 돌리지 않는다(업무 시간 정지 방지). 2시간 제한.
   - `XDNODE 견적서 서버` 작업은 건드리지 않는다.
   - 다시 실행하면 두 작업을 덮어쓴다. `-WhatIf`는 정의만 출력한다. 암호는 `Get-Credential`로 받아 작업 스케줄러에만 넘긴다(S4U는 브리지의 Claude CLI 자격 증명을 읽지 못하므로 쓰지 않는다).
+  - 암호는 **Windows 로그인 비밀번호**다(PIN·Windows Hello 불가, 빈 암호 불가). 계정은 서버 사용자(`DESKTOP-HVUV0RL\user`)이고 `CodexSandbox*` 계정이 아니다. 계정 선택 창이 헷갈리면 `$cred = New-Object PSCredential("DESKTOP-HVUV0RL\user", (Read-Host -AsSecureString))` 뒤 `& ...\Register-XDNodeManagementTasks.ps1 -Credential $cred`.
+  - **Windows 비밀번호를 바꾸면 이 스크립트를 다시 실행한다.** 저장된 옛 암호로는 두 작업이 로그온 실패로 돌지 않는다(자동 기동·03:00 백업 모두).
 - **기동 경로는 하나다**: 재부팅·백업 재기동·Deploy·수동 재기동은 모두 `Start-ScheduledTask XDnodeManagement-Autostart`로 한다. 대화형 세션에서 스크립트를 직접 띄우지 않는다(로그오프하면 서버가 같이 멈추고, 세션 종류가 달라 브리지 자격 증명 동작도 달라진다). 바탕화면 바로가기(Start 스크립트, `-Headless` 없음)는 작업이 있으면 알아서 작업을 실행한다.
 - 수동 재기동: `Stop-XDNodeManagement.ps1` → `Start-ScheduledTask XDnodeManagement-Autostart` → `C:\xdm\logs\xdm-yyyyMMdd.log`에 `ready: ... -> 401`.
 - 상태 확인: `Get-ScheduledTaskInfo XDnodeManagement-Autostart`(LastTaskResult 0), `Get-ScheduledTaskInfo XDnodeManagement-Backup`.
