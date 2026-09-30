@@ -119,7 +119,12 @@
 .ga-modal > .ga-error { padding: 0 18px; }
 .ga-form { min-height: 0; overflow-y: auto; padding: 0 18px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
 .ga-form label { display: grid; gap: 4px; color: #52525b; font-size: 12px; font-weight: 800; }
-.ga-form label.ga-wide { grid-column: 1 / -1; }
+.ga-form label.ga-wide, .ga-form .ga-wide { grid-column: 1 / -1; }
+.ga-form .ga-field { display: grid; gap: 4px; color: #52525b; font-size: 12px; font-weight: 800; }
+.ga-files ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ga-files li { display: flex; align-items: center; gap: 8px; color: #18181b; font-size: 13px; font-weight: 500; }
+.ga-files li span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ga-files li small { color: #a1a1aa; }
 .ga-form input:not([type="checkbox"]), .ga-form select, .ga-form textarea { min-height: 36px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; color: #18181b; font: inherit; font-size: 14px; font-weight: 500; }
 .ga-form textarea { padding: 8px 10px; resize: vertical; }
 .ga-form small { color: #a1a1aa; font-weight: 500; }

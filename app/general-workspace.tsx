@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import readXlsxFile from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
 import { useErpDialog } from "./erp-dialog";
+import { fileExtensionAllowed } from "./chat-client";
 import { readScoped, writeScoped } from "./client-runtime";
 import { depreciationSchedule } from "./ga-alerts";
 import { GA_SHEETS, GA_SHEET_ORDER, rowsFromTable, BILLING_CYCLES, CONTRACT_TYPES, DOCUMENT_KINDS, EQUIPMENT_STATUS, type GaSheet, type RawCell } from "./ga-import";
@@ -41,15 +42,22 @@ const VIEW_ONLY = "보기 권한만 있습니다. 저장·지급·반출은 거�
 
 // ── 공용 폼 ─────────────────────────────────────────────────────────────
 type FieldSpec = {
-  name: string; label: string; type: "text" | "date" | "money" | "number" | "select" | "employee" | "checkbox" | "textarea";
+  name: string; label: string; type: "text" | "date" | "money" | "number" | "select" | "employee" | "checkbox" | "textarea" | "files";
   options?: Record<string, string>; required?: boolean; hint?: string; show?: (values: Record<string, unknown>) => boolean;
 };
 
 function FormModal({ title, fields, initial, people, submitLabel = "저장", onSubmit, onClose }: {
   title: string; fields: FieldSpec[]; initial: Record<string, unknown>; people: Person[]; submitLabel?: string;
-  onSubmit: (values: Record<string, unknown>) => Promise<string | null>; onClose: () => void;
+  onSubmit: (values: Record<string, unknown>, files: File[]) => Promise<string | null>; onClose: () => void;
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(initial);
+  const [files, setFiles] = useState<File[]>([]);
+  function addFiles(list: FileList | null) {
+    const picked = [...(list ?? [])];
+    const problems = checkFiles(picked);
+    setError(problems.join(" / "));
+    setFiles((current) => [...current, ...picked.filter((file) => !checkFiles([file]).length)].slice(0, 10));
+  }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (name: string, value: unknown) => setValues((current) => ({ ...current, [name]: value }));
@@ -57,7 +65,7 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
     setBusy(true); setError("");
     const payload: Record<string, unknown> = {};
     for (const field of fields) {
-      if (field.show && !field.show(values)) continue;
+      if ((field.show && !field.show(values)) || field.type === "files") continue;
       const value = values[field.name];
       if (field.type === "money" || field.type === "number") {
         const text = String(value ?? "").replace(/[,\s원]/g, "");
@@ -65,7 +73,7 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
       } else if (field.type === "checkbox") payload[field.name] = Boolean(value);
       else payload[field.name] = value === "" ? undefined : value;
     }
-    const message = await onSubmit(payload);
+    const message = await onSubmit(payload, files);
     setBusy(false);
     if (message) setError(message); else onClose();
   }
@@ -74,8 +82,11 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
       <div className="ga-modal" role="dialog" aria-modal="true" aria-label={title}>
         <header><strong>{title}</strong><button type="button" aria-label="닫기" onClick={onClose}>×</button></header>
         <div className="ga-form">
-          {fields.filter((field) => !field.show || field.show(values)).map((field) => (
-            <label key={field.name} className={field.type === "checkbox" ? "ga-check" : field.type === "textarea" ? "ga-wide" : ""}>
+          {fields.filter((field) => !field.show || field.show(values)).map((field) => {
+            // 파일 칸은 안에 파일 선택 label 이 있어 바깥을 div 로 둔다(label 중첩 금지).
+            const Wrapper = field.type === "files" ? "div" : "label";
+            return (
+            <Wrapper key={field.name} className={field.type === "checkbox" ? "ga-check" : field.type === "textarea" ? "ga-wide" : field.type === "files" ? "ga-wide ga-field" : ""}>
               {field.type !== "checkbox" && <span>{field.label}{field.required ? " *" : ""}</span>}
               {field.type === "select" ? (
                 <select value={String(values[field.name] ?? "")} onChange={(event) => set(field.name, event.target.value)}>
@@ -89,6 +100,14 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
                 </select>
               ) : field.type === "checkbox" ? (
                 <><input type="checkbox" checked={Boolean(values[field.name])} onChange={(event) => set(field.name, event.target.checked)} /><span>{field.label}</span></>
+              ) : field.type === "files" ? (
+                <div className="ga-files">
+                  <label className="ga-upload"><input type="file" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />+ 파일 선택</label>
+                  {files.length > 0 && <ul>{files.map((file, index) => (
+                    <li key={`${file.name}-${index}`}><span>{file.name}</span><small>{Math.max(1, Math.round(file.size / 1024)).toLocaleString("ko-KR")}KB</small>
+                      <button type="button" className="ga-link danger" onClick={() => setFiles((current) => current.filter((_, position) => position !== index))}>빼기</button></li>
+                  ))}</ul>}
+                </div>
               ) : field.type === "textarea" ? (
                 <textarea rows={3} value={String(values[field.name] ?? "")} onChange={(event) => set(field.name, event.target.value)} />
               ) : (
@@ -97,8 +116,9 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
                   onChange={(event) => set(field.name, event.target.value)} />
               )}
               {field.hint && <small>{field.hint}</small>}
-            </label>
-          ))}
+            </Wrapper>
+            );
+          })}
         </div>
         {error && <p className="ga-error" role="alert">{error}</p>}
         <footer>
@@ -177,6 +197,31 @@ function dday(item: { daysLeft: number | null }) {
   return `D-${item.daysLeft}`;
 }
 
+const ATTACHMENT_MAX_BYTES = 26_214_400;
+const ATTACHMENT_HINT = "PDF·이미지(png·jpg·gif·webp)·오피스 문서·hwp·txt·csv·zip, 파일당 25MB";
+
+/** 파일을 먼저 확인하고(크기·형식) 문제 문구 목록을 돌려준다. 서버가 같은 규칙으로 다시 판정한다. */
+function checkFiles(files: File[]) {
+  return files.flatMap((file) => file.size > ATTACHMENT_MAX_BYTES ? [`${file.name}: 25MB까지 올릴 수 있습니다.`]
+    : !fileExtensionAllowed(file.name) ? [`${file.name}: 올릴 수 없는 형식입니다(인증서 키 파일 등).`] : []);
+}
+
+/** 자산·서류에 파일을 올린다. 실패한 파일의 문구 목록을 돌려준다(빈 배열 = 모두 성공). */
+async function uploadGaFiles(ownerType: "ASSET" | "DOCUMENT", ownerId: string, files: File[]) {
+  const problems: string[] = [];
+  for (const file of files) {
+    const early = checkFiles([file]);
+    if (early.length) { problems.push(...early); continue; }
+    try {
+      const response = await fetch(`/api/general/attachments?ownerType=${ownerType}&ownerId=${encodeURIComponent(ownerId)}&name=${encodeURIComponent(file.name)}`, {
+        method: "PUT", credentials: "same-origin", body: file, headers: { "Content-Type": "application/octet-stream" },
+      });
+      if (!response.ok) problems.push((await response.json().catch(() => ({ error: "" }))).error || `${file.name}: 올리지 못했습니다.`);
+    } catch { problems.push(`${file.name}: 서버에 연결하지 못했습니다.`); }
+  }
+  return problems;
+}
+
 function Attachments({ ownerType, ownerId, items, canEdit, onChanged, notify }: {
   ownerType: "ASSET" | "DOCUMENT"; ownerId: string; items: Attachment[]; canEdit: boolean; onChanged: () => void; notify: (message: string) => void;
 }) {
@@ -184,15 +229,8 @@ function Attachments({ ownerType, ownerId, items, canEdit, onChanged, notify }: 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
     setBusy(true);
-    for (const file of [...files]) {
-      if (file.size > 26_214_400) { notify(`${file.name}: 25MB까지 올릴 수 있습니다.`); continue; }
-      try {
-        const response = await fetch(`/api/general/attachments?ownerType=${ownerType}&ownerId=${encodeURIComponent(ownerId)}&name=${encodeURIComponent(file.name)}`, {
-          method: "PUT", credentials: "same-origin", body: file, headers: { "Content-Type": "application/octet-stream" },
-        });
-        if (!response.ok) notify((await response.json().catch(() => ({ error: "" }))).error || `${file.name}: 올리지 못했습니다.`);
-      } catch { notify("서버에 연결하지 못했습니다."); }
-    }
+    const problems = await uploadGaFiles(ownerType, ownerId, [...files]);
+    if (problems.length) notify(problems.join(" / "));
     setBusy(false);
     onChanged();
   }
@@ -212,7 +250,7 @@ function Attachments({ ownerType, ownerId, items, canEdit, onChanged, notify }: 
           </li>
         ))}
       </ul>
-      {canEdit && <label className="ga-upload"><input type="file" multiple hidden onChange={(event) => { void upload(event.target.files); event.target.value = ""; }} />{busy ? "올리는 중…" : "+ 파일 첨부(PDF·이미지·문서, 25MB)"}</label>}
+      {canEdit && <label className="ga-upload"><input type="file" multiple hidden onChange={(event) => { void upload(event.target.files); event.target.value = ""; }} />{busy ? "올리는 중…" : `+ 파일 첨부(${ATTACHMENT_HINT})`}</label>}
     </div>
   );
 }
@@ -291,7 +329,7 @@ function AssetsView({ canEdit, people, focusId, notify }: { canEdit: boolean; pe
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(focusId);
   const [detail, setDetail] = useState<AssetDetail | null>(null);
-  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>) => Promise<string | null> }>(null);
+  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null> }>(null);
   const dialog = useErpDialog();
   const load = useCallback(async () => {
     const result = await gaRequest<{ assets: Asset[] }>("/api/general/assets");
@@ -307,9 +345,13 @@ function AssetsView({ canEdit, people, focusId, notify }: { canEdit: boolean; pe
   const shown = (assets ?? []).filter((asset) => (!kind || asset.kind === kind)
     && (!query.trim() || [asset.assetNo, asset.name, asset.category, asset.holderName, asset.location, asset.counterparty].some((value) => String(value ?? "").toLowerCase().includes(query.trim().toLowerCase()))));
 
-  async function post(body: Record<string, unknown>) {
+  async function post(body: Record<string, unknown>, files: File[] = []) {
     const result = await gaRequest<{ asset?: Asset }>("/api/general/assets", "POST", body);
     if (!result.ok) return result.body.error ?? "저장하지 못했습니다.";
+    if (files.length && result.body.asset) {
+      const problems = await uploadGaFiles("ASSET", result.body.asset.id, files);
+      if (problems.length) notify(`자산은 등록했지만 일부 파일을 올리지 못했습니다: ${problems.join(" / ")}`);
+    }
     await load();
     if (result.body.asset) { setSelected(result.body.asset.id); await loadDetail(result.body.asset.id); }
     notifyGeneralChanged();
@@ -323,8 +365,9 @@ function AssetsView({ canEdit, people, focusId, notify }: { canEdit: boolean; pe
         ...(assetKind === "SUPPLY" ? [{ name: "quantity", label: "현재 수량", type: "number" as const, required: true }] : []),
         ...ASSET_FIELDS[assetKind],
         { name: "assetNo", label: "자산번호(비우면 자동)", type: "text" },
+        { name: "files", label: "첨부(사진·영수증·계약서 등, 선택)", type: "files", hint: ATTACHMENT_HINT },
       ],
-      submit: (values) => post({ action: "CREATE", kind: assetKind, ...values }) });
+      submit: (values, files) => post({ action: "CREATE", kind: assetKind, ...values }, files) });
   }
 
   function action(label: string, act: string, fields: FieldSpec[], initial: Record<string, unknown> = {}) {
@@ -433,7 +476,7 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
   const [kind, setKind] = useState("");
   const [selected, setSelected] = useState<string | null>(focusId);
   const [detail, setDetail] = useState<{ document: Document; attachments: Attachment[]; checkouts: Checkout[] } | null>(null);
-  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>) => Promise<string | null> }>(null);
+  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null> }>(null);
   const dialog = useErpDialog();
   const load = useCallback(async () => {
     const result = await gaRequest<{ documents: Document[] }>("/api/general/documents");
@@ -445,9 +488,13 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
   }, [notify]);
   useEffect(() => { void (async () => { await load(); })(); }, [load]);
   useEffect(() => { if (selected) void (async () => { await loadDetail(selected); })(); }, [selected, loadDetail]);
-  async function post(body: Record<string, unknown>) {
+  async function post(body: Record<string, unknown>, files: File[] = []) {
     const result = await gaRequest<{ document?: Document }>("/api/general/documents", "POST", body);
     if (!result.ok) return result.body.error ?? "저장하지 못했습니다.";
+    if (files.length && result.body.document) {
+      const problems = await uploadGaFiles("DOCUMENT", result.body.document.id, files);
+      if (problems.length) notify(`서류는 등록했지만 일부 파일을 올리지 못했습니다: ${problems.join(" / ")}`);
+    }
     await load();
     if (result.body.document) { setSelected(result.body.document.id); await loadDetail(result.body.document.id); }
     notifyGeneralChanged();
@@ -462,8 +509,9 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
         <div className="ga-toolbar">
           <select value={kind} onChange={(event) => setKind(event.target.value)} aria-label="서류 종류"><option value="">전체 종류</option>
             {Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
-          {canEdit && <button type="button" className="primary-button" onClick={() => setForm({ title: "서류 등록", fields: DOCUMENT_FIELDS, initial: { kind: kind || "BUSINESS_REG" },
-            submit: (values) => post({ action: "CREATE", ...values }) })}>+ 서류 등록</button>}
+          {canEdit && <button type="button" className="primary-button" onClick={() => setForm({ title: "서류 등록",
+            fields: [...DOCUMENT_FIELDS, { name: "files", label: "서류 파일(스캔본·사진, 선택)", type: "files", hint: `${ATTACHMENT_HINT}. 등록한 뒤에도 서류를 열어 더 붙일 수 있습니다.` }],
+            initial: { kind: kind || "BUSINESS_REG" }, submit: (values, files) => post({ action: "CREATE", ...values }, files) })}>+ 서류 등록</button>}
         </div>
         {!documents ? <p className="ga-muted">불러오는 중…</p> : shown.length === 0 ? <p className="ga-muted">서류가 없습니다.</p> : (
           <table className="ga-table selectable">
@@ -523,7 +571,7 @@ function CustodyView({ canEdit, people, notify }: { canEdit: boolean; people: Pe
   const [data, setData] = useState<{ items: CustodyItem[]; checkouts: Checkout[] } | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [showAll, setShowAll] = useState(false);
-  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>) => Promise<string | null> }>(null);
+  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null> }>(null);
   const load = useCallback(async () => {
     const [custody, docs] = await Promise.all([gaRequest<{ items: CustodyItem[]; checkouts: Checkout[] }>("/api/general/custody"), gaRequest<{ documents: Document[] }>("/api/general/documents")]);
     if (custody.ok) setData(custody.body); else notify(custody.body.error ?? "반출 대장을 불러오지 못했습니다.");

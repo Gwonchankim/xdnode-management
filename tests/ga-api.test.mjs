@@ -336,3 +336,13 @@ test('GA scripts: Run-GaAlerts posts with the task header from the server PC; St
   assert.match(register, /\[string\]\$AlertsTime = "09:00"/);
   assert.match(register, /if \(Test-Path -LiteralPath \$alertsScript\) \{\s*\$definitions \+= @\{ Name = \$AlertsTask/);
 });
+
+test('GA UI: the document and asset create forms take files and upload them to the new item', () => {
+  const workspace = readFileSync(new URL('../app/general-workspace.tsx', import.meta.url), 'utf8');
+  assert.match(workspace, /\{ name: "files", label: "서류 파일\(스캔본·사진, 선택\)", type: "files"/);
+  assert.match(workspace, /\{ name: "files", label: "첨부\(사진·영수증·계약서 등, 선택\)", type: "files"/);
+  assert.match(workspace, /const problems = await uploadGaFiles\("DOCUMENT", result\.body\.document\.id, files\);/);
+  assert.match(workspace, /const problems = await uploadGaFiles\("ASSET", result\.body\.asset\.id, files\);/);
+  assert.match(workspace, /const Wrapper = field\.type === "files" \? "div" : "label";/, 'no nested labels');
+  assert.match(workspace, /!fileExtensionAllowed\(file\.name\)/, 'the same extension table as the server, checked before upload');
+});
