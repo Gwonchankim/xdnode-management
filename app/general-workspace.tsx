@@ -2,7 +2,7 @@
 
 // 총무 탭(general-affairs Design §7). 현황 · 자산 · 회사 서류 · 인감·반출 · 가져오기/내보내기.
 // 값은 React 텍스트 노드로만 그린다. 보기 권한이면 작업 버튼을 막고 배너를 띄운다(서버 403 이 최종 방어).
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import readXlsxFile from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
 import { useErpDialog } from "./erp-dialog";
@@ -43,7 +43,7 @@ const VIEW_ONLY = "보기 권한만 있습니다. 저장·지급·반출은 거�
 // ── 공용 폼 ─────────────────────────────────────────────────────────────
 type FieldSpec = {
   name: string; label: string; type: "text" | "date" | "money" | "number" | "select" | "employee" | "checkbox" | "textarea" | "files";
-  options?: Record<string, string>; required?: boolean; hint?: string; show?: (values: Record<string, unknown>) => boolean;
+  options?: Record<string, string>; required?: boolean; hint?: string; placeholder?: string; show?: (values: Record<string, unknown>) => boolean;
 };
 
 function FormModal({ title, fields, initial, people, submitLabel = "저장", onSubmit, onClose }: {
@@ -52,6 +52,7 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(initial);
   const [files, setFiles] = useState<File[]>([]);
+  const formId = useId();
   function addFiles(list: FileList | null) {
     const picked = [...(list ?? [])];
     const problems = checkFiles(picked);
@@ -83,40 +84,48 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
         <header><strong>{title}</strong><button type="button" aria-label="닫기" onClick={onClose}>×</button></header>
         <div className="ga-form">
           {fields.filter((field) => !field.show || field.show(values)).map((field) => {
-            // 파일 칸은 안에 파일 선택 label 이 있어 바깥을 div 로 둔다(label 중첩 금지).
-            const Wrapper = field.type === "files" ? "div" : "label";
+            const id = `${formId}-${field.name}`;
+            const wide = field.type === "textarea" || field.type === "files";
+            const value = values[field.name];
             return (
-            <Wrapper key={field.name} className={field.type === "checkbox" ? "ga-check" : field.type === "textarea" ? "ga-wide" : field.type === "files" ? "ga-wide ga-field" : ""}>
-              {field.type !== "checkbox" && <span>{field.label}{field.required ? " *" : ""}</span>}
-              {field.type === "select" ? (
-                <select value={String(values[field.name] ?? "")} onChange={(event) => set(field.name, event.target.value)}>
-                  <option value="">선택</option>
-                  {Object.entries(field.options ?? {}).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              ) : field.type === "employee" ? (
-                <select value={String(values[field.name] ?? "")} onChange={(event) => set(field.name, event.target.value)}>
-                  <option value="">없음</option>
-                  {people.map((person) => <option key={person.employeeId} value={person.employeeId}>{person.name} · {person.department}{person.status.trim() === "퇴직" ? " (퇴직)" : ""}</option>)}
-                </select>
-              ) : field.type === "checkbox" ? (
-                <><input type="checkbox" checked={Boolean(values[field.name])} onChange={(event) => set(field.name, event.target.checked)} /><span>{field.label}</span></>
-              ) : field.type === "files" ? (
-                <div className="ga-files">
-                  <label className="ga-upload"><input type="file" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />+ 파일 선택</label>
-                  {files.length > 0 && <ul>{files.map((file, index) => (
-                    <li key={`${file.name}-${index}`}><span>{file.name}</span><small>{Math.max(1, Math.round(file.size / 1024)).toLocaleString("ko-KR")}KB</small>
-                      <button type="button" className="ga-link danger" onClick={() => setFiles((current) => current.filter((_, position) => position !== index))}>빼기</button></li>
-                  ))}</ul>}
-                </div>
-              ) : field.type === "textarea" ? (
-                <textarea rows={3} value={String(values[field.name] ?? "")} onChange={(event) => set(field.name, event.target.value)} />
-              ) : (
-                <input type={field.type === "date" ? "date" : "text"} inputMode={field.type === "money" || field.type === "number" ? "numeric" : undefined}
-                  value={field.type === "money" && typeof values[field.name] === "number" ? (values[field.name] as number).toLocaleString("ko-KR") : String(values[field.name] ?? "")}
-                  onChange={(event) => set(field.name, event.target.value)} />
-              )}
-              {field.hint && <small>{field.hint}</small>}
-            </Wrapper>
+              <div key={field.name} className={wide ? "ga-field wide" : "ga-field"}>
+                {/* 제목 줄은 모든 칸이 같은 높이다. 체크 칸도 빈 제목 줄을 두어 옆 칸의 입력 상자와 높이를 맞춘다. */}
+                {field.type === "checkbox" || field.type === "files"
+                  ? <span className={field.type === "files" ? "ga-field-label" : "ga-field-label spacer"} aria-hidden={field.type === "files" ? undefined : true}>{field.type === "files" ? field.label : "\u00a0"}</span>
+                  : <label className="ga-field-label" htmlFor={id}>{field.label}{field.required && <em aria-hidden="true">*</em>}</label>}
+                {field.type === "select" || field.type === "employee" ? (
+                  <select id={id} value={String(value ?? "")} required={field.required} onChange={(event) => set(field.name, event.target.value)}>
+                    <option value="">{field.type === "employee" ? "없음" : "선택"}</option>
+                    {field.type === "employee"
+                      ? people.map((person) => <option key={person.employeeId} value={person.employeeId}>{person.name} · {person.department}{person.status.trim() === "퇴직" ? " (퇴직)" : ""}</option>)
+                      : Object.entries(field.options ?? {}).map(([optionValue, label]) => <option key={optionValue} value={optionValue}>{label}</option>)}
+                  </select>
+                ) : field.type === "checkbox" ? (
+                  <label className="ga-toggle" htmlFor={id}>
+                    <input id={id} type="checkbox" checked={Boolean(value)} onChange={(event) => set(field.name, event.target.checked)} />
+                    <span>{field.label}</span>
+                  </label>
+                ) : field.type === "files" ? (
+                  <div className="ga-files">
+                    <label className="ga-file-button" htmlFor={id}>
+                      <input id={id} type="file" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />
+                      <span>＋ 파일 선택</span>
+                    </label>
+                    {files.length > 0 && <ul>{files.map((file, index) => (
+                      <li key={`${file.name}-${index}`}><span>{file.name}</span><small>{Math.max(1, Math.round(file.size / 1024)).toLocaleString("ko-KR")}KB</small>
+                        <button type="button" className="ga-link danger" onClick={() => setFiles((current) => current.filter((_, position) => position !== index))}>빼기</button></li>
+                    ))}</ul>}
+                  </div>
+                ) : field.type === "textarea" ? (
+                  <textarea id={id} rows={3} placeholder={field.placeholder} value={String(value ?? "")} onChange={(event) => set(field.name, event.target.value)} />
+                ) : (
+                  <input id={id} type={field.type === "date" ? "date" : "text"} inputMode={field.type === "money" || field.type === "number" ? "numeric" : undefined}
+                    className={field.type === "money" || field.type === "number" ? "ga-number" : undefined} placeholder={field.placeholder} required={field.required}
+                    value={field.type === "money" && typeof value === "number" ? value.toLocaleString("ko-KR") : String(value ?? "")}
+                    onChange={(event) => set(field.name, event.target.value)} />
+                )}
+                {field.hint && <small className="ga-field-hint">{field.hint}</small>}
+              </div>
             );
           })}
         </div>
@@ -132,33 +141,33 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
 
 const ASSET_FIELDS: Record<string, FieldSpec[]> = {
   EQUIPMENT: [
-    { name: "name", label: "이름", type: "text", required: true }, { name: "category", label: "분류", type: "text", hint: "예: 노트북, 모니터, 출입증" },
+    { name: "name", label: "이름", type: "text", required: true }, { name: "category", label: "분류", type: "text", placeholder: "예: 노트북, 모니터, 출입증" },
     { name: "model", label: "모델", type: "text" }, { name: "serialNo", label: "시리얼", type: "text" }, { name: "location", label: "위치", type: "text" },
     { name: "acquiredOn", label: "취득일", type: "date" }, { name: "acquisitionCost", label: "취득가", type: "money" }, { name: "vendor", label: "공급처", type: "text" },
-    { name: "usefulLifeMonths", label: "내용연수(개월)", type: "number", hint: "고가 장비를 고정자산처럼 상각하려면 입력" },
+    { name: "usefulLifeMonths", label: "내용연수(개월)", type: "number", placeholder: "상각할 때만 입력" },
     { name: "residualValue", label: "잔존가치", type: "money", show: (v) => Number(v.usefulLifeMonths) > 0 },
-    { name: "memo", label: "메모", type: "textarea" },
+    { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
   ],
   SUPPLY: [
     { name: "name", label: "이름", type: "text", required: true }, { name: "category", label: "분류", type: "text" }, { name: "location", label: "위치", type: "text" },
-    { name: "unit", label: "단위", type: "text", hint: "예: 박스, 개" }, { name: "minQuantity", label: "최소 수량", type: "number", hint: "이보다 적으면 재고 부족으로 표시" },
-    { name: "acquisitionCost", label: "단가", type: "money" }, { name: "vendor", label: "공급처", type: "text" }, { name: "memo", label: "메모", type: "textarea" },
+    { name: "unit", label: "단위", type: "text", placeholder: "예: 박스, 개" }, { name: "minQuantity", label: "최소 수량", type: "number", placeholder: "이보다 적으면 재고 부족" },
+    { name: "acquisitionCost", label: "단가", type: "money" }, { name: "vendor", label: "공급처", type: "text" }, { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
   ],
   CONTRACT: [
-    { name: "name", label: "이름", type: "text", required: true }, { name: "category", label: "분류", type: "text", hint: "라이선스·도메인·호스팅·리스·보험·유지보수" },
+    { name: "name", label: "이름", type: "text", required: true }, { name: "category", label: "분류", type: "text", placeholder: "라이선스·도메인·보험 등" },
     { name: "counterparty", label: "계약처", type: "text", required: true }, { name: "contractNo", label: "계약번호", type: "text" },
     { name: "startsOn", label: "시작일", type: "date" }, { name: "endsOn", label: "만료일", type: "date", required: true },
     { name: "autoRenew", label: "자동 갱신", type: "checkbox" }, { name: "renewalCost", label: "갱신 비용", type: "money" },
     { name: "billingCycle", label: "결제 주기", type: "select", options: BILLING_LABEL }, { name: "managerEmployeeId", label: "담당자", type: "employee" },
-    { name: "alertOff", label: "만료 알림 끄기", type: "checkbox" }, { name: "memo", label: "메모", type: "textarea" },
+    { name: "alertOff", label: "만료 알림 끄기", type: "checkbox" }, { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
   ],
   FIXED: [
     { name: "name", label: "이름", type: "text", required: true }, { name: "category", label: "분류", type: "text" }, { name: "location", label: "위치", type: "text" },
     { name: "holderEmployeeId", label: "사용자", type: "employee" }, { name: "acquiredOn", label: "취득일", type: "date", required: true },
     { name: "acquisitionCost", label: "취득가", type: "money", required: true }, { name: "usefulLifeMonths", label: "내용연수(개월)", type: "number", required: true },
-    { name: "residualValue", label: "잔존가치", type: "money" }, { name: "openingAccumulated", label: "기초 상각누계", type: "money", hint: "이미 상각한 금액이 있으면" },
+    { name: "residualValue", label: "잔존가치", type: "money" }, { name: "openingAccumulated", label: "기초 상각누계", type: "money", placeholder: "이미 상각한 금액" },
     { name: "openingAsOf", label: "기초 기준일", type: "date", show: (v) => Number(String(v.openingAccumulated ?? "").replace(/\D/g, "")) > 0 },
-    { name: "vendor", label: "공급처", type: "text" }, { name: "memo", label: "메모", type: "textarea" },
+    { name: "vendor", label: "공급처", type: "text" }, { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
   ],
 };
 
@@ -168,7 +177,7 @@ const DOCUMENT_FIELDS: FieldSpec[] = [
   { name: "issuer", label: "발급기관", type: "text", show: (v) => v.kind !== "B2B_CONTRACT" },
   { name: "issuedOn", label: "발급일", type: "date", show: (v) => v.kind !== "B2B_CONTRACT" },
   { name: "expiresOn", label: "만료일", type: "date", show: (v) => v.kind !== "B2B_CONTRACT" },
-  { name: "validityMonths", label: "유효기간(개월)", type: "number", hint: "제출용 서류: 발급일 + N개월(만료일이 없을 때)", show: (v) => v.kind !== "B2B_CONTRACT" },
+  { name: "validityMonths", label: "유효기간(개월)", type: "number", placeholder: "만료일이 없을 때: 발급일 + N개월", show: (v) => v.kind !== "B2B_CONTRACT" },
   { name: "contractType", label: "계약 종류", type: "select", required: true, options: CONTRACT_TYPE_LABEL, show: (v) => v.kind === "B2B_CONTRACT" },
   { name: "counterparty", label: "상대방", type: "text", required: true, show: (v) => v.kind === "B2B_CONTRACT" },
   { name: "signedOn", label: "계약일", type: "date", show: (v) => v.kind === "B2B_CONTRACT" },
@@ -176,10 +185,10 @@ const DOCUMENT_FIELDS: FieldSpec[] = [
   { name: "endsOn", label: "종료일", type: "date", show: (v) => v.kind === "B2B_CONTRACT" },
   { name: "contractAmount", label: "계약 금액", type: "money", show: (v) => v.kind === "B2B_CONTRACT" },
   { name: "autoRenew", label: "자동 연장", type: "checkbox", show: (v) => v.kind === "B2B_CONTRACT" },
-  { name: "noticeDays", label: "해지 통보 기한(종료일 N일 전)", type: "number", show: (v) => v.kind === "B2B_CONTRACT" },
-  { name: "storageLocation", label: "원본 보관 위치", type: "text", required: true, hint: "예: 금고 1단, 계약서 바인더 A" },
+  { name: "noticeDays", label: "해지 통보 기한(일)", type: "number", placeholder: "종료일 며칠 전까지", show: (v) => v.kind === "B2B_CONTRACT" },
+  { name: "storageLocation", label: "원본 보관 위치", type: "text", required: true, placeholder: "예: 금고 1단, 계약서 바인더 A" },
   { name: "managerEmployeeId", label: "관리 책임자", type: "employee" },
-  { name: "alertOff", label: "만료 알림 끄기", type: "checkbox" }, { name: "memo", label: "메모", type: "textarea" },
+  { name: "alertOff", label: "만료 알림 끄기", type: "checkbox" }, { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
 ];
 
 function Banner({ canEdit }: { canEdit: boolean }) {
@@ -510,7 +519,7 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
           <select value={kind} onChange={(event) => setKind(event.target.value)} aria-label="서류 종류"><option value="">전체 종류</option>
             {Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           {canEdit && <button type="button" className="primary-button" onClick={() => setForm({ title: "서류 등록",
-            fields: [...DOCUMENT_FIELDS, { name: "files", label: "서류 파일(스캔본·사진, 선택)", type: "files", hint: `${ATTACHMENT_HINT}. 등록한 뒤에도 서류를 열어 더 붙일 수 있습니다.` }],
+            fields: [...DOCUMENT_FIELDS, { name: "files", label: "서류 파일(스캔본·사진, 선택)", type: "files", hint: ATTACHMENT_HINT }],
             initial: { kind: kind || "BUSINESS_REG" }, submit: (values, files) => post({ action: "CREATE", ...values }, files) })}>+ 서류 등록</button>}
         </div>
         {!documents ? <p className="ga-muted">불러오는 중…</p> : shown.length === 0 ? <p className="ga-muted">서류가 없습니다.</p> : (
@@ -605,7 +614,7 @@ function CustodyView({ canEdit, people, notify }: { canEdit: boolean; people: Pe
     <div className="ga-custody">
       <Section title="보관품" actions={canEdit ? <button type="button" onClick={() => setForm({ title: "보관품 등록", initial: { kind: "CORP_SEAL" }, fields: [
         { name: "kind", label: "종류", type: "select", required: true, options: CUSTODY_KIND_LABEL }, { name: "name", label: "이름", type: "text", required: true },
-        { name: "storageLocation", label: "보관 위치", type: "text" }, { name: "managerEmployeeId", label: "관리 책임자", type: "employee" }, { name: "memo", label: "메모", type: "textarea" },
+        { name: "storageLocation", label: "보관 위치", type: "text" }, { name: "managerEmployeeId", label: "관리 책임자", type: "employee" }, { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
       ], submit: (values) => post({ action: "CREATE_ITEM", ...values }) })}>+ 보관품 등록</button> : undefined}>
         {data.items.length === 0 ? <p className="ga-muted">등록한 인감·보관품이 없습니다. 법인인감부터 등록해 보세요.</p> : (
           <div className="ga-seals">

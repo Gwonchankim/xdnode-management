@@ -343,6 +343,12 @@ test('GA UI: the document and asset create forms take files and upload them to t
   assert.match(workspace, /\{ name: "files", label: "첨부\(사진·영수증·계약서 등, 선택\)", type: "files"/);
   assert.match(workspace, /const problems = await uploadGaFiles\("DOCUMENT", result\.body\.document\.id, files\);/);
   assert.match(workspace, /const problems = await uploadGaFiles\("ASSET", result\.body\.asset\.id, files\);/);
-  assert.match(workspace, /const Wrapper = field\.type === "files" \? "div" : "label";/, 'no nested labels');
+  // 모든 칸은 같은 틀(ga-field: 제목 줄 → 40px 상자 → 안내)이고, 파일·체크 칸은 label 을 중첩하지 않는다.
+  assert.match(workspace, /<div key=\{field\.name\} className=\{wide \? "ga-field wide" : "ga-field"\}>/);
+  assert.match(workspace, /<label className="ga-toggle" htmlFor=\{id\}>/);
+  assert.match(workspace, /<label className="ga-file-button" htmlFor=\{id\}>/);
+  const css = readFileSync(new URL('../app/general-workspace.css', import.meta.url), 'utf8');
+  assert.match(css, /\.ga-field \{ min-width: 0; display: grid; grid-template-rows: 18px auto; row-gap: 6px; \}/, 'one label row height for every field');
+  assert.match(css, /height: 40px;/);
   assert.match(workspace, /!fileExtensionAllowed\(file\.name\)/, 'the same extension table as the server, checked before upload');
 });
