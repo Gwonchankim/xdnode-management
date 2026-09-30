@@ -89,6 +89,7 @@ registerHooks({
 const { companyEmployees } = await import('../../app/hr-company-data.ts');
 const { ensureErpPlatformSchema, resetPlatformSchemaGate } = await import('../../app/erp-platform.ts');
 const { hashPassword } = await import('../../app/auth-password.ts');
+const { resetGaSchemaGate } = await import('../../app/ga-schema.ts');
 const administrator = companyEmployees.find(employee => employee.id === 'gc.kim');
 
 export const TEST_ADMIN_ACCOUNT_ID = 'acct_test_admin';
@@ -113,6 +114,7 @@ function refreshHeaders() { runtime.headers = baseHeaders(); }
 export async function resetDatabase({ migrate = false } = {}) {
   sqlite?.close();
   resetPlatformSchemaGate();
+  resetGaSchemaGate();
   sqlite = new DatabaseSync(':memory:');
   runtime.beforeBatch = null;
   runtime.forbiddenTables = null;

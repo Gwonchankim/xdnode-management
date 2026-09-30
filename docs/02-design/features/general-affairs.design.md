@@ -329,6 +329,24 @@ export function alertMessage(items: AlertItem[], today: string): string; // 메�
 
 ---
 
+## 11. 구현 결과 (2026-09-30, 개발 폴더, 운영 미적용)
+- 설계대로 구현했다(GD-1~GD-12). 파일
+  - `app/ga-schema.ts`, `app/ga-alerts.ts`, `app/ga-import.ts`, `app/ga-server.ts`, `app/ga-alert-run.ts`, `app/attachment-rules.ts`
+  - `app/general-client.ts`, `app/general-workspace.tsx`·`.css`
+  - `app/api/general/{assets,documents,custody,people,overview,attachments,import,alerts}/route.ts`, `scripts/Run-GaAlerts.ps1`
+- 설계와 다른 점·보탠 점
+  - `GET /api/general/import`: 최근 가져오기 20건(되돌리기 버튼용)을 더했다.
+  - 자산 이력은 같은 batch 에서 앞 UPDATE 가 행을 바꿨을 때만 넣는다(`INSERT … SELECT … WHERE changes() > 0`). 그래서 경쟁에서 진 요청은 이력을 남기지 않는다. workerd D1 에서도 확인했다.
+  - HR 퇴직 정산 → 총무 연결: 셸의 `xdm:open-tab` 이벤트와 `#ga-asset=<id>` 해시를 쓴다. 총무 편집 권한은 `GeneralAccessContext`(portal 이라 그림자 루트까지 전달)로 넘긴다.
+  - 기초 상각누계가 있으면 상각표를 기초 월부터 보여 준다(그 전 달은 싣지 않는다).
+- 테스트: `tests/ga-api.test.mjs` 12건(§9 #1~#16 + 스크립트). 기존 탭 목록 기대값에 `general`을 더했다. `erp-platform`의 정산 패널 정규식을 고쳤다.
+- 개발 서버 실제 런타임 점검: 18항목 통과. 개발 DB 에 직원이 없어 반출·HR 연결은 단위 테스트로 대신했다.
+- 운영 반영 때 할 일
+  - Deploy
+  - 작업 스케줄러 재등록(Alerts 작업, Windows 비밀번호)
+  - 계정 관리에서 총무 권한 부여
+  - GA-SC-1~5
+
 ## Version History
 
 | Version | Date | Changes |

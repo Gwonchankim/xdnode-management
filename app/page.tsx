@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import HRWorkspace from "./hr-workspace";
 import CompensationCalculator from "./compensation-calculator";
 import AuditLogWorkspace from "./audit-log-workspace";
 import AdminAccountsWorkspace from "./admin-accounts-workspace";
 import ChatWorkspace from "./chat-workspace";
+import GeneralWorkspace from "./general-workspace";
 import LocalCodexAssistant from "./local-codex-assistant";
 import { ErpDialogProvider, useErpDialog } from "./erp-dialog";
 import { TAB_REGISTRY, type ResolvedTabs, type TabKey } from "./access-tabs";
@@ -14,6 +15,7 @@ import { SessionGate, SessionNotice } from "./auth-screens";
 import { readScoped, writeScoped } from "./client-runtime";
 import { useSession, type SessionMe } from "./session-client";
 import { useChatPoll, type ChatPoll } from "./chat-client";
+import { GeneralAccessContext, OPEN_TAB_EVENT, useGeneralBadge } from "./general-client";
 
 // R3(r3-shell, Design §5.1~§5.3): 셸은 useSession() 상태기계와 탭 레지스트리(app/access-tabs.ts)로 그린다.
 // SSR 과 첫 렌더는 AuthLoadingShell(data-auth-gate="loading")뿐이고 탭 DOM 이 없다. 권한 없는 탭은 버튼도 패널도 없다.
@@ -37,7 +39,9 @@ type PanelContext = {
 const TAB_PANELS: Record<TabKey, (ctx: PanelContext) => ReactNode> = {
   hr: (ctx) => (
     <>
-      <HRWorkspace requestedView={ctx.hrNavigation.view} navigationRequestKey={ctx.hrNavigation.requestKey} access={{ canEdit: ctx.tabs.hr === "edit" }} />
+      <GeneralAccessContext.Provider value={{ canEdit: ctx.tabs.general === "edit" }}>
+        <HRWorkspace requestedView={ctx.hrNavigation.view} navigationRequestKey={ctx.hrNavigation.requestKey} access={{ canEdit: ctx.tabs.hr === "edit" }} />
+      </GeneralAccessContext.Provider>
       <LocalCodexAssistant module="hr" tabs={ctx.tabs} />
     </>
   ),
@@ -48,6 +52,7 @@ const TAB_PANELS: Record<TabKey, (ctx: PanelContext) => ReactNode> = {
     </>
   ),
   chat: (ctx) => <ChatWorkspace accountId={ctx.me.user.accountId} poll={ctx.chatPoll} />,
+  general: (ctx) => <GeneralWorkspace canEdit={ctx.tabs.general === "edit"} />,
   audit: () => (
     <main className="admin-page">
       <AuditLogWorkspace />
@@ -69,6 +74,17 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
   const active = resolveActiveTab(me.tabs, selected);
   // 메신저 폴링은 셸에서 한 번만 돈다. 다른 탭에 있어도 15초마다 안 읽은 수를 받아 탭 배지·문서 제목을 갱신한다(§4.2.8).
   const chatPoll = useChatPoll({ enabled: me.tabs.chat !== "none", chatActive: active === "chat" });
+  // 총무 탭 배지(경과+당일+D-7, general-affairs Design §1). 10분마다·창에 돌아올 때·총무 데이터가 바뀔 때 다시 읽는다.
+  const generalBadge = useGeneralBadge(me.tabs.general !== "none");
+  // 다른 화면이 탭을 바꿔 달라고 할 때(HR 퇴직 정산 → 총무 자산). 허용된 탭만 연다.
+  useEffect(() => {
+    const onOpen = (event: Event) => {
+      const tab = (event as CustomEvent<{ tab?: string }>).detail?.tab;
+      if (tab && TAB_REGISTRY.some((item) => item.key === tab) && me.tabs[tab as TabKey] !== "none") select(tab as TabKey);
+    };
+    window.addEventListener(OPEN_TAB_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_TAB_EVENT, onOpen);
+  });
 
   function select(tab: TabKey) {
     setSelected(tab);
@@ -77,7 +93,7 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
 
   const navigation = (
     <ShellTopNav tabs={me.tabs} active={active} onSelect={select} userName={me.user.name} userEmail={me.user.email}
-      onChangePassword={onChangePassword} onLogout={onLogout} badges={{ chat: chatPoll.unread?.total ?? 0 }} />
+      onChangePassword={onChangePassword} onLogout={onLogout} badges={{ chat: chatPoll.unread?.total ?? 0, general: generalBadge }} />
   );
 
   if (!active) {

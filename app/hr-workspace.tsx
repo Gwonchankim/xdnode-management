@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useEffect, useCallback, useRef, useState } from "react";
+import { Fragment, useContext, useEffect, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { GeneralAccessContext, openGeneralAsset } from "./general-client";
 import { companyJobTitles, companyOrganizations, companyRanks } from "./hr-company-catalogs";
 import WorkforcePlanningView from "./workforce-planning-view";
 import RecruitmentRequisitionView from "./recruitment-requisition-view";
@@ -4261,7 +4262,7 @@ function RetirementProcessModal({ request, person, tasks, onToggle, onClose }: {
         </div>
         {locked
           ? <p className="retirement-modal-empty">퇴직 절차가 완료되어 정산 내용을 수정할 수 없습니다.</p>
-          : <RetirementSettlementPanel requestId={request.id} />}
+          : <RetirementSettlementPanel requestId={request.id} employeeId={request.employee_id} />}
       </div>
       <div className="modal-actions">
         <StatusPill value={request.status === "COMPLETED" ? "퇴직 절차 완료" : effective ? "퇴직 · 후속절차 진행" : "퇴직 예정"} />
@@ -4320,7 +4321,33 @@ type SeveranceEstimate = {
   averageWageDays: number;
 };
 
-function RetirementSettlementPanel({ requestId }: { requestId: string }) {
+/**
+ * 퇴직 정산의 미반납 지급 자산(general-affairs GD-11). HR 편집 권한자에게 보이고, 총무 편집 권한이 있으면 '총무 탭에서 반납 처리'로 이어 준다.
+ * 총무 표가 없거나 지급 자산이 없으면 "지급 중인 자산 없음"이다.
+ */
+function RetirementAssetsNotice({ employeeId }: { employeeId: string }) {
+  const general = useContext(GeneralAccessContext);
+  const [assets, setAssets] = useState<Array<{ id: string; assetNo: string; name: string; status: string; assignedOn: string | null }> | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const response = await fetch(`/api/hr/operations?retirementAssets=${encodeURIComponent(employeeId)}`, { cache: "no-store" }).catch(() => null);
+      const payload = response?.ok ? await response.json().catch(() => ({})) as { assets?: typeof assets } : {};
+      if (alive) setAssets(payload.assets ?? []);
+    })();
+    return () => { alive = false; };
+  }, [employeeId]);
+  if (assets === null) return null;
+  return <div className="retirement-assets" role="status">
+    <strong>{assets.length ? `지급 중인 회사 자산 ${assets.length}건` : "지급 중인 회사 자산 없음"}</strong>
+    {assets.length > 0 && <ul>{assets.map((asset) => <li key={asset.id}>
+      <span>{asset.assetNo} · {asset.name}{asset.status === "REPAIR" ? " (수리 중)" : ""}{asset.assignedOn ? ` · ${asset.assignedOn} 지급` : ""}</span>
+      {general.canEdit && <button type="button" className="leave-link" onClick={() => openGeneralAsset(asset.id)}>총무 탭에서 반납 처리</button>}
+    </li>)}</ul>}
+  </div>;
+}
+
+function RetirementSettlementPanel({ requestId, employeeId }: { requestId: string; employeeId: string }) {
   const dialog = useErpDialog();
   const [draft, setDraft] = useState({ finalSalary: "0", retirementPay: "0", leaveDays: "0", leavePay: "0", deductions: "0", payrollConfirmed: false, insuranceConfirmed: false, accessRevoked: false, assetsReturned: false, handoverConfirmed: false });
   const [estimate, setEstimate] = useState<SeveranceEstimate | null>(null);
@@ -4525,6 +4552,7 @@ ${applied}`, { title: "임금안 반영" });
     </div>}
     <p className="settlement-basis">연차수당 {leavePay.toLocaleString("ko-KR")}원{leaveDays < 0 ? " (선사용 연차 공제)" : ""}{estimate?.leaveDailyWage ? ` · 1일 통상임금 ${Math.round(estimate.leaveDailyWage).toLocaleString("ko-KR")}원 (${estimate.workingTimeRule.label} · 월 통상임금 ÷ ${estimate.workingTimeRule.monthlyHours}시간 × ${estimate.workingTimeRule.dailyHours}시간)` : ""}{estimate?.usedLeaveUnits ? ` · 승인된 연차 사용 ${estimate.usedLeaveUnits}일` : ""}</p>
     <strong className="settlement-net">예상 최종 정산액 {Math.round(amount).toLocaleString("ko-KR")}원</strong>
+    <RetirementAssetsNotice employeeId={employeeId} />
     <div className="retirement-control-list">{checks.map(([key, label]) => <label key={key} className={draft[key] ? "checked" : ""}><input type="checkbox" checked={Boolean(draft[key])} onChange={(event) => setDraft({ ...draft, [key]: event.target.checked })} /><span>✓</span><strong>{label}</strong></label>)}</div>
     {message && <p className="retirement-settlement-message">{message}</p>}
     <button type="button" className="outline-button" disabled={status === "COMPLETED"} onClick={() => void save()}>정산·통제 저장</button>
@@ -4575,7 +4603,7 @@ function RetirementModal({ employee, initial, onClose, onSubmit, onLegacyDecisio
       const top = event.currentTarget.scrollTop;
       setCondensed((current) => nextCondensed(current, top));
     }}
-  ><div className="modal-header"><div data-korean-heading><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">전자결재 시절에 제출돼 처리되지 않은 퇴직 요청입니다. 승인하면 퇴직 절차가 시작되고, 반려하면 요청을 닫습니다.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="인사담당자 수행 업무" tasks={retirementChecklist.hr} /><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="퇴직자 수행 업무" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button>{pendingApproval ? <><button type="button" className="reject-action" onClick={() => onLegacyDecision("REJECTED")}>반려</button><button type="button" className="primary-button" onClick={() => onLegacyDecision("APPROVED")}>승인</button></> : <button type="submit" className="primary-button">{checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button>}</div></form>{confirmation && <HrModalBackdrop className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section data-korean-heading className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" ><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></HrModalBackdrop>}</HrModalBackdrop>;
+  ><div className="modal-header"><div data-korean-heading><h2>퇴직 절차 관리</h2></div><button type="button" onClick={onClose}>×</button></div><div className="candidate-banner"><span>{employee.name.slice(0, 1)}</span><div><strong>{employee.name}</strong><small>{employee.department} · {employee.position}</small></div><em>{employee.id}</em></div>{pendingApproval && <p className="optional-form-notice">전자결재 시절에 제출돼 처리되지 않은 퇴직 요청입니다. 승인하면 퇴직 절차가 시작되고, 반려하면 요청을 닫습니다.</p>}{checklistMode && <p className="optional-form-notice">{employee.retirement?.status === "EFFECTIVE" ? "퇴직일이 지나 퇴직 상태가 반영되었습니다. 남은 정산·회수 업무는 입·퇴사 관리에서 계속 완료할 수 있습니다." : "퇴직 승인이 완료되었습니다. 퇴직일이 도래하면 재직·조직 명부에서 자동 제외되며, 체크리스트는 별도로 계속 관리됩니다."}</p>}<div className="retirement-modal-body"><div className="retirement-modal-main"><div className="retirement-fields"><label><span>퇴직일 *</span><input required disabled={checklistMode || pendingApproval} type="date" value={date} onChange={(event) => setDate(event.target.value)} /></label><label><span>퇴직사유 *</span><textarea required disabled={checklistMode || pendingApproval} value={reason} onChange={(event) => setReason(event.target.value)} placeholder="퇴직 사유와 참고사항을 입력하세요."></textarea></label></div><div className="retirement-progress"><div><span>퇴직 절차 체크리스트</span><strong>{completedTaskIds.length}/{totalTasks} 완료</strong></div><div className="retirement-progress-track"><i style={{ width: `${progress}%` }}></i></div><small>{progress === 100 ? "모든 퇴직 절차를 완료했습니다." : `미완료 업무 ${totalTasks - completedTaskIds.length}건이 남아 있습니다.`}</small></div><div className="retirement-checklist-grid"><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="인사담당자 수행 업무" tasks={retirementChecklist.hr} /><RetirementChecklistGroup completedTaskIds={completedTaskIds} pendingApproval={pendingApproval} toggleTask={toggleTask} title="퇴직자 수행 업무" tasks={retirementChecklist.employee} /></div></div>{checklistMode && employee.retirement?.requestId && <aside className="retirement-modal-side"><RetirementSettlementPanel requestId={employee.retirement.requestId} employeeId={employee.id} /></aside>}</div><div className="modal-actions"><button type="button" onClick={onClose}>취소</button>{pendingApproval ? <><button type="button" className="reject-action" onClick={() => onLegacyDecision("REJECTED")}>반려</button><button type="button" className="primary-button" onClick={() => onLegacyDecision("APPROVED")}>승인</button></> : <button type="submit" className="primary-button">{checklistMode ? "체크리스트 저장" : "퇴직 승인"}</button>}</div></form>{confirmation && <HrModalBackdrop className="retirement-confirmation-backdrop" role="presentation" onMouseDown={() => setConfirmation(null)}><section data-korean-heading className="retirement-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="retirement-confirmation-title" ><h2 id="retirement-confirmation-title">{employee.name} 퇴직 처리 확인</h2><span>작성한 내용을 확인 후 퇴직 버튼을 클릭해 주세요.</span><dl><div><dt>퇴직일</dt><dd>{confirmation.date}</dd></div><div><dt>퇴직사유</dt><dd>{confirmation.reason}</dd></div><div><dt>체크리스트</dt><dd>{confirmation.completedTaskIds.length}/{totalTasks} 완료</dd></div></dl><div><button type="button" onClick={() => setConfirmation(null)}>돌아가기</button><button type="button" className="danger-confirm" onClick={() => onSubmit(confirmation)}>퇴직</button></div></section></HrModalBackdrop>}</HrModalBackdrop>;
 }
 
 // R3(Design §12.8): '사용자·권한' 절과 /api/hr/authorized-users 는 삭제했다. 계정·탭 권한은 관리자 전용 계정 관리 탭(/api/admin/accounts)이 맡는다.

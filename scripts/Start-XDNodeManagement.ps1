@@ -287,6 +287,16 @@ if ($health -ne 401) {
 }
 Write-Log "INFO" "ready: GET http://127.0.0.1:$Port/api/me -> 401"
 
+# 총무 알림(general-affairs GD-7): 기동(재부팅·배포·백업 재기동) 때 오늘 알림을 한 번 실행한다. 같은 날 두 번째부터는 서버가 건너뛴다.
+# 운영 포트(3000)에서만 하고, 실패해도 기동은 성공으로 둔다(경고만).
+if ($Headless -and $Port -eq 3000) {
+  $alertScript = Join-Path $PSScriptRoot "Run-GaAlerts.ps1"
+  if (Test-Path -LiteralPath $alertScript) {
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $alertScript -Port $Port -LogRoot $LogRoot -Trigger "startup" | Out-Null
+    if ($LASTEXITCODE -ne 0) { Write-Log "WARN" "ga-alerts run after start failed (see ga-alerts lines above)" }
+  }
+}
+
 # 브리지는 재시도 대상이 아니다. 늦게 뜨거나 자격 증명 오류로 죽으면 경고만 남긴다(SC-12 재부팅 리허설에서 확인).
 Start-Sleep -Seconds 3
 foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort)) {

@@ -1,0 +1,136 @@
+/* 총무 탭(general-affairs Design §7). layout.tsx 가 전역으로 import 한다. 셸 여백은 globals.css 의 .general-module-shell 이 준다. */
+
+.ga-page { min-height: calc(100vh - var(--erp-nav-height)); padding: 20px 24px 60px; background: #fafaf9; color: var(--ink); display: grid; align-content: start; gap: 16px; }
+.ga-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.ga-head h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+.ga-head p { margin: 4px 0 0; color: #71717a; font-size: 13px; }
+.ga-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.ga-tabs button { min-height: 34px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent; color: #3f3f46; font-size: 14px; font-weight: 800; cursor: pointer; }
+.ga-tabs button.active { background: var(--brand-green-dark); color: #fff; }
+.ga-banner { margin: 0; padding: 10px 14px; border: 1px solid #fde68a; border-radius: 12px; background: #fffbeb; color: #92400e; font-size: 13px; font-weight: 800; }
+.ga-muted { margin: 6px 0; color: #71717a; font-size: 13px; }
+.ga-error { margin: 6px 0; color: #b91c1c; font-size: 13px; font-weight: 800; }
+.ga-notice { position: fixed; left: 50%; bottom: 28px; z-index: 70; transform: translateX(-50%); max-width: min(560px, 92%); padding: 10px 16px; border-radius: 12px; background: #18181b; color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+
+.ga-section { padding: 14px 16px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; min-width: 0; }
+.ga-section > header { margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ga-section h3 { margin: 0; font-size: 15px; }
+.ga-section h4, .ga-detail h4 { margin: 14px 0 6px; font-size: 13px; color: #3f3f46; }
+.ga-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.ga-overview, .ga-custody, .ga-io { display: grid; gap: 12px; }
+
+.ga-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.ga-card { padding: 12px 14px; border: 1px solid #e4e4e7; border-radius: 14px; background: #fff; display: grid; gap: 6px; }
+.ga-card span { color: #52525b; font-size: 12px; font-weight: 800; }
+.ga-card strong { font-size: 26px; letter-spacing: -.03em; }
+.ga-card small { color: #b91c1c; font-size: 11px; font-weight: 800; }
+.ga-card.overdue strong { color: #b91c1c; }
+.ga-card.today strong { color: #c2410c; }
+.ga-card.d7 strong { color: #a16207; }
+.ga-card.out strong { color: var(--brand-green-dark); }
+
+.ga-alerts { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ga-alerts button { width: 100%; min-height: 40px; padding: 6px 10px; display: grid; grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1fr) auto; align-items: center; gap: 10px; border: 1px solid #f4f4f5; border-radius: 10px; background: #fff; color: #18181b; font-size: 13px; text-align: left; cursor: pointer; }
+.ga-alerts button:hover { background: #fafafa; }
+.ga-alerts em { width: fit-content; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 900; background: #f4f4f5; }
+.ga-alerts .overdue em { background: #fee2e2; color: #b91c1c; }
+.ga-alerts .today em { background: #ffedd5; color: #c2410c; }
+.ga-alerts .d7 em { background: #fef3c7; color: #a16207; }
+.ga-alerts .d30 em { background: var(--brand-green-tint); color: var(--brand-green-dark); }
+.ga-alerts span { color: #52525b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ga-alerts time { color: #71717a; font-size: 12px; white-space: nowrap; }
+
+.ga-list { margin: 0; padding: 0; list-style: none; display: grid; }
+.ga-list li { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid #f4f4f5; font-size: 13px; }
+.ga-list small { color: #71717a; }
+
+.ga-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ga-table th { padding: 8px 10px; border-bottom: 1px solid #e4e4e7; background: #fafafa; color: #52525b; font-size: 12px; font-weight: 800; text-align: left; white-space: nowrap; }
+.ga-table td { padding: 8px 10px; border-bottom: 1px solid #f4f4f5; vertical-align: top; }
+.ga-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.ga-table .mono, .ga-detail .mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.ga-table.selectable tbody tr { cursor: pointer; }
+.ga-table.selectable tbody tr:hover { background: #fafafa; }
+.ga-table tr.selected { background: var(--brand-green-tint) !important; }
+.ga-table tr.muted td { color: #a1a1aa; }
+.ga-table tr.overdue td, .ga-table tr.error td { background: #fef2f2; }
+.ga-table tr.duplicate td { background: #fffbeb; }
+
+.ga-status { padding: 2px 8px; border-radius: 999px; background: #f4f4f5; color: #3f3f46; font-size: 11px; font-weight: 900; white-space: nowrap; }
+.ga-status.assigned, .ga-status.active { background: var(--brand-green-tint); color: var(--brand-green-dark); }
+.ga-status.repair { background: #fef3c7; color: #a16207; }
+.ga-status.disposed, .ga-status.ended { background: #f4f4f5; color: #71717a; }
+.ga-status.out { background: #fee2e2; color: #b91c1c; }
+
+.ga-toolbar { margin-bottom: 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ga-toolbar input[type="search"], .ga-toolbar select { min-height: 36px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fff; font-size: 13px; }
+.ga-toolbar input[type="search"] { flex: 1; min-width: 200px; }
+.ga-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.ga-chips button { min-height: 32px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 999px; background: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
+.ga-chips button.active { border-color: var(--brand-green-dark); background: var(--brand-green-dark); color: #fff; }
+
+.ga-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+.ga-split:has(.ga-detail) { grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); }
+.ga-main { min-width: 0; padding: 14px 16px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; overflow-x: auto; }
+.ga-detail { position: sticky; top: calc(var(--erp-nav-height) + 12px); max-height: calc(100vh - var(--erp-nav-height) - 24px); overflow-y: auto; padding: 14px 16px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; }
+.ga-detail > header { display: flex; justify-content: space-between; gap: 8px; }
+.ga-detail > header > div { display: grid; gap: 2px; }
+.ga-detail > header strong { font-size: 17px; }
+.ga-detail > header span, .ga-detail > header small { color: #71717a; font-size: 12px; }
+.ga-detail > header button { border: 0; background: none; font-size: 20px; cursor: pointer; }
+.ga-fields { margin: 12px 0; display: grid; grid-template-columns: 76px 1fr; gap: 6px 10px; font-size: 13px; }
+.ga-fields dt { color: #71717a; font-weight: 800; }
+.ga-fields dd { margin: 0; overflow-wrap: anywhere; }
+.ga-fields .pre { white-space: pre-wrap; }
+.ga-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ga-actions button, .ga-section > header button, .ga-seals button, .ga-modal footer button, .ga-toolbar > button { min-height: 32px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; color: #18181b; font-size: 13px; font-weight: 800; cursor: pointer; }
+.ga-actions button.danger { color: #b91c1c; border-color: #fecaca; }
+.ga-actions .primary-button, .ga-section .primary-button, .ga-modal .primary-button, .ga-toolbar .primary-button { color: #fff; border-color: var(--brand-green-dark); background: var(--brand-green-dark); }
+.ga-link { padding: 0; border: 0; background: none; color: var(--brand-green-strong); font-size: 12px; font-weight: 800; cursor: pointer; }
+.ga-link.danger { color: #b91c1c; }
+.ga-schedule { margin-top: 12px; font-size: 13px; }
+.ga-schedule summary { cursor: pointer; font-weight: 800; color: #3f3f46; }
+.ga-schedule table { margin-top: 6px; }
+
+.ga-timeline { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ga-timeline li { display: grid; grid-template-columns: 84px 64px 1fr; gap: 6px; font-size: 12px; }
+.ga-timeline time { color: #71717a; }
+.ga-timeline span { color: #52525b; overflow-wrap: anywhere; }
+
+.ga-attachments ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+.ga-attachments li { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.ga-attachments a { color: var(--brand-green-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ga-attachments small { color: #a1a1aa; }
+.ga-upload { display: inline-flex; min-height: 32px; margin-top: 6px; padding: 0 12px; align-items: center; border: 1px dashed #a1a1aa; border-radius: 9px; color: #3f3f46; font-size: 13px; font-weight: 800; cursor: pointer; }
+
+.ga-seals { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.ga-seals article { padding: 12px 14px; border: 1px solid #e4e4e7; border-radius: 14px; display: grid; gap: 4px; }
+.ga-seals article.out { border-color: #fecaca; background: #fef2f2; }
+.ga-seals small { color: #71717a; font-size: 11px; font-weight: 800; }
+.ga-seals strong { font-size: 16px; }
+.ga-seals p { margin: 0 0 6px; color: #52525b; font-size: 13px; }
+.ga-seals button { justify-self: start; }
+
+.ga-modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(9,9,11,.5); }
+.ga-modal { width: min(560px, 100%); max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; border-radius: 16px; background: #fff; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.ga-modal > header, .ga-modal > footer { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ga-modal > header button { border: 0; background: none; font-size: 20px; cursor: pointer; }
+.ga-modal > footer { justify-content: flex-end; border-top: 1px solid var(--line); }
+.ga-modal > .ga-error { padding: 0 18px; }
+.ga-form { min-height: 0; overflow-y: auto; padding: 0 18px 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.ga-form label { display: grid; gap: 4px; color: #52525b; font-size: 12px; font-weight: 800; }
+.ga-form label.ga-wide { grid-column: 1 / -1; }
+.ga-form input:not([type="checkbox"]), .ga-form select, .ga-form textarea { min-height: 36px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; color: #18181b; font: inherit; font-size: 14px; font-weight: 500; }
+.ga-form textarea { padding: 8px 10px; resize: vertical; }
+.ga-form small { color: #a1a1aa; font-weight: 500; }
+.ga-check { display: flex !important; align-items: center; gap: 8px; }
+
+@media (max-width: 900px) {
+  .ga-page { padding: 14px 12px 40px; }
+  .ga-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ga-split:has(.ga-detail) { grid-template-columns: 1fr; }
+  .ga-detail { position: static; max-height: none; }
+  .ga-form { grid-template-columns: 1fr; }
+  .ga-alerts button { grid-template-columns: 56px 1fr; }
+  .ga-alerts span, .ga-alerts time { grid-column: 2; }
+}

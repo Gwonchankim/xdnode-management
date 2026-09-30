@@ -8,6 +8,7 @@ export const TAB_REGISTRY = [
   { key: "hr", label: "인사관리", glyph: "◎", adminOnly: false, modules: ["hr", "recruitment"], apiPrefixes: ["/api/hr/", "/api/documents"], shellClass: "hr-module-shell" },
   { key: "compensation", label: "임금 계산", glyph: "◫", adminOnly: false, modules: ["compensation"], apiPrefixes: ["/api/compensation"], shellClass: "compensation-erp-shell" },
   { key: "chat", label: "메신저", glyph: "◌", adminOnly: false, modules: ["chat"], apiPrefixes: ["/api/chat/"], shellClass: "chat-module-shell" },
+  { key: "general", label: "총무", glyph: "▣", adminOnly: false, modules: ["general"], apiPrefixes: ["/api/general/"], shellClass: "general-module-shell" },
   { key: "audit", label: "감사 로그", glyph: "▤", adminOnly: true, modules: ["audit"], apiPrefixes: ["/api/audit-log"], shellClass: "admin-module-shell" },
   { key: "admin", label: "계정 관리", glyph: "◈", adminOnly: true, modules: ["admin"], apiPrefixes: ["/api/admin/"], shellClass: "admin-module-shell" },
 ] as const;

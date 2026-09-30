@@ -11,7 +11,7 @@ export const CHAT_SEARCH_MIN = 2;
 export const CHAT_SEARCH_MAX = 80;
 export const CHAT_SEARCH_LIMIT = 50;
 export const CHAT_GROUP_DM_MAX_MEMBERS = 8;
-export const CHAT_ATTACHMENT_MAX_BYTES = 26_214_400;
+export { ATTACHMENT_MAX_BYTES as CHAT_ATTACHMENT_MAX_BYTES } from "./attachment-rules";
 export const CHAT_ATTACHMENTS_PER_MESSAGE = 10;
 export const CHAT_R2_PREFIX = "chat/";
 export const CHAT_CHANNEL_NAME_MAX = 40;
@@ -185,7 +185,8 @@ function toMessageDto(row: MessageQueryRow): ChatMessageDto {
     id: Number(row.id),
     channelId: row.channel_id,
     threadRootId: row.thread_root_id === null ? null : Number(row.thread_root_id),
-    author: { accountId: row.author_account_id, name: row.author_name ?? "알 수 없는 사용자" },
+    // system:<이름> 작성자는 계정이 아니다(총무 알림, general-affairs GD-8). 로그인·사람 목록에 나타나지 않는다.
+    author: { accountId: row.author_account_id, name: row.author_account_id.startsWith("system:") ? "XDnode 알림" : row.author_name ?? "알 수 없는 사용자" },
     body: deleted ? null : row.body,
     mentions: deleted ? [] : parseArray<string>(row.mentions_json),
     mentionChannel: !deleted && row.mention_channel === 1,
@@ -299,41 +300,5 @@ export async function publicChannelSummary(db: D1Database, channel: ChatChannelR
   return { id: channel.id, kind: channel.kind, name: channel.name, topic: channel.topic, memberCount: Number(count?.n ?? 0), archived: channel.archived_at !== null };
 }
 
-// ── 첨부 형식 (§7.8) ──────────────────────────────────────────────────────
-/** 확장자 → { contentType, inline }. 서버가 정한다. 클라이언트 Content-Type 은 무시한다. 표 밖은 415 다. */
-export const CHAT_ATTACHMENT_TYPES: ReadonlyMap<string, { contentType: string; inline: boolean }> = new Map([
-  ["png", { contentType: "image/png", inline: true }],
-  ["jpg", { contentType: "image/jpeg", inline: true }],
-  ["jpeg", { contentType: "image/jpeg", inline: true }],
-  ["gif", { contentType: "image/gif", inline: true }],
-  ["webp", { contentType: "image/webp", inline: true }],
-  ["pdf", { contentType: "application/pdf", inline: false }],
-  ["docx", { contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", inline: false }],
-  ["xlsx", { contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", inline: false }],
-  ["pptx", { contentType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", inline: false }],
-  ["hwp", { contentType: "application/x-hwp", inline: false }],
-  ["hwpx", { contentType: "application/hwp+zip", inline: false }],
-  ["txt", { contentType: "text/plain; charset=utf-8", inline: false }],
-  ["csv", { contentType: "text/csv; charset=utf-8", inline: false }],
-  ["zip", { contentType: "application/zip", inline: false }],
-]);
-
-/** 파일 이름 정리: 제어문자·경로 구분자를 빼고 200자에서 자른다. */
-export function cleanFileName(value: string) {
-  // eslint-disable-next-line no-control-regex
-  return value.replace(/[\u0000-\u001f\u007f/\\]/g, "").trim().slice(0, 200);
-}
-
-/** 마지막 확장자(소문자)의 형식. 확장자가 없거나 표 밖이면 null. */
-export function attachmentTypeOf(fileName: string) {
-  const dot = fileName.lastIndexOf(".");
-  if (dot <= 0 || dot === fileName.length - 1) return null;
-  return CHAT_ATTACHMENT_TYPES.get(fileName.slice(dot + 1).toLowerCase()) ?? null;
-}
-
-/** RFC 5987 filename*. */
-export function contentDisposition(fileName: string, inline: boolean) {
-  if (inline) return "inline";
-  const encoded = encodeURIComponent(fileName).replace(/['()*]/g, (character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`);
-  return `attachment; filename*=UTF-8''${encoded}`;
-}
+// ── 첨부 형식 (§7.8) ── app/attachment-rules.ts 로 옮겼다(총무 첨부와 공용, general-affairs GD-10) ──
+export { CHAT_ATTACHMENT_TYPES, attachmentTypeOf, cleanFileName, contentDisposition } from "./attachment-rules";

@@ -2,6 +2,8 @@ import { env } from "cloudflare:workers";
 import { calculateCompensation, type CompensationEmployee } from "../../../compensation-calculation";
 import { normalizeCompensationSettings } from "../../../compensation-settings";
 import { authorizeErpRequest, writeErpAudit } from "../../../erp-platform";
+import { isHrManager } from "../../../access-tabs";
+import { gaTablesExist } from "../../../ga-schema";
 import { unlinkedAccountNames } from "../../../auth-session";
 import { ensureHrEmployeeRecordsSchema } from "../../../hr-employee-schema";
 import { companyEmployees } from "../../../hr-company-data";
@@ -202,6 +204,17 @@ export async function GET(request: Request) {
   await ensureSchema();
   const authorization = await authorizeErpRequest(db, "hr", "read");
   if (authorization.response) return authorization.response;
+  // 퇴직 정산의 미반납 지급 자산(general-affairs GD-11). HR 편집 권한자만 본다. 총무 표가 없으면(새 DB) 빈 목록이고 표를 만들지 않는다.
+  const retirementAssetsOf = new URL(request.url).searchParams.get("retirementAssets");
+  if (retirementAssetsOf !== null) {
+    if (!isHrManager(authorization.principal)) return Response.json({ error: "인사 편집 권한이 필요합니다.", code: "FORBIDDEN" }, { status: 403 });
+    if (!(await gaTablesExist(db))) return Response.json({ assets: [] });
+    const rows = await db.prepare(`SELECT a.id, a.asset_no, a.name, a.kind, a.status,
+        (SELECT MAX(e.event_on) FROM ga_asset_events e WHERE e.asset_id = a.id AND e.kind = 'ASSIGNED') AS assigned_on
+      FROM ga_assets a WHERE a.holder_employee_id = ? AND a.deleted_at IS NULL AND a.status IN ('ASSIGNED', 'REPAIR') ORDER BY a.asset_no`)
+      .bind(retirementAssetsOf.trim()).all<{ id: string; asset_no: string; name: string; kind: string; status: string; assigned_on: string | null }>();
+    return Response.json({ assets: rows.results.map((row) => ({ id: row.id, assetNo: row.asset_no, name: row.name, kind: row.kind, status: row.status, assignedOn: row.assigned_on })) });
+  }
   await applyDueRetirements(db);
   const employeeId = new URL(request.url).searchParams.get("employeeId")?.trim() ?? "";
   const where = employeeId ? " WHERE employee_id = ?" : "";

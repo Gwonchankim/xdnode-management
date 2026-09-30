@@ -92,7 +92,7 @@ function MessageItem({ message, people, mine, canWrite, archived, onReply, onEdi
   const [draft, setDraft] = useState("");
   const editable = mine && canWrite && !archived && !message.deleted;
   return (
-    <article className={["chat-message", mine ? "mine" : "theirs", message.deleted ? "deleted" : ""].filter(Boolean).join(" ")} data-message-id={message.id}>
+    <article className={["chat-message", mine ? "mine" : "theirs", message.author.accountId.startsWith("system:") ? "system" : "", message.deleted ? "deleted" : ""].filter(Boolean).join(" ")} data-message-id={message.id}>
       <header>
         {!mine && <strong>{message.author.name}</strong>}
         <time dateTime={new Date(message.createdAt).toISOString()}>{when(message.createdAt)}</time>
