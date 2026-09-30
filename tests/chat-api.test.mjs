@@ -420,3 +420,30 @@ test('R5 source guards: no raw HTML in chat UI, Enter respects Korean IME compos
   assert.deepEqual(extractMentions('메일 a@김철수회사.com', people).accountIds, [], 'a name followed by more letters is not a mention');
   assert.deepEqual(highlightMentions('안녕 @김철수!', people), [{ text: '안녕 ', mention: false }, { text: '@김철수', mention: true }, { text: '!', mention: false }]);
 });
+
+test('R5 bubbles and paste: my messages are right-aligned bubbles with their own colour; pasted captures become named image attachments', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const workspace = read('app/chat-workspace.tsx');
+  const css = read('app/chat-workspace.css');
+  assert.match(workspace, /"chat-message", mine \? "mine" : "theirs"/);
+  assert.match(workspace, /className=\{editing \? "chat-bubble editing" : "chat-bubble"\}/);
+  assert.match(css, /\.chat-bubble \{ width: fit-content; max-width: min\(560px, 75%\);/);
+  assert.match(css, /\.chat-message\.mine \{ align-items: flex-end; \}/);
+  const mine = /\.chat-message\.mine \.chat-bubble \{[^}]*background: (#[0-9a-f]+)/.exec(css)?.[1];
+  const theirs = /\.chat-message\.theirs \.chat-bubble \{[^}]*background: (#[0-9a-f]+)/.exec(css)?.[1];
+  assert.ok(mine && theirs && mine !== theirs, `bubble colours differ (${mine} / ${theirs})`);
+  // 붙여넣기: 글이 함께 있으면 글 붙여넣기를 막지 않는다.
+  assert.match(workspace, /onPaste=\{onPaste\}/);
+  assert.match(workspace, /if \(!images\.length \|\| event\.clipboardData\.getData\("text\/plain"\)\.trim\(\)\) return;/);
+  const { pastedImageFile, fileExtensionAllowed } = await import('../app/chat-client.ts');
+  const when = new Date(2026, 8, 30, 9, 5, 7);
+  const png = pastedImageFile(new File([new Uint8Array([1, 2])], 'image.png', { type: 'image/png' }), 0, when);
+  assert.equal(png.name, '캡처-20260930-090507.png');
+  assert.equal(png.size, 2);
+  assert.equal(pastedImageFile(new File(['x'], 'image.png', { type: 'image/jpeg' }), 1, when).name, '캡처-20260930-090507-2.jpg');
+  assert.ok(fileExtensionAllowed(png.name));
+  const bmp = new File(['x'], 'image.bmp', { type: 'image/bmp' });
+  assert.equal(pastedImageFile(bmp, 0, when), bmp, 'unsupported types keep their name and are refused by the extension check');
+  assert.equal(fileExtensionAllowed(bmp.name), false);
+});

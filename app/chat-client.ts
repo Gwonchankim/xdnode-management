@@ -74,6 +74,17 @@ export function fileExtensionAllowed(name: string) {
   return (CHAT_ALLOWED_EXTENSIONS as readonly string[]).includes(name.slice(dot + 1).toLowerCase());
 }
 
+const PASTE_EXTENSIONS: Readonly<Record<string, string>> = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp" };
+
+/** 클립보드 이미지는 이름이 'image.png' 뿐이라 '캡처-yyyyMMdd-HHmmss.png' 로 바꾼다. 형식을 모르면 원래 이름(→ 형식 안내)을 둔다. */
+export function pastedImageFile(file: File, index = 0, now = new Date()) {
+  const extension = PASTE_EXTENSIONS[file.type];
+  if (!extension) return file;
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  return new File([file], `캡처-${stamp}${index ? `-${index + 1}` : ""}.${extension}`, { type: file.type });
+}
+
 type Listener = (events: ChatPollEvent[], meta: { resync: boolean }) => void;
 
 export type ChatPoll = {

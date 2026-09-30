@@ -4,13 +4,13 @@
 // 본문·채널 이름·파일 이름·표시 이름은 React 텍스트 노드로만 그린다(§7.8). 링크는 http:·https: 만 만든다.
 // 실시간 갱신은 셸의 useChatPoll 이벤트를 구독한다. 권한 판정은 서버가 다시 한다(여기서 숨기는 것은 편의일 뿐이다).
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { highlightMentions } from "./chat-mentions";
 import { useErpDialog } from "./erp-dialog";
 import { randomId } from "./client-runtime";
 import {
   CHAT_ATTACHMENT_MAX_BYTES, CHAT_ATTACHMENTS_PER_MESSAGE, CHAT_GROUP_DM_MAX_OTHERS, CHAT_MESSAGE_MAX_LENGTH, CHAT_SEARCH_MAX, CHAT_SEARCH_MIN,
-  chatRequest, fileExtensionAllowed, uploadChatAttachment,
+  chatRequest, fileExtensionAllowed, pastedImageFile, uploadChatAttachment,
   type ChatAttachmentDto, type ChatChannelDto, type ChatChannelsResponse, type ChatMessageDto, type ChatPerson, type ChatPoll, type ChatPollEvent,
   type UnreadSummary,
 } from "./chat-client";
@@ -90,12 +90,13 @@ function MessageItem({ message, people, mine, canWrite, archived, onReply, onEdi
   const [draft, setDraft] = useState("");
   const editable = mine && canWrite && !archived && !message.deleted;
   return (
-    <article className={message.deleted ? "chat-message deleted" : "chat-message"} data-message-id={message.id}>
+    <article className={["chat-message", mine ? "mine" : "theirs", message.deleted ? "deleted" : ""].filter(Boolean).join(" ")} data-message-id={message.id}>
       <header>
-        <strong>{message.author.name}</strong>
+        {!mine && <strong>{message.author.name}</strong>}
         <time dateTime={new Date(message.createdAt).toISOString()}>{when(message.createdAt)}</time>
         {message.editedAt && !message.deleted && <em>(수정됨)</em>}
       </header>
+      <div className={editing ? "chat-bubble editing" : "chat-bubble"}>
       {message.deleted
         ? <p className="chat-message-body muted">삭제된 메시지입니다.</p>
         : editing
@@ -111,6 +112,7 @@ function MessageItem({ message, people, mine, canWrite, archived, onReply, onEdi
           )
           : message.body ? <p className="chat-message-body"><MessageBody body={message.body} people={people} /></p> : null}
       {!message.deleted && <Attachments attachments={message.attachments} />}
+      </div>
       <footer>
         {onReply && message.threadRootId === null && !message.deleted && (
           <button type="button" className="chat-link-button" onClick={onReply}>{message.replyCount > 0 ? `답글 ${message.replyCount}개` : "답글"}</button>
@@ -128,6 +130,7 @@ function MessageItem({ message, people, mine, canWrite, archived, onReply, onEdi
 }
 
 type Pending = { key: string; name: string; size: number; attachment?: ChatAttachmentDto; error?: string };
+
 
 function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent, onError }: {
   channelId: string; threadRootId?: number; disabledReason: string | null; placeholder: string;
@@ -149,9 +152,7 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent
     });
   }, [channelId, threadRootId]);
 
-  async function addFiles(event: ChangeEvent<HTMLInputElement>) {
-    const files = [...(event.target.files ?? [])];
-    event.target.value = "";
+  async function addFiles(files: File[]) {
     if (pending.length + files.length > CHAT_ATTACHMENTS_PER_MESSAGE) { onError(`첨부는 한 번에 ${CHAT_ATTACHMENTS_PER_MESSAGE}개까지입니다.`); return; }
     for (const file of files) {
       if (file.size > CHAT_ATTACHMENT_MAX_BYTES) { onError(`${file.name}: 파일은 25MB까지 올릴 수 있습니다.`); continue; }
@@ -162,6 +163,14 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent
       setPending((items) => items.map((item) => item.key !== key ? item
         : result.ok && result.body.attachment ? { ...item, attachment: result.body.attachment } : { ...item, error: result.body.error ?? "올리지 못했습니다." }));
     }
+  }
+
+  // 캡처 이미지 붙여넣기(Ctrl+V). 클립보드에 글이 함께 있으면(Word·웹 문서 복사) 글 붙여넣기를 그대로 둔다.
+  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const images = [...event.clipboardData.files].filter((file) => file.type.startsWith("image/"));
+    if (!images.length || event.clipboardData.getData("text/plain").trim()) return;
+    event.preventDefault();
+    void addFiles(images.map((file, index) => pastedImageFile(file, index)));
   }
 
   async function remove(item: Pending) {
@@ -207,12 +216,12 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent
         </ul>
       )}
       <textarea value={body} maxLength={CHAT_MESSAGE_MAX_LENGTH} rows={2} placeholder={placeholder} aria-label="메시지"
-        onChange={(event) => setBody(event.target.value)} onKeyDown={onKeyDown} />
+        onChange={(event) => setBody(event.target.value)} onKeyDown={onKeyDown} onPaste={onPaste} />
       <div className="chat-composer-actions">
-        <input ref={fileInput} type="file" multiple hidden onChange={(event) => void addFiles(event)} />
+        <input ref={fileInput} type="file" multiple hidden onChange={(event) => { const files = [...(event.target.files ?? [])]; event.target.value = ""; void addFiles(files); }} />
         <button type="button" onClick={() => fileInput.current?.click()} disabled={pending.length >= CHAT_ATTACHMENTS_PER_MESSAGE}>첨부</button>
         <span className="chat-counter">{body.length.toLocaleString("ko-KR")} / {CHAT_MESSAGE_MAX_LENGTH.toLocaleString("ko-KR")}</span>
-        <small>Enter 전송 · Shift+Enter 줄바꿈</small>
+        <small>Enter 전송 · Shift+Enter 줄바꿈 · 캡처 이미지는 Ctrl+V</small>
         <button type="button" className="primary-button" disabled={sending || uploading || (!body.trim() && ready.length === 0)} onClick={() => void send()}>
           {sending ? "보내는 중" : "보내기"}
         </button>
