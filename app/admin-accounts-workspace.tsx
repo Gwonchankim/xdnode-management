@@ -5,7 +5,7 @@
 // 오류는 status·code 로 분기하고, LAST_ADMIN·DUPLICATE 문구는 서버 문구를 그대로 보여 준 뒤 목록을 다시 읽어 폼을 되돌린다.
 // R4: /api/admin/backups 의 stale·실패를 상단 경고로 보여 준다.
 
-import { FormEvent, useCallback, useEffect, useId, useState, type ReactNode } from "react";
+import { FormEvent, useCallback, useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { GrantableTabKey, TabLevel } from "./access-tabs";
 import { copyText } from "./client-runtime";
 import { useErpDialog } from "./erp-dialog";
@@ -232,6 +232,62 @@ function LinkEmployeeDialog({ account, employees, onClose, onSaved }: {
   );
 }
 
+/**
+ * 행 '작업' 메뉴. 표는 가로 스크롤 영역(overflow-x: auto) 안에 있어서, absolute 로 띄우면 영역 밖(아래 행 너머)이 잘려 보이지 않는다.
+ * 그래서 메뉴를 화면 기준(position: fixed)으로 버튼 옆에 띄우고, 아래 공간이 모자라면 위로 펼친다.
+ * 스크롤·창 크기 변경·바깥 클릭·Esc 에 닫는다(고정 위치가 버튼에서 떨어지지 않게). 메뉴 항목을 누르면 닫는다.
+ */
+const ROW_MENU_WIDTH = 190;
+function RowActions({ children }: { children: ReactNode }) {
+  const [style, setStyle] = useState<CSSProperties | null>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => {
+    if (detailsRef.current) detailsRef.current.open = false;
+    setStyle(null);
+  }, []);
+  function place() {
+    const summary = detailsRef.current?.querySelector("summary");
+    if (!summary) return;
+    const rect = summary.getBoundingClientRect();
+    const height = menuRef.current?.offsetHeight ?? 300;
+    const below = window.innerHeight - rect.bottom;
+    const top = below >= height + 12 || below >= rect.top ? rect.bottom + 6 : Math.max(8, rect.top - height - 6);
+    const left = Math.min(Math.max(8, rect.right - ROW_MENU_WIDTH), window.innerWidth - ROW_MENU_WIDTH - 8);
+    setStyle({ position: "fixed", top, left, right: "auto", width: ROW_MENU_WIDTH });
+  }
+  useEffect(() => {
+    if (!style) return;
+    const onPointer = (event: PointerEvent) => { if (!detailsRef.current?.contains(event.target as Node)) close(); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") close(); };
+    // 메뉴 항목(버튼)을 누르면 닫는다. 버튼의 onClick 이 먼저 실행된다(버블 단계).
+    const menu = menuRef.current;
+    const onMenuClick = (event: MouseEvent) => { if ((event.target as HTMLElement).closest("button")) close(); };
+    menu?.addEventListener("click", onMenuClick);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+      menu?.removeEventListener("click", onMenuClick);
+    };
+  }, [style, close]);
+  return (
+    <details ref={detailsRef} className="admin-accounts-actions" onToggle={(event) => {
+      if (event.currentTarget.open) window.requestAnimationFrame(place); else setStyle(null);
+    }}>
+      <summary>작업</summary>
+      <div ref={menuRef} style={style ?? { visibility: "hidden" }}>
+        {children}
+      </div>
+    </details>
+  );
+}
+
 export default function AdminAccountsWorkspace({ currentAccountId }: { currentAccountId: string }) {
   const dialog = useErpDialog();
   const [data, setData] = useState<AccountsPayload | null>(null);
@@ -391,9 +447,7 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
                     <td>{formatDateTime(account.lastLoginAt)}</td>
                     <td>{account.activeSessions}</td>
                     <td>
-                      <details className="admin-accounts-actions">
-                        <summary>작업</summary>
-                        <div>
+                      <RowActions>
                           <button type="button" disabled={busy || self} title={self ? "본인 비밀번호는 비밀번호 변경에서 바꿔 주세요." : undefined} onClick={() => void resetPassword(account)}>비밀번호 초기화</button>
                           <button type="button" disabled={busy || !locked} onClick={() => void run(account, { action: "UNLOCK" }, "잠금을 해제했습니다.")}>잠금 해제</button>
                           <button type="button" disabled={busy || (self && account.active)} onClick={() => void toggleActive(account)}>{account.active ? "비활성화" : "재활성화"}</button>
@@ -401,8 +455,7 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
                           <button type="button" disabled={busy} onClick={() => setLinking(account)}>{account.employeeId ? "연결 변경·해제" : "직원 연결"}</button>
                           <button type="button" disabled={busy} onClick={() => void rename(account)}>표시 이름 변경</button>
                           <button type="button" disabled={busy} onClick={() => void toggleAdmin(account)}>{account.isAdmin ? "관리자 해제" : "관리자 지정"}</button>
-                        </div>
-                      </details>
+                      </RowActions>
                     </td>
                   </tr>
                 );
