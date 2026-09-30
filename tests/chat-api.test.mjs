@@ -480,3 +480,16 @@ test('R5 @ autocomplete: query detection, Hangul-in-progress matching, members f
   assert.match(workspace, /onMouseDown=\{\(event\) => event\.preventDefault\(\)\}/, 'clicking a name keeps focus in the composer');
   assert.match(workspace, /if \(joined\?\.kind === "private"\) return inChannel;/, 'private channels suggest members only');
 });
+
+test('R5 the last opened conversation is remembered per account and restored only while it is still visible', async () => {
+  const { readFileSync } = await import('node:fs');
+  const workspace = readFileSync(new URL('../app/chat-workspace.tsx', import.meta.url), 'utf8');
+  assert.match(workspace, /export const ACTIVE_CHANNEL_KEY = "xdnode-chat-active-channel";/);
+  assert.match(workspace, /if \(id\) writeScoped\(ACTIVE_CHANNEL_KEY, id\);/, 'every channel switch is saved under the account-scoped key');
+  assert.match(workspace, /const saved = readScoped\(ACTIVE_CHANNEL_KEY, \[\]\);/, 'no unscoped legacy key is read');
+  assert.match(workspace, /loaded\.channels\.some\(\(channel\) => channel\.id === saved\) \|\| loaded\.joinable\.some\(\(channel\) => channel\.id === saved\)/,
+    'a saved channel I was removed from (or that disappeared) falls back to the first conversation');
+  assert.doesNotMatch(workspace, /localStorage/, 'storage goes through the scoped helpers');
+  const runtime = readFileSync(new URL('../app/client-runtime.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(runtime.slice(runtime.indexOf('SCOPED_DATA_KEYS')), /xdnode-chat-active-channel/, 'a view setting, not pay data: kept on logout like the active tab');
+});

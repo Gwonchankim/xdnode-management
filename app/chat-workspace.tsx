@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { applyMention, highlightMentions, mentionQueryAt, mentionSuggestions } from "./chat-mentions";
 import { useErpDialog } from "./erp-dialog";
-import { randomId } from "./client-runtime";
+import { randomId, readScoped, writeScoped } from "./client-runtime";
 import {
   CHAT_ATTACHMENT_MAX_BYTES, CHAT_ATTACHMENTS_PER_MESSAGE, CHAT_GROUP_DM_MAX_OTHERS, CHAT_MESSAGE_MAX_LENGTH, CHAT_SEARCH_MAX, CHAT_SEARCH_MIN,
   chatRequest, fileExtensionAllowed, pastedImageFile, uploadChatAttachment,
@@ -22,6 +22,8 @@ type SearchResult = { message: ChatMessageDto; channel: { id: string; kind: stri
 type Modal = null | { kind: "channel" } | { kind: "dm" } | { kind: "members" };
 
 const VIEW_ONLY = "보기 권한만 있습니다.";
+/** 마지막으로 연 대화(계정 범위 키, 화면 설정이라 로그아웃해도 남긴다). 새로고침·탭 이동 뒤 같은 대화로 돌아온다. */
+export const ACTIVE_CHANNEL_KEY = "xdnode-chat-active-channel";
 const ARCHIVED = "보관된 대화에는 새 글을 쓰거나 바꿀 수 없습니다.";
 const EMPTY_HISTORY: History = { messages: [], hasMore: false, loading: false };
 
@@ -409,6 +411,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     setResults(null);
     setHistory(id ? { ...EMPTY_HISTORY, loading: true } : EMPTY_HISTORY);
     setActiveId(id);
+    if (id) writeScoped(ACTIVE_CHANNEL_KEY, id);
   }, []);
 
   // 처음: 목록을 읽고, 참여한 첫 대화(없으면 '일반' 미리보기)를 연다.
@@ -416,8 +419,11 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     void (async () => {
       const loaded = await loadChannels();
       if (!loaded) return;
+      // 저장해 둔 대화가 아직 보이면(내 채널·DM 이거나 참여 가능한 공개 채널) 그것을, 아니면 참여한 첫 대화를 연다.
+      const saved = readScoped(ACTIVE_CHANNEL_KEY, []);
+      const visible = saved && (loaded.channels.some((channel) => channel.id === saved) || loaded.joinable.some((channel) => channel.id === saved));
       const first = loaded.channels.find((channel) => !channel.archived) ?? loaded.channels[0] ?? null;
-      selectChannel(first?.id ?? loaded.joinable[0]?.id ?? null);
+      selectChannel(visible ? saved : first?.id ?? loaded.joinable[0]?.id ?? null);
     })();
   }, [loadChannels, selectChannel]);
 
