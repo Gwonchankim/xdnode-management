@@ -447,3 +447,36 @@ test('R5 bubbles and paste: my messages are right-aligned bubbles with their own
   assert.equal(pastedImageFile(bmp, 0, when), bmp, 'unsupported types keep their name and are refused by the extension check');
   assert.equal(fileExtensionAllowed(bmp.name), false);
 });
+
+test('R5 @ autocomplete: query detection, Hangul-in-progress matching, members first, @채널 and insertion', async () => {
+  const { mentionQueryAt, mentionSuggestions, applyMention, hangulPrefixMatch, CHANNEL_MENTION } = await import('../app/chat-mentions.ts');
+  // 커서 앞 '@질의'
+  assert.deepEqual(mentionQueryAt('안녕 @김', 5), { start: 3, query: '김' });
+  assert.deepEqual(mentionQueryAt('@', 1), { start: 0, query: '' });
+  assert.equal(mentionQueryAt('mail a@b', 8), null, 'an @ inside a word (e-mail) is not a mention');
+  assert.equal(mentionQueryAt('@김\n다음', 6), null, 'no newline inside the query');
+  assert.equal(mentionQueryAt('@ 김', 3), null, 'a space right after @ closes it');
+  assert.equal(mentionQueryAt('안녕', 2), null);
+  // 한글 조합 중(ㄱ → 기 → 김)에도 맞는다
+  for (const typed of ['ㄱ', '기', '김', '김철', '김처']) assert.equal(hangulPrefixMatch('김철수', typed), true, typed);
+  for (const typed of ['ㄴ', '가', '김ㅊ철', '박']) assert.equal(hangulPrefixMatch('김철수', typed), false, typed);
+  const people = [{ accountId: 'm1', name: '이두리' }, { accountId: 'm2', name: '김하나' }, { accountId: 'o1', name: '김철수' }, { accountId: 'o2', name: '박김치' }];
+  // 넘겨준 순서(멤버 먼저)를 지키고, 앞부분 일치 → 중간 일치 순. @채널은 맨 뒤
+  assert.deepEqual(mentionSuggestions(people, '').map((p) => p.accountId), ['m1', 'm2', 'o1', 'o2', CHANNEL_MENTION.accountId]);
+  assert.deepEqual(mentionSuggestions(people, 'ㄱ').map((p) => p.accountId), ['m2', 'o1']);
+  assert.deepEqual(mentionSuggestions(people, '김').map((p) => p.accountId), ['m2', 'o1', 'o2']);
+  assert.deepEqual(mentionSuggestions(people, '채').map((p) => p.accountId), [CHANNEL_MENTION.accountId]);
+  assert.deepEqual(mentionSuggestions(people, '', { includeChannel: false }).length, 4, '1:1 DM has no @채널');
+  assert.deepEqual(mentionSuggestions(people, '김하나 안녕'), [], 'typing past a full name closes the list');
+  // 넣기: '@질의'를 '@이름 '으로 바꾸고 커서는 뒤로
+  assert.deepEqual(applyMention('확인 @김하 부탁', 3, 6, '김하나'), { text: '확인 @김하나 부탁', caret: 8 });
+  assert.deepEqual(applyMention('@', 0, 1, '채널'), { text: '@채널 ', caret: 4 });
+  // 넣은 이름은 서버 멘션 규칙(extractMentions)으로 그대로 잡힌다
+  const { extractMentions } = await import('../app/chat-mentions.ts');
+  assert.deepEqual(extractMentions(applyMention('@김', 0, 2, '김하나').text + '확인', people), { accountIds: ['m2'], channel: false });
+  const { readFileSync } = await import('node:fs');
+  const workspace = readFileSync(new URL('../app/chat-workspace.tsx', import.meta.url), 'utf8');
+  assert.match(workspace, /if \(menuOpen && !event\.nativeEvent\.isComposing\) \{/, 'menu keys wait for IME composition to finish');
+  assert.match(workspace, /onMouseDown=\{\(event\) => event\.preventDefault\(\)\}/, 'clicking a name keeps focus in the composer');
+  assert.match(workspace, /if \(joined\?\.kind === "private"\) return inChannel;/, 'private channels suggest members only');
+});

@@ -5,7 +5,7 @@
 // 실시간 갱신은 셸의 useChatPoll 이벤트를 구독한다. 권한 판정은 서버가 다시 한다(여기서 숨기는 것은 편의일 뿐이다).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
-import { highlightMentions } from "./chat-mentions";
+import { applyMention, highlightMentions, mentionQueryAt, mentionSuggestions } from "./chat-mentions";
 import { useErpDialog } from "./erp-dialog";
 import { randomId } from "./client-runtime";
 import {
@@ -132,11 +132,43 @@ function MessageItem({ message, people, mine, canWrite, archived, onReply, onEdi
 type Pending = { key: string; name: string; size: number; attachment?: ChatAttachmentDto; error?: string };
 
 
-function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent, onError }: {
+function Composer({ channelId, threadRootId, disabledReason, placeholder, mentionPeople, mentionChannel, onSent, onError }: {
   channelId: string; threadRootId?: number; disabledReason: string | null; placeholder: string;
+  /** @ 자동완성 후보(서버가 멘션으로 인정하는 사람, 채널 멤버 먼저). */
+  mentionPeople: ChatPerson[]; mentionChannel: boolean;
   onSent: (message: ChatMessageDto) => void; onError: (message: string) => void;
 }) {
   const [body, setBody] = useState("");
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  // @ 자동완성: 커서 앞 '@질의'와 고른 줄. Esc 로 닫은 '@'는 커서가 떠날 때까지 다시 열지 않는다.
+  const [mention, setMention] = useState<{ start: number; caret: number; query: string } | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+  const suggestions = mention ? mentionSuggestions(mentionPeople, mention.query, { includeChannel: mentionChannel }) : [];
+  const menuOpen = suggestions.length > 0;
+  const selectedIndex = Math.min(mentionIndex, Math.max(suggestions.length - 1, 0));
+
+  function trackMention(element: HTMLTextAreaElement) {
+    const caret = element.selectionStart ?? element.value.length;
+    const found = element.selectionStart === element.selectionEnd ? mentionQueryAt(element.value, caret) : null;
+    if (!found) { setMention(null); setDismissedAt(null); return; }
+    if (found.start === dismissedAt) { setMention(null); return; }
+    if (!mention || mention.start !== found.start || mention.query !== found.query) setMentionIndex(0);
+    setMention({ ...found, caret });
+  }
+
+  function chooseMention(person: ChatPerson) {
+    if (!mention) return;
+    const next = applyMention(body, mention.start, mention.caret, person.name);
+    setBody(next.text);
+    setMention(null);
+    window.requestAnimationFrame(() => {
+      const element = textRef.current;
+      if (!element) return;
+      element.focus();
+      element.setSelectionRange(next.caret, next.caret);
+    });
+  }
   const [pending, setPending] = useState<Pending[]>([]);
   const [sending, setSending] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -194,6 +226,26 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    // 명단이 열려 있으면 ↑↓·Enter·Tab·Esc 는 명단 조작이다. 한글 조합 중 키는 글자 확정이므로 건드리지 않는다.
+    if (menuOpen && !event.nativeEvent.isComposing) {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        setMentionIndex((selectedIndex + step + suggestions.length) % suggestions.length);
+        return;
+      }
+      if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
+        event.preventDefault();
+        chooseMention(suggestions[selectedIndex]);
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setDismissedAt(mention?.start ?? null);
+        setMention(null);
+        return;
+      }
+    }
     // 한글 조합 중 Enter 는 글자 확정이다. 전송하지 않는다.
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
@@ -215,8 +267,25 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, onSent
           ))}
         </ul>
       )}
-      <textarea value={body} maxLength={CHAT_MESSAGE_MAX_LENGTH} rows={2} placeholder={placeholder} aria-label="메시지"
-        onChange={(event) => setBody(event.target.value)} onKeyDown={onKeyDown} onPaste={onPaste} />
+      {menuOpen && (
+        <ul className="chat-mention-menu" role="listbox" aria-label="멘션할 사람">
+          {suggestions.map((person, index) => (
+            <li key={person.accountId} role="option" aria-selected={index === selectedIndex}>
+              <button type="button" className={index === selectedIndex ? "active" : ""}
+                onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setMentionIndex(index)} onClick={() => chooseMention(person)}>
+                <span className="chat-mention-avatar" aria-hidden="true">{person.accountId === "@channel" ? "@" : person.name.slice(0, 1)}</span>
+                <strong>{person.accountId === "@channel" ? "@채널" : person.name}</strong>
+                {person.accountId === "@channel" && <small>이 대화의 모두에게 알림</small>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <textarea ref={textRef} value={body} maxLength={CHAT_MESSAGE_MAX_LENGTH} rows={2} placeholder={placeholder} aria-label="메시지"
+        aria-autocomplete="list"
+        onChange={(event) => { setBody(event.target.value); trackMention(event.target); }}
+        onSelect={(event) => trackMention(event.currentTarget)} onBlur={() => setMention(null)}
+        onKeyDown={onKeyDown} onPaste={onPaste} />
       <div className="chat-composer-actions">
         <input ref={fileInput} type="file" multiple hidden onChange={(event) => { const files = [...(event.target.files ?? [])]; event.target.value = ""; void addFiles(files); }} />
         <button type="button" onClick={() => fileInput.current?.click()} disabled={pending.length >= CHAT_ATTACHMENTS_PER_MESSAGE}>첨부</button>
@@ -287,6 +356,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   useEffect(() => { activeRef.current = activeId; historyRef.current = history; threadRef.current = thread; });
 
   const people = useMemo(() => data?.people ?? [], [data]);
+  const [channelMembers, setChannelMembers] = useState<{ channelId: string; ids: string[] } | null>(null);
   const nameOf = useCallback((id: string) => people.find((person) => person.accountId === id)?.name ?? "알 수 없는 사용자", [people]);
   const canWrite = data?.me.canWrite ?? false;
   const isAdmin = data?.me.isAdmin ?? false;
@@ -365,6 +435,30 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   }, [activeId, activeMember, loadHistory, poll]);
 
   useEffect(() => () => poll.setWatch(null), [poll]);
+
+  // @ 자동완성용 채널 멤버. 멤버 수가 바뀌면(참여·추가·내보내기) 다시 읽는다. DM 은 목록의 dmMemberIds 를 쓴다.
+  const memberCount = joined?.memberCount ?? preview?.memberCount ?? 0;
+  const isDirect = joined?.kind === "dm" || joined?.kind === "group_dm";
+  useEffect(() => {
+    if (!activeId || isDirect) return;
+    let alive = true;
+    void (async () => {
+      const result = await chatRequest<{ members: string[] }>(`/api/chat/channels?members=${encodeURIComponent(activeId)}`);
+      if (alive && result.ok && Array.isArray(result.body.members)) setChannelMembers({ channelId: activeId, ids: result.body.members });
+    })();
+    return () => { alive = false; };
+  }, [activeId, isDirect, memberCount]);
+
+  /** 서버가 멘션으로 인정하는 사람(비공개·DM 은 멤버, 공개는 메신저 권한자 전원). 멤버 먼저, 나는 뺀다. */
+  const mentionPeople = useMemo(() => {
+    const others = people.filter((person) => person.accountId !== accountId);
+    if (isDirect) return others.filter((person) => joined?.dmMemberIds?.includes(person.accountId));
+    const members = new Set(channelMembers?.channelId === activeId ? channelMembers.ids : []);
+    const inChannel = others.filter((person) => members.has(person.accountId));
+    if (joined?.kind === "private") return inChannel;
+    return [...inChannel, ...others.filter((person) => !members.has(person.accountId))];
+  }, [people, accountId, isDirect, joined, channelMembers, activeId]);
+  const mentionChannel = joined?.kind !== "dm";
 
   // 새 글이 오면 바닥에 붙어 있을 때만 따라 내려간다.
   useEffect(() => {
@@ -667,12 +761,12 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
                         onEdit={(body) => editMessage(reply, body)} onDelete={() => void deleteMessage(reply)} />
                     ))}
                   </div>
-                  <Composer channelId={activeId} threadRootId={thread.root.id} placeholder="답글 쓰기" onError={flash}
+                  <Composer channelId={activeId} threadRootId={thread.root.id} placeholder="답글 쓰기" onError={flash} mentionPeople={mentionPeople} mentionChannel={mentionChannel}
                     disabledReason={disabledReason ?? (thread.root.deleted ? "삭제된 메시지에는 답글을 달 수 없습니다." : null)} onSent={onSent} />
                 </aside>
               )}
             </div>
-            <Composer channelId={activeId} placeholder={preview ? "보내면 이 채널에 참여합니다" : "메시지 쓰기 (@이름으로 멘션)"} onError={flash}
+            <Composer channelId={activeId} mentionPeople={mentionPeople} mentionChannel={mentionChannel} placeholder={preview ? "보내면 이 채널에 참여합니다" : "메시지 쓰기 (@이름으로 멘션)"} onError={flash}
               disabledReason={disabledReason} onSent={(message) => { onSent(message); if (preview) void loadChannels(); }} />
           </>
         )}
