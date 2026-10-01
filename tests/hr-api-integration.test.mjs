@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resetDatabase, callRoute, callApi, setAccess, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
+import { resetDatabase, callRoute, callApi, setAccess, setClock, beforeBatch, forbidTableAccess, objects } from './helpers/hr-api-harness.mjs';
 import { calculateCompensation } from '../app/compensation-calculation.ts';
 
 const reads = {
@@ -869,4 +869,78 @@ test('organization rename succeeds on a fresh database without payroll or compen
   assert.ok(organizationId);
   expectStatus(await callRoute('organizations', 'PUT', { organizationId, name: 'Fresh Rename Team 2', previousName: 'Fresh Rename Team' }), 200);
   assert.equal(sql.prepare('SELECT name FROM hr_organization_records WHERE organization_id=?').get(organizationId).name, 'Fresh Rename Team 2');
+});
+
+// 2026-10-01: 퇴직 요청의 날짜는 마지막 근무일이다. 퇴직일(4대보험 상실·퇴직금 기준)은 그 다음 날이고, 퇴직 처리도
+// 그날부터다. 확정한 뒤에도 마지막 근무일을 바꿀 수 있고, 평균임금은 퇴직일 전 3개월(마지막 근무일까지)을 일할로 본다.
+test('retirement last working day can change after confirmation and sets the severance window and effective day', async () => {
+  const sql = await resetDatabase();
+  setClock(Date.parse('2026-10-01T09:00:00+09:00'));
+  try {
+    expectStatus(await callRoute('employee-records', 'PUT', { employeeId: employee.id, name: employee.name,
+      department: employee.department, joinDate: '2024-01-02', annualSalary: 37200000, status: '재직' }), 200);
+    // 9월은 작성 중인 임금안, 7·8월은 급여대장, 10월은 아직 자료가 없다.
+    expectStatus(await postWage({ ...draftFor(), action: 'CREATE' }), 201);
+    const insert = sql.prepare(`INSERT INTO hr_payroll_records (id, year_month, employee_id, employee_name, department,
+      annual_salary, base_pay, meal_allowance, childcare_allowance, vehicle_allowance, incentive, bonus, annual_leave_pay,
+      retirement_pay, deductions, gross_pay, net_pay, card_allowance, card_usage, personal_purchase, non_taxable, welfare_fund,
+      notes, source_sheet, source_row, imported_at) VALUES (?, ?, ?, ?, '', 37200000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3100000, 3100000,
+      0, 0, 0, 0, 0, '', 'audit', 1, 1)`);
+    for (const month of ['2026-07', '2026-08']) insert.run(`audit-${month}`, month, employee.id, employee.name);
+
+    const created = expectStatus(await callRoute('operations', 'POST', { resource: 'retirement', employeeId: employee.id,
+      eventDate: '2026-10-29', reason: 'Audit retirement', tasks: [{ id: 'handover', title: 'Audit handover' }] }), 201).item;
+    const change = date => callRoute('operations', 'PUT', { resource: 'retirementDate', id: created.id, date });
+    expectStatus(await change('2026-02-30'), 400);
+    expectStatus(await change('2023-12-31'), 400);
+    const moved = expectStatus(await change('2026-10-30'), 200);
+    assert.equal(moved.item.retirement_date, '2026-10-30');
+    assert.equal(moved.item.status, 'IN_PROGRESS');
+    assert.equal(moved.retirementDay, '2026-10-31');
+    assert.equal(expectStatus(await change('2026-10-30'), 200).unchanged, true);
+    const record = sql.prepare('SELECT status, retirement_json, history_json FROM hr_employee_records WHERE employee_id=?').get(employee.id);
+    assert.equal(record.status, '퇴직 예정');
+    assert.equal(JSON.parse(record.retirement_json).date, '2026-10-30');
+    assert.deepEqual(JSON.parse(record.history_json).filter(entry => entry.type === '퇴직 예정').map(entry => entry.date), ['2026.10.30']);
+    assert.equal(sql.prepare('SELECT due_date FROM hr_lifecycle_tasks WHERE id=?').get(`${created.id}:handover`).due_date, '2026-10-30');
+    assert.ok(auditActions(sql, created.id).includes('RETIREMENT_DATE_CHANGED'));
+
+    // 다른 사람이 먼저 날짜를 바꿨으면 덮어쓰지 않는다.
+    beforeBatch(statements => {
+      if (statements.some(statement => statement.sql.startsWith('UPDATE hr_retirement_requests SET retirement_date'))) {
+        sql.prepare("UPDATE hr_retirement_requests SET retirement_date='2026-10-28' WHERE id=?").run(created.id);
+        beforeBatch(null);
+      }
+    });
+    expectConflict(await change('2026-10-27'));
+    sql.prepare("UPDATE hr_retirement_requests SET retirement_date='2026-10-30' WHERE id=?").run(created.id);
+
+    // 퇴직금: 퇴직일 10/31 전 3개월 = 7/31~10/30(92일). 7월은 1일분, 9월은 임금안, 10월은 인사기록 월급으로 추정한다.
+    const { severanceEstimates } = expectStatus(await callRoute('operations', 'GET', undefined, '?severance=1'), 200);
+    const estimate = severanceEstimates.find(item => item.requestId === created.id);
+    assert.equal(estimate.period, '2026-10');
+    assert.deepEqual(estimate.averagePeriod, { start: '2026-07-31', end: '2026-10-30', days: 92 });
+    assert.deepEqual(estimate.parts.map(part => [part.yearMonth, part.overlapDays, part.workedDays, part.included]),
+      [['2026-10', 30, 30, true], ['2026-09', 30, 30, true], ['2026-08', 31, 31, true], ['2026-07', 1, 31, true]]);
+    assert.deepEqual(estimate.estimatedMonths.map(item => [item.yearMonth, item.source]), [['2026-10', 'HR_RECORD'], ['2026-09', 'COMPENSATION_DRAFT']]);
+    assert.equal(estimate.parts.find(part => part.yearMonth === '2026-07').amount, 100000);
+    assert.equal(estimate.eligible, true);
+
+    // 마지막 근무일(10/30)까지는 재직, 퇴직일(10/31)부터 퇴직이다.
+    setClock(Date.parse('2026-10-30T18:00:00+09:00'));
+    expectStatus(await callRoute('operations', 'GET'), 200);
+    assert.equal(sql.prepare('SELECT status FROM hr_retirement_requests WHERE id=?').get(created.id).status, 'IN_PROGRESS');
+    setClock(Date.parse('2026-10-31T09:00:00+09:00'));
+    expectStatus(await callRoute('operations', 'GET'), 200);
+    assert.equal(sql.prepare('SELECT status FROM hr_retirement_requests WHERE id=?').get(created.id).status, 'EFFECTIVE');
+    assert.equal(sql.prepare('SELECT status FROM hr_employee_records WHERE employee_id=?').get(employee.id).status, '퇴직');
+    // 퇴직 처리된 뒤에는 어제 이전 날짜로만 바꿀 수 있다(되살려 재직자로 돌리지 않는다).
+    expectStatus(await change('2026-10-31'), 409);
+    const earlier = expectStatus(await change('2026-10-29'), 200);
+    assert.equal(earlier.item.status, 'EFFECTIVE');
+    assert.equal(earlier.employeeStatus, '퇴직');
+  } finally {
+    beforeBatch(null);
+    setClock(null);
+  }
 });

@@ -7,10 +7,15 @@
 //   1일 평균임금이 1일 통상임금보다 적으면 통상임금을 쓴다 (법정 최저 보장)
 //   계속근로기간 1년 미만이면 지급 의무가 없다
 //
-// 이 함수의 결과는 확정 지급액이 아니라 "추정액"이다. 법정 산식과 다음 세 가지가 어긋나 있고,
-// 셋 다 이 앱에 자료가 없어서 지금은 좁힐 수 없다. 결과를 급여·임금안에 자동 반영하지 말 것.
-//   1) 산정 기간: 법은 퇴직 사유 발생일 이전 3개월을 보지만, 여기서는 급여 자료가 월 단위라
-//      직전 3개 급여월로 근사한다. 9/15 퇴사라면 법정 구간은 6/15~9/14 이다.
+// 날짜의 뜻(2026-10-01 정리): 퇴직 요청에 저장하는 날짜(retirement_date)는 「마지막 근무일」이다.
+// 퇴직일(퇴직금 지급 사유 발생일, 4대보험 상실일)은 그 다음 날이다. 10/30 까지 근무하면 퇴직일은 10/31.
+//   계속근로기간 = 입사일 ~ 마지막 근무일(양끝 포함)
+//   평균임금 산정기간 = 퇴직일 이전 3개월 = (퇴직일 − 3개월) ~ 마지막 근무일. 10/31 퇴직이면 7/31~10/30(92일).
+//
+// 이 함수의 결과는 확정 지급액이 아니라 "추정액"이다. 법정 산식과 다음 두 가지가 어긋나 있고,
+// 둘 다 이 앱에 자료가 없어서 지금은 좁힐 수 없다. 결과를 급여·임금안에 자동 반영하지 말 것.
+// (산정 기간은 날짜 단위로 맞췄다: 기간에 걸친 달은 그 달 급여를 근무일수로 나눠 걸친 날짜만큼 넣는다.
+//  급여가 그 달 안에서 고르게 쌓인다고 보는 근사라, 월중 지급된 인센티브의 귀속일까지는 가리지 못한다.)
 //   2) 제외기간: 근로기준법 시행령 제2조는 수습·사용자 귀책 휴업·출산전후휴가·육아휴직·업무상
 //      요양·쟁의행위·병역 기간과 그 임금을 분자·분모에서 모두 뺀다. hr_leave_requests 의 종류가
 //      ANNUAL/HALF_AM/HALF_PM/SICK/FAMILY/OTHER 뿐이라 이 기간들을 식별할 수 없다.
@@ -21,7 +26,7 @@ export type SeveranceWage = { yearMonth: string; grossPay: number };
 
 export type SeveranceInput = {
   joinDate: string;        // YYYY-MM-DD
-  retirementDate: string;  // YYYY-MM-DD (마지막 근무일)
+  retirementDate: string;  // YYYY-MM-DD (마지막 근무일. 퇴직일은 그 다음 날이다)
   recentWages: SeveranceWage[];
   monthlyOrdinaryWage: number; // 월 통상임금 (연봉/12 등 고정 지급분)
   /** 급여가 아직 확정되지 않은 급여월 키. 인센티브가 안 정해진 달이 여기 들어온다. */
@@ -49,6 +54,22 @@ export type SeveranceResult = {
   limitations: string[];
   /** 산정에 쓴 급여월 중 아직 확정되지 않은 달. 비어 있지 않으면 금액이 바뀔 수 있다. */
   provisionalMonths: string[];
+  /** 평균임금 산정기간(퇴직일 이전 3개월). 날짜가 잘못됐으면 null. */
+  averagePeriod: { start: string; end: string; days: number } | null;
+  /** 산정기간에 걸친 달마다 넣은 몫. 급여 자료가 없는 달은 included=false 로 남긴다. */
+  parts: AverageWagePart[];
+};
+
+export type AverageWagePart = {
+  yearMonth: string;
+  /** 산정기간 안에 든 날짜 수. */
+  overlapDays: number;
+  /** 그 달에 실제로 재직한 날짜 수(마지막 달은 마지막 근무일까지). 그 달 급여가 이 날수의 대가다. */
+  workedDays: number;
+  grossPay: number;
+  /** 평균임금 분자에 넣은 금액 = 그 달 급여 × overlapDays ÷ workedDays. */
+  amount: number;
+  included: boolean;
 };
 
 const DAY = 86_400_000;
@@ -139,26 +160,61 @@ export function isMonthEnd(date: string) {
   return parsed.getUTCDate() === lastDay;
 }
 
+const isoOf = (date: Date) => date.toISOString().slice(0, 10);
+const daysBetween = (from: Date, to: Date) => Math.round((to.getTime() - from.getTime()) / DAY) + 1;
+
+/** 퇴직일 = 마지막 근무일의 다음 날(퇴직금 지급 사유 발생일, 4대보험 상실일). 날짜가 잘못됐으면 "". */
+export function retirementDayAfter(lastWorkDate: string) {
+  const date = parseDate(lastWorkDate);
+  return date ? isoOf(new Date(date.getTime() + DAY)) : "";
+}
+
 /**
- * 평균임금 산정에 쓸 급여월. 법정 기준은 "퇴직일 이전 3개월"이라 8/31 퇴사면 6/1~8/30 이고
- * 퇴직월(8월)이 들어간다. 급여 자료가 월 단위라 월로 근사하되, 퇴직월을 넣을지는 퇴사일로 가른다.
+ * 평균임금 산정기간 = 퇴직일 이전 3개월(근로기준법 제2조 제1항 제6호). 퇴직일은 마지막 근무일 다음 날이다.
+ *   마지막 근무일 10/30 → 퇴직일 10/31 → 7/31~10/30 (92일): 7월 1일 · 8월 · 9월 · 10월 30일
+ *   마지막 근무일 8/31  → 퇴직일 9/1   → 6/1~8/31  (92일): 6월 · 7월 · 8월
+ * 시작일은 퇴직일과 같은 날짜의 3개월 전이다. 그 달에 같은 날이 없으면 그 달 말일로 둔다(5/31 퇴직 → 2/28).
  *
- *   말일 퇴사(8/31) → 그 달을 만근했으므로 퇴직월 포함: 2026-08, 2026-07, 2026-06
- *   중도 퇴사(7/10) → 일할이라 한 달치가 아니므로 제외: 2026-06, 2026-05, 2026-04
- *
- * 예전에는 퇴사일과 무관하게 늘 퇴직월을 뺐다. 그래서 말일 퇴사자는 마지막 달 인센티브가
- * 확정되어도 퇴직금에 반영될 자리가 아예 없었다.
+ * 기간에 걸친 달마다 overlapDays(기간 안 날짜 수)와 workedDays(그 달에 재직한 날짜 수)를 준다.
+ * 그 달 급여는 workedDays 의 대가이므로 평균임금에는 급여 × overlapDays ÷ workedDays 만큼 넣는다.
  */
-export function averageWageMonths(retirementDate: string, count = 3) {
-  const date = parseDate(retirementDate);
-  if (!date) return [];
-  const offset = isMonthEnd(retirementDate) ? 0 : 1;
-  const months: string[] = [];
-  for (let index = offset; index < offset + count; index += 1) {
-    const target = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - index, 1));
-    months.push(`${target.getUTCFullYear()}-${String(target.getUTCMonth() + 1).padStart(2, "0")}`);
+export function averageWagePeriod(lastWorkDate: string, joinDate = "") {
+  const end = parseDate(lastWorkDate);
+  if (!end) return null;
+  const retirement = new Date(end.getTime() + DAY);
+  const startYear = retirement.getUTCFullYear();
+  const startMonth = retirement.getUTCMonth() - 3;
+  const lastDayOfStartMonth = new Date(Date.UTC(startYear, startMonth + 1, 0)).getUTCDate();
+  let start = new Date(Date.UTC(startYear, startMonth, Math.min(retirement.getUTCDate(), lastDayOfStartMonth)));
+  const join = parseDate(joinDate);
+  if (join && join > start) start = join;
+  if (start > end) return null;
+  const months: Array<{ yearMonth: string; overlapDays: number; workedDays: number }> = [];
+  for (let cursor = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), 1)); cursor >= new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), 1));
+    cursor = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() - 1, 1))) {
+    const monthStart = cursor;
+    const monthEnd = new Date(Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 0));
+    const lastDay = end < monthEnd ? end : monthEnd;
+    const overlapFrom = start > monthStart ? start : monthStart;
+    const workedFrom = join && join > monthStart ? join : monthStart;
+    months.push({
+      yearMonth: isoOf(monthStart).slice(0, 7),
+      overlapDays: daysBetween(overlapFrom, lastDay),
+      workedDays: daysBetween(workedFrom, lastDay),
+    });
   }
-  return months;
+  return { start: isoOf(start), end: isoOf(end), days: daysBetween(start, end), months };
+}
+
+/**
+ * 평균임금 산정기간에 걸친 급여월(최근 순). 마지막 근무일 10/30 이면 2026-10, 09, 08, 07 네 달이다 —
+ * 7월은 7/31 하루만 들어간다. 말일까지 근무하면(8/31) 세 달(08, 07, 06)이다.
+ *
+ * 예전에는 말일이 아니면 퇴직월을 통째로 빼고 앞의 세 달을 봤다. 그래서 10/30 까지 근무한 사람의
+ * 평균임금이 7·8·9월로 잡혔다(2026-10-01 바로잡음).
+ */
+export function averageWageMonths(retirementDate: string, joinDate = "") {
+  return averageWagePeriod(retirementDate, joinDate)?.months.map((month) => month.yearMonth) ?? [];
 }
 
 export function calculateSeverance(input: SeveranceInput): SeveranceResult {
@@ -170,6 +226,7 @@ export function calculateSeverance(input: SeveranceInput): SeveranceResult {
     eligible: false, reason: "", tenureDays: 0, averageWageTotal: 0, averageWageDays: 0,
     averageDailyWage: 0, ordinaryDailyWage, appliedDailyWage: 0, basis: "NONE", months: [], severance: 0,
     averageSeverance: 0, ordinarySeverance: 0, limitations: [], provisionalMonths: [], workingTimeRule,
+    averagePeriod: null, parts: [],
   };
   if (!join || !leave) return { ...empty, reason: "입사일과 퇴사일을 모두 확인해 주세요." };
   if (leave < join) return { ...empty, reason: "퇴사일이 입사일보다 빠릅니다." };
@@ -180,12 +237,21 @@ export function calculateSeverance(input: SeveranceInput): SeveranceResult {
     return { ...empty, tenureDays, reason: "계속근로기간이 1년 미만이라 법정 퇴직금 지급 대상이 아닙니다." };
   }
 
-  const months = averageWageMonths(input.retirementDate);
-  const wages = months.map((month) => input.recentWages.find((wage) => wage.yearMonth === month));
-  const found = wages.filter((wage): wage is SeveranceWage => Boolean(wage));
-  const averageWageTotal = found.reduce((sum, wage) => sum + Math.max(0, wage.grossPay), 0);
+  // 산정기간에 걸친 달마다 그 달 급여를 근무일수로 나눠 기간 안 날짜만큼 넣는다.
+  // 10/30 까지 근무하면 7/31~10/30: 7월은 1/31, 8·9월은 전부, 10월(10/1~10/30 근무분)은 전부.
+  const period = averageWagePeriod(input.retirementDate, input.joinDate);
+  const parts: AverageWagePart[] = (period?.months ?? []).map((month) => {
+    const wage = input.recentWages.find((item) => item.yearMonth === month.yearMonth);
+    const grossPay = wage ? Math.max(0, wage.grossPay) : 0;
+    return {
+      ...month, grossPay, included: Boolean(wage),
+      amount: wage && month.workedDays > 0 ? grossPay * month.overlapDays / month.workedDays : 0,
+    };
+  });
+  const found = parts.filter((part) => part.included);
+  const averageWageTotal = found.reduce((sum, part) => sum + part.amount, 0);
   // 자료가 있는 달만 분모에 넣는다. 없는 달까지 일수로 세면 평균임금이 실제보다 낮아진다.
-  const averageWageDays = found.reduce((sum, wage) => sum + daysInYearMonth(wage.yearMonth), 0);
+  const averageWageDays = found.reduce((sum, part) => sum + part.overlapDays, 0);
   const averageDailyWage = averageWageDays > 0 ? averageWageTotal / averageWageDays : 0;
 
   const appliedDailyWage = Math.max(averageDailyWage, ordinaryDailyWage);
@@ -197,12 +263,13 @@ export function calculateSeverance(input: SeveranceInput): SeveranceResult {
   const ordinarySeverance = severanceFrom(ordinaryDailyWage);
   const severance = severanceFrom(appliedDailyWage);
 
-  const missing = months.length - found.length;
+  const missingMonths = parts.filter((part) => !part.included).map((part) => part.yearMonth);
+  const missing = missingMonths.length;
   // 산정에 실제로 쓴 달 중 아직 확정되지 않은 것만 남긴다. 쓰지도 않은 달을 경고할 필요는 없다.
-  const usedMonths = new Set(found.map((wage) => wage.yearMonth));
+  const usedMonths = new Set(found.map((part) => part.yearMonth));
   const provisionalMonths = (input.unconfirmedMonths ?? []).filter((month) => usedMonths.has(month));
   const limitations = [
-    "법정 기준은 퇴직일 이전 3개월이지만 급여 자료가 월 단위라 3개 급여월로 근사했습니다.",
+    "급여 자료가 월 단위라 산정기간에 걸친 달은 그 달 급여를 근무일수로 나눠 걸친 날짜만큼 넣었습니다.",
     "수습·휴업·출산전후휴가·육아휴직·업무상 요양 등 제외기간을 반영하지 못했습니다.",
     "상여금·연차수당의 3/12 산입 규칙을 반영하지 못했습니다.",
     ...(provisionalMonths.length
@@ -211,10 +278,11 @@ export function calculateSeverance(input: SeveranceInput): SeveranceResult {
   ];
   return {
     eligible: severance > 0, tenureDays, averageWageTotal, averageWageDays, averageDailyWage,
-    ordinaryDailyWage, appliedDailyWage, basis, months: found.map((wage) => wage.yearMonth), severance, limitations,
+    ordinaryDailyWage, appliedDailyWage, basis, months: found.map((part) => part.yearMonth), severance, limitations,
     averageSeverance, ordinarySeverance, provisionalMonths, workingTimeRule,
+    averagePeriod: period ? { start: period.start, end: period.end, days: period.days } : null, parts,
     reason: appliedDailyWage <= 0 ? "직전 3개월 급여 자료와 통상임금이 모두 없어 평균임금을 산정할 수 없습니다."
-      : missing > 0 ? `직전 3개월 중 ${missing}개월치 급여 자료가 없어 남은 ${found.length}개월로 산정했습니다. 금액을 확인해 주세요.`
+      : missing > 0 ? `산정기간 중 ${missingMonths.join(", ")} 급여 자료가 없어 나머지 ${averageWageDays}일로 산정했습니다. 금액을 확인해 주세요.`
       : "",
   };
 }

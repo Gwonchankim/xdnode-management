@@ -73,7 +73,8 @@ function monthEnds(from: string, to: string) {
   return points;
 }
 
-const activeOn = (employee: EmployeeSnapshot, date: string) => Boolean(employee.joinDate && employee.joinDate <= date && (!employee.retirementDate || employee.retirementDate > date));
+// retirementDate 는 마지막 근무일이다. 그날까지는 재직으로 센다.
+const activeOn = (employee: EmployeeSnapshot, date: string) => Boolean(employee.joinDate && employee.joinDate <= date && (!employee.retirementDate || employee.retirementDate >= date));
 const countBy = <T>(items: T[], key: (item: T) => string) => [...items.reduce<Map<string, number>>((map, item) => { const value = key(item) || "미지정"; map.set(value, (map.get(value) ?? 0) + 1); return map; }, new Map()).entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value || a.label.localeCompare(b.label));
 
 async function buildSnapshot(from: string, to: string, canSensitive: boolean) {

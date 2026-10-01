@@ -340,7 +340,7 @@ export function buildDashboardModel(input: DashboardInput) {
       delta: previousHeadcount === null ? undefined : `${employeeCount - previousHeadcount >= 0 ? "+" : ""}${employeeCount - previousHeadcount} 전월 대비`,
       note: `이번 달 입사 ${hiresThisMonth}명 · 퇴사 ${exitsThisMonth}명${incompleteProfiles.length ? ` · 정보 확인 필요 ${incompleteProfiles.length}명` : ""}` },
     { key: "employees", icon: "퇴", tone: "red", label: "퇴사 예정", value: leavingSoon.length,
-      note: leavingSoon.length ? `가장 이른 퇴사일 ${dashDate(leavingSoon[0].retirement!.date)} (${dDay(leavingSoon[0].retirement!.date)})` : "예정된 퇴사가 없습니다" },
+      note: leavingSoon.length ? `가장 이른 마지막 근무일 ${dashDate(leavingSoon[0].retirement!.date)} (${dDay(leavingSoon[0].retirement!.date)})` : "예정된 퇴사가 없습니다" },
     { key: "recruitment", icon: "면", tone: "blue", label: "면접 예정", value: interviewsSoon.length,
       note: interviewsSoon.length ? `다음 면접 ${dashDate(interviewsSoon[0].interview!.date)} ${interviewsSoon[0].interview!.time || ""} (${dDay(interviewsSoon[0].interview!.date)})` : "잡힌 면접이 없습니다" },
     { key: "onboarding", icon: "입", tone: "green", label: "입사 예정", value: joiningSoon.length,

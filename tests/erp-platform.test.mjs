@@ -650,7 +650,10 @@ test("employee lifecycle opens each retirement in its own modal beside the onboa
   // 체크와 정산 입력이 모두 모달 안에서 이루어져야 한다.
   assert.match(workspace, /className="retirement-modal-checklist"/);
   // general-affairs GD-11: 정산 패널은 직원 id 도 받아 미반납 지급 자산을 보여 준다.
-  assert.match(workspace, /<RetirementSettlementPanel requestId=\{request\.id\} employeeId=\{request\.employee_id\} \/>/);
+  assert.match(workspace, /<RetirementSettlementPanel requestId=\{request\.id\} employeeId=\{request\.employee_id\} retirementDate=\{request\.retirement_date\} \/>/);
+  // 퇴직 절차 팝업에서도 확정된 마지막 근무일을 바꿀 수 있다(2026-10-01).
+  assert.match(workspace, /onChangeDate=\{\(date\) => changeRetirementDate\(openRetirement, date\)\}/);
+  assert.match(workspace, /<span>퇴직일<\/span><strong>\{retirementDayAfter\(request\.retirement_date\)\}/);
   assert.doesNotMatch(workspace, /expandedCards|toggleCard\(/);
   assert.match(styles, /\.retirement-process-modal \{[^}]*max-height: 92vh/);
   assert.match(styles, /\.lifecycle-board \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
@@ -763,7 +766,11 @@ test("direct retirement approval activates a durable checklist and applies the d
   assert.match(api, /resource === "retirementDecision"/);
   assert.match(workspace, /onLegacyDecision\("APPROVED"\)/);
   assert.match(api, /resource === "retirementChecklist"/);
-  assert.match(activator, /WHERE retirement_date <= \? AND \(status IN \('IN_PROGRESS', 'READY'\) OR \(status = 'EFFECTIVE'/);
+  assert.match(api, /resource === "retirementDate"/);
+  assert.match(api, /action: "RETIREMENT_DATE_CHANGED"/);
+  assert.doesNotMatch(activator, /retirement_date <= \?/);
+  // retirement_date 는 마지막 근무일이라 퇴직 처리는 그 다음 날부터다(<=  였다면 마지막 근무일 아침에 퇴직자가 된다).
+  assert.match(activator, /WHERE retirement_date < \? AND \(status IN \('IN_PROGRESS', 'READY'\) OR \(status = 'EFFECTIVE'/);
   assert.match(activator, /"COMPLETED" : "EFFECTIVE"/);
   assert.match(activator, /RETIREMENT_EFFECTIVE/);
   assert.match(records, /applyDueRetirements\(db\)/);

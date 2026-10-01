@@ -14,7 +14,7 @@ import {
   changedRows, decidePersonnelActionStatements, decideRetirementStatements, hrConflictResponse,
   insertApprovedLeaveRequest, insertApprovedPersonnelAction, startRetirementStatements, type LegacyDecision,
 } from "../../../hr-transitions";
-import { averageWageMonths, calculateLeaveAllowance, calculateSeverance, normalizeDate } from "../../../hr-severance-calculation";
+import { averageWageMonths, calculateLeaveAllowance, calculateSeverance, normalizeDate, retirementDayAfter } from "../../../hr-severance-calculation";
 import { computeLeaveLedger, type GrantAdjustment, type LeaveKind } from "../../../hr-leave-accrual";
 import { monthlyOrdinaryWageOn } from "../../../hr-ordinary-wage";
 
@@ -192,12 +192,79 @@ async function severanceEstimateFor(context: SeveranceContext) {
     const isExactId = row.employeeId === context.employeeId;
     if (!kept || isExactId) byMonth.set(row.yearMonth, { yearMonth: row.yearMonth, grossPay: row.grossPay });
   }
+  // 급여대장에 아직 없는 달(퇴사월·마감 전 달)은 임금안이나 인사기록 월급으로 추정해 채운다.
+  // 10/30 까지 근무하는 사람의 10월은 아직 급여가 없어, 예전에는 산정에서 통째로 빠졌다.
+  const estimatedMonths: Array<{ yearMonth: string; grossPay: number; source: EstimatedWageSource }> = [];
+  for (const month of months) {
+    if (byMonth.has(month)) continue;
+    const estimated = await estimatedMonthWage(context, month);
+    if (!estimated) continue;
+    byMonth.set(month, { yearMonth: month, grossPay: estimated.grossPay });
+    estimatedMonths.push({ yearMonth: month, ...estimated });
+  }
   const recentWages = [...byMonth.values()];
   const unconfirmedMonths = await unconfirmedMonthsAmong(months);
-  return calculateSeverance({
-    joinDate: context.joinDate, retirementDate: context.retirementDate,
-    recentWages, monthlyOrdinaryWage: context.monthlyOrdinaryWage, unconfirmedMonths,
-  });
+  return {
+    ...calculateSeverance({
+      joinDate: context.joinDate, retirementDate: context.retirementDate,
+      recentWages, monthlyOrdinaryWage: context.monthlyOrdinaryWage, unconfirmedMonths,
+    }),
+    estimatedMonths,
+  };
+}
+
+type EstimatedWageSource = "COMPENSATION_DRAFT" | "HR_RECORD";
+
+/**
+ * 급여대장(hr_payroll_records)에 아직 없는 달의 급여를 추정한다. 지급총액은 급여대장과 같은 기준이다
+ * (공제 전, 퇴직금과 퇴사월 연차수당 제외 — severanceEstimateFor 의 SQL 과 같다).
+ *   1) 그 달 임금안에 이 직원 행이 있으면 그 행을 임금 엔진으로 계산한다(작성 중인 9월 등).
+ *   2) 없고 그 달이 아직 끝나지 않았으면 인사기록 월급으로 계산한다(퇴사월 10월 등). 마지막 근무일까지 일할된다.
+ *   이미 지난 달인데 급여대장도 임금안도 없으면 추정하지 않는다 — 빠진 자료를 추정으로 덮으면 안 된다.
+ * 계속근로 1년 이상(퇴직금 대상)이면 첫 계약(수습) 기간은 지났으므로 2) 는 수습 지급률을 보지 않는다.
+ */
+async function estimatedMonthWage(context: SeveranceContext, yearMonth: string, now = Date.now()) {
+  const [year, month] = yearMonth.split("-").map(Number);
+  if (!year || !month) return null;
+  const retirementMonth = normalizeDate(context.retirementDate).slice(0, 7);
+  const grossOf = (row: ReturnType<typeof calculateCompensation>) =>
+    row.total + row.deduction - row.severance - (yearMonth === retirementMonth ? row.annualLeave : 0);
+  const run = await db.prepare("SELECT settings_json FROM hr_compensation_runs WHERE period = ?")
+    .bind(yearMonth).first<{ settings_json: string }>();
+  if (run) {
+    const lines = await db.prepare("SELECT employee_id, snapshot_json FROM hr_compensation_lines WHERE period = ?")
+      .bind(yearMonth).all<{ employee_id: string; snapshot_json: string }>();
+    const parsed = lines.results.flatMap((line) => {
+      try { return [{ id: line.employee_id, snapshot: JSON.parse(line.snapshot_json) as CompensationEmployee }]; }
+      catch { return []; }
+    });
+    const target = parsed.find((line) => line.id === context.employeeId)
+      ?? parsed.find((line) => String(line.snapshot.name ?? "") === context.employeeName);
+    if (target) {
+      let rawSettings: unknown;
+      try { rawSettings = JSON.parse(run.settings_json || "{}"); } catch { rawSettings = {}; }
+      const settings = normalizeCompensationSettings(rawSettings);
+      const row = calculateCompensation(target.snapshot, year, month, settings.rounding as "round" | "up" | "down",
+        settings.columns as Parameters<typeof calculateCompensation>[4]);
+      if (row.days > 0 && Number.isFinite(row.total)) return { grossPay: grossOf(row), source: "COMPENSATION_DRAFT" as const };
+    }
+  }
+  const koreaDate = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const lastDayOfMonth = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+  if (lastDayOfMonth < koreaDate) return null;
+  const employee = await db.prepare(`SELECT name, join_date, annual_salary, base_pay, meal_allowance,
+    childcare_allowance, vehicle_allowance FROM hr_employee_records WHERE employee_id = ?`)
+    .bind(context.employeeId).first<{ name: string; join_date: string; annual_salary: number; base_pay: number;
+      meal_allowance: number; childcare_allowance: number; vehicle_allowance: number }>();
+  if (!employee) return null;
+  const row = calculateCompensation({
+    id: context.employeeId, name: employee.name, department: "", title: "", birthDate: "",
+    joinDate: normalizeDate(employee.join_date), leaveDate: normalizeDate(context.retirementDate), probationMonths: 0,
+    annualSalary: employee.annual_salary, basePay: employee.base_pay, manualBasic: employee.annual_salary <= 0,
+    meal: employee.meal_allowance, car: employee.vehicle_allowance, child: employee.childcare_allowance, monthly: {},
+  }, year, month, "round", { research: false, extra: false, welfare: false, severance: false, deduction: false, annualLeave: false, personalExpense: false });
+  if (!row.days || !Number.isFinite(row.total)) return null;
+  return { grossPay: row.total, source: "HR_RECORD" as const };
 }
 
 export async function GET(request: Request) {
@@ -652,6 +719,73 @@ export async function PUT(request: Request) {
     return Response.json({ item: after });
   }
 
+  // 퇴직을 승인한 뒤에도 마지막 근무일을 고칠 수 있다(2026-10-01). 저장 날짜는 마지막 근무일이고 퇴직일은 그 다음 날이다.
+  //   아직 퇴직 전(IN_PROGRESS·READY): 어느 날로든 옮긴다. 이미 지난 날이면 applyDueRetirements 가 곧바로 퇴직 처리한다.
+  //   이미 퇴직 처리(EFFECTIVE): 어제 이전으로만 옮긴다. 퇴직자를 재직으로 되돌리는 일(조직장 해제·퇴직 이력)은 이 길이 하지 않는다.
+  //   정산 완료(COMPLETED)는 바꾸지 않는다. 지급 금액이 이 날짜로 정해졌기 때문이다.
+  // 정산이 READY(필수 확인 완료)였으면 작성 중으로 되돌려, 새 날짜로 금액을 다시 확인하게 한다.
+  if (resource === "retirementDate") {
+    const before = await db.prepare("SELECT * FROM hr_retirement_requests WHERE id = ?").bind(id).first<Record<string, unknown>>();
+    if (!before) return Response.json({ error: "퇴직 요청을 찾을 수 없습니다." }, { status: 404 });
+    const status = String(before.status ?? "");
+    if (!["IN_PROGRESS", "READY", "EFFECTIVE"].includes(status)) return Response.json({ error: "진행 중이거나 퇴직 처리된 건만 마지막 근무일을 바꿀 수 있습니다." }, { status: 409 });
+    const date = String(body.date ?? "").trim();
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(date) ? new Date(`${date}T00:00:00Z`) : null;
+    if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+      return Response.json({ error: "마지막 근무일을 YYYY-MM-DD 형식으로 입력해 주세요." }, { status: 400 });
+    }
+    const previousDate = String(before.retirement_date ?? "");
+    if (date === previousDate) return Response.json({ item: before, unchanged: true });
+    const employeeId = String(before.employee_id ?? "");
+    const employee = await db.prepare("SELECT join_date, history_json FROM hr_employee_records WHERE employee_id = ?")
+      .bind(employeeId).first<{ join_date: string; history_json: string }>();
+    if (employee && normalizeDate(employee.join_date) > date) return Response.json({ error: "마지막 근무일이 입사일보다 빠릅니다." }, { status: 400 });
+    const settlement = await db.prepare("SELECT status FROM hr_retirement_settlements WHERE request_id = ?").bind(id).first<{ status: string }>();
+    if (settlement?.status === "COMPLETED") return Response.json({ error: "퇴직 정산이 완료된 건은 마지막 근무일을 바꿀 수 없습니다." }, { status: 409 });
+    const koreaDate = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (status === "EFFECTIVE" && !(date < koreaDate)) {
+      return Response.json({ error: "이미 퇴직 처리된 인원은 마지막 근무일을 어제 이전 날짜로만 바꿀 수 있습니다." }, { status: 409 });
+    }
+    const nextStatus = status === "READY" ? "IN_PROGRESS" : status;
+    const settlementReopened = settlement?.status === "READY";
+    // 인사이력의 「퇴직 예정」·「퇴직」 항목 날짜(점 구분)도 함께 옮긴다.
+    const dotted = (value: string) => value.replaceAll("-", ".");
+    let history: Array<Record<string, unknown>> = [];
+    try { const value = JSON.parse(employee?.history_json || "[]") as unknown; history = Array.isArray(value) ? value as Array<Record<string, unknown>> : []; }
+    catch { history = []; }
+    const nextHistory = history.map((item) => ["퇴직 예정", "퇴직"].includes(String(item.type ?? "")) && String(item.date ?? "") === dotted(previousDate)
+      ? { ...item, date: dotted(date) } : item);
+    const guard = "EXISTS (SELECT 1 FROM hr_retirement_requests WHERE id = ? AND retirement_date = ? AND updated_at = ?)";
+    const changed = await db.batch([
+      db.prepare("UPDATE hr_retirement_requests SET retirement_date = ?, status = ?, updated_at = ? WHERE id = ? AND status = ? AND retirement_date = ?")
+        .bind(date, nextStatus, now, id, status, previousDate),
+      db.prepare(`UPDATE hr_employee_records SET retirement_json = json_set(CASE WHEN json_valid(retirement_json) THEN retirement_json ELSE '{}' END,
+          '$.date', ?, '$.status', ?), history_json = ?, updated_at = ? WHERE employee_id = ? AND ${guard}`)
+        .bind(date, nextStatus, JSON.stringify(nextHistory), now, employeeId, id, date, now),
+      db.prepare(`UPDATE hr_lifecycle_tasks SET due_date = ?, updated_at = ? WHERE id LIKE ? AND lifecycle_type = 'RETIREMENT' AND due_date = ? AND ${guard}`)
+        .bind(date, now, `${id}:%`, previousDate, id, date, now),
+      db.prepare(`UPDATE hr_retirement_settlements SET status = 'DRAFT', updated_at = ? WHERE request_id = ? AND status = 'READY' AND ${guard}`)
+        .bind(now, id, id, date, now),
+    ]);
+    if (changedRows(changed, 0) !== 1) return hrConflictResponse();
+    await applyDueRetirements(db, now);
+    const after = await db.prepare("SELECT * FROM hr_retirement_requests WHERE id = ?").bind(id).first<Record<string, unknown>>();
+    const employeeAfter = await db.prepare("SELECT status FROM hr_employee_records WHERE employee_id = ?").bind(employeeId).first<{ status: string }>();
+    await writeErpAudit(db, { principal: authorization.principal, module: "hr", action: "RETIREMENT_DATE_CHANGED", entityType: "employeeRetirement", entityId: id, before, after });
+    // 작성 중인 임금안의 최종 근무일은 여기서 바꾸지 않는다. 임금계산 화면의 「입·퇴사일 불일치」 경고가 알려 주고 사람이 맞춘다.
+    const draftPeriods = (await db.prepare("SELECT period FROM hr_compensation_runs WHERE status = 'DRAFT' AND period IN (?, ?)")
+      .bind(previousDate.slice(0, 7), date.slice(0, 7)).all<{ period: string }>()).results.map((row) => row.period);
+    const retirementDay = retirementDayAfter(date);
+    return Response.json({
+      item: after, employeeStatus: employeeAfter?.status ?? "", retirementDay, settlementReopened,
+      notice: [
+        `마지막 근무일을 ${date}(퇴직일 ${retirementDay})로 바꿨습니다. 퇴직금 추정과 잔여 연차는 새 날짜로 다시 계산됩니다.`,
+        settlementReopened ? "정산이 작성 중으로 돌아갔으니 금액을 확인하고 다시 저장해 주세요." : "",
+        draftPeriods.length ? `임금계산 ${draftPeriods.join(", ")} 임금안의 최종 근무일도 「인사기록대로 맞추기」로 맞춰 주세요.` : "",
+      ].filter(Boolean).join(" "),
+    });
+  }
+
   if (resource === "retirementChecklist") {
     const before = await db.prepare("SELECT * FROM hr_retirement_requests WHERE id = ?").bind(id).first<Record<string, unknown>>();
     if (!before) return Response.json({ error: "퇴직 요청을 찾을 수 없습니다." }, { status: 404 });
@@ -672,7 +806,8 @@ export async function PUT(request: Request) {
       : null;
     const settlementPending = allComplete && settlement?.status !== "READY";
     const koreaDate = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const due = String(before.retirement_date ?? "") <= koreaDate;
+    // 저장된 날짜는 마지막 근무일이다. 퇴직은 그 다음 날(퇴직일)부터라, 마지막 근무일 당일은 아직 재직이다.
+    const due = String(before.retirement_date ?? "") < koreaDate;
     const nextStatus = allComplete && !settlementPending ? (due ? "EFFECTIVE" : "READY") : (due ? "EFFECTIVE" : "IN_PROGRESS");
     const taskStatements = taskRows.results.map((row) => {
       const taskId = row.id.slice(id.length + 1);

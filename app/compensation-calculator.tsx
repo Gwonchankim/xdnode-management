@@ -37,7 +37,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   welfare: 96, deduction: 104, deductionNote: 150, note: 132, action: 44,
 };
 const COLUMN_VISIBILITY_OPTIONS = [
-  ["department", "부서"], ["title", "직책"], ["joinDate", "입사일"], ["leaveDate", "퇴사일"],
+  ["department", "부서"], ["title", "직책"], ["joinDate", "입사일"], ["leaveDate", "최종 근무일"],
   ["days", "근무일"], ["probation", "수습"], ["annualSalary", "연봉"], ["basic", "기본급"],
   ["meal", "식대"], ["car", "자가운전"], ["child", "육아"], ["incentive", "인센티브"],
   ["bonus", "상여금"], ["extra", "추가수당"], ["research", "연구수당"], ["severance", "퇴직금"],
@@ -88,7 +88,7 @@ function parseRoster(rows: ImportedCell[][], year: number, month: number) {
   const headers = rows[headerIndex];
   const col = {
     name: findColumn(headers, ["성명", "이름"]), department: findColumn(headers, ["부서"]), title: findColumn(headers, ["직책", "직위"]),
-    birthDate: findColumn(headers, ["생년월일", "생일"]), joinDate: findColumn(headers, ["입사일", "입사"]), leaveDate: findColumn(headers, ["퇴사일", "퇴사"]),
+    birthDate: findColumn(headers, ["생년월일", "생일"]), joinDate: findColumn(headers, ["입사일", "입사"]), leaveDate: findColumn(headers, ["최종 근무일", "마지막 근무일", "퇴사일", "퇴사"]),
     probation: findColumn(headers, ["수습 90%적용", "수습90%", "수습"]), salary: findColumn(headers, ["연봉"]), basic: findColumn(headers, ["기본급"]),
     meal: findColumn(headers, ["식대"]), car: findColumn(headers, ["자가운전보조금", "자차운전보조금", "자가운전", "자차"]), child: findColumn(headers, ["육아수당", "육아"]),
     incentive: findColumn(headers, ["인센티브", "인센"]), bonus: findColumn(headers, ["상여금", "상여"]), extra: findColumn(headers, ["추가수당"]), research: findColumn(headers, ["연구수당"]), severance: findColumn(headers, ["퇴직금"]), welfare: findColumn(headers, ["복지기금"]), note: findColumn(headers, ["비고"]),
@@ -242,7 +242,7 @@ function WageCalculatorClient() {
   const isColumnVisible = (column: string) => !hiddenColumnSet.has(column);
   const tableColumns = useMemo(() => [
     { key: "employee", label: "직원" }, { key: "department", label: "부서" }, { key: "title", label: "직책" },
-    { key: "joinDate", label: "입사일" }, { key: "leaveDate", label: "퇴사일" }, { key: "days", label: "근무일" },
+    { key: "joinDate", label: "입사일" }, { key: "leaveDate", label: "최종 근무일" }, { key: "days", label: "근무일" },
     { key: "probation", label: "수습" }, { key: "annualSalary", label: "연봉" }, { key: "basic", label: "기본급" },
     { key: "meal", label: "식대" }, { key: "car", label: "자가운전" }, { key: "child", label: "육아" },
     { key: "incentive", label: "인센티브" }, { key: "bonus", label: "상여금" },
@@ -518,7 +518,7 @@ function WageCalculatorClient() {
       { key: "title", label: "직책", value: (row) => row.employee.title },
       { key: "birthDate", label: "생년월일", value: (row) => row.employee.birthDate },
       { key: "joinDate", label: "입사일", value: (row) => row.employee.joinDate },
-      { key: "leaveDate", label: "퇴사일", value: (row) => row.employee.leaveDate },
+      { key: "leaveDate", label: "최종 근무일", value: (row) => row.employee.leaveDate },
       { key: "days", label: "근무일", value: (row) => row.days },
       { key: "probation", label: "첫 계약·수습(월)", value: (row) => row.employee.probationRate !== undefined ? `${row.employee.probationMonths} (${Math.round(row.employee.probationRate * 100)}%)` : row.employee.probationMonths },
       { key: "annualSalary", label: "연봉", money: true, value: (row) => row.employee.annualSalary },
@@ -626,7 +626,7 @@ function WageCalculatorClient() {
     {(alerts.noJoin.length > 0 || alerts.partial.length > 0 || alerts.zero.length > 0 || Object.values(probation).some((list) => list.length > 0) || hrDates.length > 0) && <section className="wage-alerts">
       {hrDates.length > 0 && <div className="critical"><b>입·퇴사일 불일치 {hrDates.length}명</b><span>{hrDates.map((item) => `${item.name} (${[
         item.rowJoinDate !== item.hrJoinDate ? `입사 ${item.rowJoinDate || "없음"} → 인사기록 ${item.hrJoinDate || "없음"}` : "",
-        item.rowLeaveDate !== item.hrLeaveDate ? `퇴사 ${item.rowLeaveDate || "없음"} → 인사기록 ${item.hrLeaveDate || "없음"}` : "",
+        item.rowLeaveDate !== item.hrLeaveDate ? `최종 근무일 ${item.rowLeaveDate || "없음"} → 인사기록 ${item.hrLeaveDate || "없음"}` : "",
       ].filter(Boolean).join(", ")})`).join(" · ")} — 인사기록카드가 기준입니다. 근무일과 일할 계산이 달라질 수 있습니다.</span><button type="button" disabled={locked || saving} onClick={() => applyHrFixes(hrDates)}>인사기록대로 맞추기</button></div>}
       {alerts.noJoin.length > 0 && <div className="critical"><b>입사일 없는 수습 대상 {alerts.noJoin.length}명</b><span>{alerts.noJoin.map((row) => row.employee.name || "이름 미입력").join(" · ")} — 수습 지급률이 적용되지 않습니다.</span></div>}
       {probation.missing.length > 0 && <div className="critical"><b>수습 누락 {probation.missing.length}명</b><span>{probation.missing.map((item) => `${item.name} (인사기록 ${probationPercent(item.hrRate)} · ${shortDate(item.endDate)}까지)`).join(" · ")} — 인사기록은 첫 계약 지급률인데 임금표에 수습이 꺼져 있습니다.</span><button type="button" disabled={locked || saving} onClick={() => applyHrFixes(probation.missing)}>인사기록대로 맞추기</button></div>}
