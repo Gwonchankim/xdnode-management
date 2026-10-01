@@ -1,9 +1,9 @@
 # messenger-enhancement Completion Report
 
-> **Status**: Complete (운영 반영 전)
+> **Status**: Complete · 운영 반영 완료(`msg1-release-20261001`, 2026-10-01 17:16)
 >
 > **Project**: XDnode management (`xdnode-management`)
-> **Version**: 기준 `750b4db` → 완료 `2141a1a` (브랜치 `메신저-기능`)
+> **Version**: 기준 `750b4db` → 기능 완료 `2141a1a` → 병합 `c09eb32`(태그 `msg1-release-20261001`, 운영 반영본)
 > **Author**: gc.kim (Claude Code 협업)
 > **Completion Date**: 2026-10-01
 > **PDCA Cycle**: #1 (Act 1회 + 브라우저 QA 보완 2회)
@@ -142,8 +142,8 @@
 
 | Item | Reason | Priority | Estimated Effort |
 |------|--------|----------|------------------|
-| 운영 반영 | 이 브랜치는 `750b4db` 기준이다. 원래 개발 브랜치 `codex/local-erp-updates-20260831` 은 그 뒤 `91137a3` 까지 나아갔다. 병합하고, `C:\xdm\prod` 에 태그를 빌드하고, 스냅샷을 뜬 뒤 반영한다(runbook) | High | 병합 충돌에 따라 0.5~1일 |
-| 파비콘 배지 표시 확인 | 이 브라우저는 이 앱의 정적 아이콘조차 표시하지 않는다(운영 탭도 지구본) | Medium | 콘솔 확인 1회 |
+| 운영 첫 로그인 확인 | 새 테이블 5개와 스레드 백필은 로그인한 사용자의 첫 요청 때 만들어진다. 배포 뒤 비로그인 스모크만 했다(§8.2) | High | 로그인 1회 |
+| HTTP LAN PC 알림 확인 | QA 는 서버 PC(127.0.0.1)에서 했다. 다른 PC 에서 알림음·토스트를 확인하고, 파비콘 배지 표시도 확인한다(QA 브라우저는 이 앱의 정적 아이콘조차 표시하지 않았다) | Medium | 확인 1회 |
 | SC-10 사용자 인터뷰 | 운영 1주 뒤 | Medium | — |
 | 초대·참여 시 읽음 위치 | JOIN·ADD_MEMBERS 는 읽음 위치 0 에서 시작한다(R5 동작). 오래된 `#일반` 에 초대되면 기록 전체가 안 읽음으로 잡힌다 | Medium | 결정 뒤 0.5일 |
 | 2단계(E·F) | ERP 알림 봇, 레코드 링크 카드, AI 요약, SSE, 관리 도구 | — | 다음 PDCA |
@@ -228,12 +228,26 @@
 
 ### 8.1 Immediate
 
-- [ ] `메신저-기능` 을 `codex/local-erp-updates-20260831`(`91137a3`)과 병합한다. 그 뒤 `npm test` 와 개발 서버 E2E 를 다시 돌린다.
-- [ ] 운영 반영: 태그 → `C:\xdm\prod` 빌드 → 정지 뒤 스냅샷 → 기동 → 스모크(runbook). 새 테이블 5개와 백필은 첫 요청 때 자동으로 만들어진다.
-- [ ] 다른 PC(HTTP LAN)에서 알림음·토스트를 한 번 더 확인하고, 파비콘 배지 표시도 확인한다.
-- [ ] 이 워크트리의 QA 계정과 개발 DB(`.wrangler/state`)를 정리할지 정한다.
+- [x] `codex/local-erp-updates-20260831`(`f170bb6`, 총무 탭·HR·급여 12커밋)과 병합 → `c09eb32`. 충돌 4곳 해결(§8.2), `npm test` 528/528, 개발 서버 E2E 24/24. 개발 폴더 브랜치를 빨리 감기로 반영.
+- [x] 운영 반영: 태그 `msg1-release-20261001` → `Deploy-XDNodeManagement.ps1`(정지 → 스냅샷·검증 → 빌드 → 기동 → 헬스체크 401). 중단 40초.
+- [x] 비로그인 스모크(LAN 192.168.0.77:3000, 상태 코드만): 부트스트랩 403, explorer·`__debug` 404, 비밀값 파일 5종 404, WebSocket 업그레이드 끊김, 새 chat API 401, 교차 출처 POST 403. preview 로그 오류 0.
+- [x] 이 워크트리의 QA 계정·개발 DB(`.wrangler/state`)와 작업 메모장의 QA 스크립트 정리.
+- [ ] 다른 PC 에서 실제 계정으로 로그인 → 메신저(기존 대화·반응·즐겨찾기) 확인. 이때 새 테이블과 백필이 만들어진다.
+- [ ] 같은 PC 에서 알림음·토스트, 파비콘 배지 표시 확인.
 
-### 8.2 Next PDCA Cycle
+### 8.2 Deployment Record (2026-10-01)
+
+| Item | Value |
+|------|-------|
+| 병합 | `c09eb32` = 메신저 개선 + `codex/local-erp-updates-20260831`(`f170bb6`). 충돌 4곳. ① `chat-workspace.tsx`: MessageItem 을 옮겼으므로 상위 브랜치의 `system:<이름>` 작성자 클래스를 `chat-message.tsx` 에 반영. ② `page.tsx`: 알림·토스트와 총무 배지·탭 열기 모두 유지. ③ 하니스: presence 와 GA 스키마 게이트 초기화 모두 유지. ④ `package.json`: 테스트 목록 합집합 |
+| 교차 확인 | 총무 알림(`system:ga`) 글: DTO(반응·고정), 안 읽은 수, 알림(전체는 알림·음소거는 조용), 읽음 숫자, 반응이 모두 동작(테스트 추가) |
+| 태그 | `msg1-release-20261001` → `c09eb32`(개발 폴더 저장소) |
+| 배포 | 17:16:12 시작 → 17:16:53 완료, 중단 40초, 직전 `f170bb6` |
+| 스냅샷 | `C:\xdm\snapshots\deploy-msg1-release-20261001-20261001-1716\` (integrity ok, 테이블 188, R2 162개 누락 0) |
+| 롤백 | `Deploy-XDNodeManagement.ps1 -Tag hr1.1-release-20261001`. 새 테이블은 추가만 했으므로 옛 코드가 무시한다. 데이터까지 되돌릴 때는 위 스냅샷으로 runbook §11 |
+| 주의 | 배포 직전 다른 세션이 점검 인스턴스(3001)에서 복구 리허설을 마치고 문서 커밋 `25a49c3` 을 올린 상태였다. 3001 종료·staging 정리를 확인한 뒤 배포했다. `25a49c3` 은 문서만 바꿔서 이번 태그에 넣지 않았다 |
+
+### 8.3 Next PDCA Cycle
 
 | Item | Priority | Expected Start |
 |------|----------|----------------|
@@ -271,3 +285,4 @@
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | 2026-10-01 | Completion report created | gc.kim |
+| 1.1 | 2026-10-01 | 병합(`c09eb32`)·운영 반영(`msg1-release-20261001`, 중단 40초)·스모크 결과, 워크트리 정리 반영. 남은 확인: 운영 첫 로그인, HTTP LAN PC 알림 | gc.kim |
