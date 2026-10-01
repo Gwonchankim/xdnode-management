@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { authorizeErpRequest } from "../../../erp-platform";
 import { CHAT_POLL_EVENT_LIMIT, chatPeople, chatValidation, messageDtos, unreadSummary, type ChatEventKind, type ChatMessageDto, type ChatReadsSnapshot } from "../../../chat-server";
-import { presenceSnapshot, touchPresence } from "../../../chat-presence";
+import { presenceSnapshot, prunePresence, touchPresence } from "../../../chat-presence";
 
 // Design §4.2.8 GET /api/chat/poll?since=<seq>&summary=0|1&watch=<publicChannelId?> (chat:read).
 // hot path: 게이트(메모, 0쿼리) → 세션(1) → 이벤트(1). DDL·감사·쓰기가 없다(세션 last_seen_at 시간당 1회만 예외).
@@ -87,6 +87,8 @@ async function presenceFor(wantSummary: boolean, now: number) {
       .bind(now).all<{ account_id: string; seen: number }>(),
   ]);
   const allowed = new Set(people.map((person) => person.accountId));
+  // 맵에는 chat:read 를 통과한 poll 만 들어온다. 권한을 잃은 계정은 여기서 걷어 다음 일반 poll 에도 나오지 않게 한다(Check Minor).
+  prunePresence(allowed);
   const out: Record<string, number> = {};
   for (const [id, at] of Object.entries(snapshot)) if (allowed.has(id)) out[id] = at;
   for (const row of sessions.results) if (allowed.has(row.account_id) && out[row.account_id] === undefined) out[row.account_id] = Number(row.seen);

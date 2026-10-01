@@ -337,7 +337,7 @@ CREATE TABLE IF NOT EXISTS chat_thread_reads (
 
 - `id` 파라미터가 있으면 기존의 파일 내려받기다. `channelId`만 있으면 목록이다. 둘 다 있거나 둘 다 없으면 400이다.
 - 조건: `loadChannelAccess`(public 비멤버도 볼 수 있다. 메시지를 볼 수 있으므로). `message_id IS NOT NULL`, 첨부와 메시지 모두 `deleted_at IS NULL`.
-- 응답: `{ files: [{ attachment: ChatAttachmentDto, messageId, threadRootId, uploaderName, createdAt }], hasMore }`, 50개씩.
+- 응답: `{ files: [{ attachment: ChatAttachmentDto, messageId, threadRootId, uploaderName, createdAt }], nextBefore: string | null }`, 50개씩. 다음 쪽은 `before=<nextBefore>`(`<createdAt>_<attachmentId>`)로 부른다(v0.4).
 
 #### `POST /api/chat/reactions`
 
@@ -692,3 +692,4 @@ package.json                  (수정) test 목록에 chat-enhancement 추가
 | 0.2 | 2026-09-30 | M1 구현 반영: 루트 작성자의 스레드 참여 행을 첫 답글 때 만든다(§3.3) | gc.kim |
 | 0.3 | 2026-09-30 | M2 구현 반영: 활동함은 오른쪽 패널이 아니라 가운데 영역(검색 결과 자리)에 연다(대화를 가로지르는 목록이라서). 고정·파일은 채널 단위라 오른쪽 패널로 둔다. 감사 예외 가드는 `erp-platform`·`tab-permissions` 두 테스트에 있다 | gc.kim |
 | 0.4 | 2026-10-01 | M3·M4 구현 반영: (1) 검색의 대화 필터 파라미터는 `channelId` 가 아니라 `in` 이다(`channelId` 는 messages GET 의 선택자라 겹친다). (2) 파일 목록은 public 비멤버에게도 403 이다(내려받기와 같은 조건, §4.2 원안은 비멤버 허용). (3) 파일 목록 커서는 `<createdAt>_<attachmentId>` 다. (4) 반응 고르기 팝오버의 역할은 `toolbar` 다(화살표 키 이동). | gc.kim |
+| 0.5 | 2026-10-01 | Check 반영(Act-1): (1) 공개 채널에서 멤버가 아닌 사람을 @멘션하면 보낸 직후 "채널에 없어 알림을 받지 못합니다. 초대할까요?"를 묻고 초대하면 ADD_MEMBERS(사용자 결정 — 자동 참여·참여 없는 알림 대신). (2) 나를 멘션한 답글은 스레드 읽음 위치로도 읽음 처리(배지·활동함). (3) 접속 상태 맵은 summary poll 때 chatPeople 로 걸러 권한을 잃은 계정을 뺀다. (4) @ 자동완성·DM 머리에 접속 점. (5) 읽음 숫자는 말풍선 바로 아래. (6) ChatWorkspace·useChatNotifier 의 훅 의존성에서 poll 객체를 빼고 고정된 콜백만 쓴다(읽음 PUT ↔ 기록 재요청 반복 방지, 회귀 가드 테스트). | gc.kim |

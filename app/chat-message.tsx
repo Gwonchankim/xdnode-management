@@ -158,7 +158,6 @@ export function MessageItem({
         {!mine && <strong>{message.author.name}</strong>}
         <time dateTime={new Date(message.createdAt).toISOString()}>{when(message.createdAt)}</time>
         {message.pinnedAt !== null && !message.deleted && <span className="chat-pinned-mark" title="고정된 메시지">📌 고정됨</span>}
-        {unreadCount ? <span className="chat-read-count" title={`안 읽은 사람 ${unreadCount}명`} aria-label={`안 읽은 사람 ${unreadCount}명`}>{unreadCount}</span> : null}
         {message.editedAt && !message.deleted && <em>(수정됨)</em>}
       </header>
       <div className={editing ? "chat-bubble editing" : "chat-bubble"}>
@@ -178,6 +177,8 @@ export function MessageItem({
           : message.body ? <p className="chat-message-body"><MessageBody body={message.body} people={people} /></p> : null}
       {!message.deleted && <Attachments attachments={message.attachments} />}
       </div>
+      {/* ME-FR-08 Design §5.1: 말풍선 바로 아래 바깥쪽(내 글은 오른쪽, 남의 글은 왼쪽 — article 의 정렬을 따른다). */}
+      {unreadCount ? <span className="chat-read-count" title={`안 읽은 사람 ${unreadCount}명`} aria-label={`안 읽은 사람 ${unreadCount}명`}>{unreadCount}</span> : null}
       {!message.deleted && onReact && (
         <ReactionBar message={message} accountId={accountId} people={people} canReact={canReact && !archived} onReact={onReact} />
       )}

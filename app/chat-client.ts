@@ -216,7 +216,7 @@ export function useChatPoll({ enabled, chatActive }: { enabled: boolean; chatAct
       const body = result.body;
       const first = cursor.current === 0;
       cursor.current = Number(body.cursor) || 0;
-      if (body.unread) setUnreadState(body.unread);
+      if (body.unread) { const next = body.unread; setUnreadState((current) => JSON.stringify(current) === JSON.stringify(next) ? current : next); }
       const nextReads = body.reads ?? null;
       setReads((current) => sameReads(current, nextReads) ? current : nextReads);
       if (body.presence) {
@@ -276,7 +276,8 @@ export function useChatPoll({ enabled, chatActive }: { enabled: boolean; chatAct
     return () => { listeners.current.delete(listener); };
   }, []);
   const setWatch = useCallback((channelId: string | null) => { watch.current = channelId; }, []);
-  const setUnread = useCallback((next: UnreadSummary) => setUnreadState(next), []);
+  // 같은 요약이면 상태를 바꾸지 않는다(읽음 PUT 마다 셸 전체가 다시 그려지지 않게).
+  const setUnread = useCallback((next: UnreadSummary) => setUnreadState((current) => JSON.stringify(current) === JSON.stringify(next) ? current : next), []);
   // 대화를 바꾸면 곧바로 한 번 불러 그 대화의 읽음 위치를 받는다.
   const setViewing = useCallback((channelId: string | null) => {
     if (viewingRef.current === channelId) return;

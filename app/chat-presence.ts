@@ -21,6 +21,11 @@ export function presenceSnapshot(now = Date.now()): Record<string, number> {
   return out;
 }
 
+/** 메신저 권한을 잃은 계정은 맵에서 뺀다(summary poll 이 chatPeople 로 부른다). */
+export function prunePresence(allowed: ReadonlySet<string>) {
+  for (const accountId of lastSeen.keys()) if (!allowed.has(accountId)) lastSeen.delete(accountId);
+}
+
 /** 하니스 전용: 새 메모리 DB 를 만들 때 비운다. */
 export function resetPresence() {
   lastSeen.clear();

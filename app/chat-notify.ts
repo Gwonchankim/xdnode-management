@@ -173,11 +173,13 @@ export function useChatNotifier({ poll, enabled, accountId, chatActive, onOpen }
     };
   }, [enabled]);
 
-  useEffect(() => poll.subscribe((events, meta) => {
+  // poll 객체는 셸이 다시 그려질 때마다 새로 생기므로 고정된 subscribe·viewing 만 의존성으로 쓴다.
+  const { subscribe, viewing } = poll;
+  useEffect(() => subscribe((events, meta) => {
     if (!enabled) return;
     if (meta.unread) metaRef.current = new Map(meta.unread.channels.map((channel) => [channel.channelId, channel]));
     const visible = document.visibilityState === "visible";
-    const viewingChannelId = chatActiveRef.current && visible ? poll.viewing() : null;
+    const viewingChannelId = chatActiveRef.current && visible ? viewing() : null;
     const now = Date.now();
     const seen = new Set<number>();
     const fresh: ChatToast[] = [];
@@ -200,7 +202,7 @@ export function useChatNotifier({ poll, enabled, accountId, chatActive, onOpen }
         } catch { /* 권한이 막 바뀐 경우 등은 앱 안 토스트로 충분하다 */ }
       }
     }
-  }), [poll, enabled, accountId]);
+  }), [subscribe, viewing, enabled, accountId]);
 
   // 만료된 토스트를 걷는다.
   useEffect(() => {

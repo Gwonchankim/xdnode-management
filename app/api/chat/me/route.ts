@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
 /**
  * ME-FR-05 활동함: 최근 30일, 내가 현재 멤버인 대화만.
- * (a) 나를 멘션했거나 @channel 인 글. 안 읽음 판정은 unreadSummary 와 같은 채널 읽음 위치다.
+ * (a) 나를 멘션했거나 @channel 인 글. 안 읽음 판정은 unreadSummary 와 같다(채널 읽음 위치, 답글이면 스레드 읽음 위치도 본다).
  * (b) 참여 스레드(chat_thread_reads 행)의 남이 쓴 답글. (a)에 이미 든 답글은 뺀다. 안 읽음은 스레드 읽음 위치다.
  */
 async function activity(accountId: string): Promise<ChatActivityItem[]> {
@@ -35,7 +35,8 @@ async function activity(accountId: string): Promise<ChatActivityItem[]> {
   const mine = `SELECT 1 FROM chat_mentions n WHERE n.message_id = m.id AND n.account_id = ?1`;
   const rows = await db.prepare(`SELECT * FROM (
       SELECT m.id AS id, CASE WHEN EXISTS (${mine}) THEN 'mention' ELSE 'channel_mention' END AS kind,
-        CASE WHEN m.id > mem.last_read_message_id THEN 1 ELSE 0 END AS unread,
+        CASE WHEN m.id > mem.last_read_message_id AND (m.thread_root_id IS NULL OR NOT EXISTS (SELECT 1 FROM chat_thread_reads r
+          WHERE r.account_id = ?1 AND r.thread_root_id = m.thread_root_id AND r.last_read_reply_id >= m.id)) THEN 1 ELSE 0 END AS unread,
         c.id AS channel_id, c.kind AS channel_kind, c.name AS channel_name
       FROM chat_messages m
         JOIN chat_members mem ON mem.channel_id = m.channel_id AND mem.account_id = ?1 AND mem.left_at IS NULL

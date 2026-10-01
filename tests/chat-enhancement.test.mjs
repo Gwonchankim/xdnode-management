@@ -317,8 +317,12 @@ test('ME-FR-02 shell wiring: the notifier and toasts are mounted in page.tsx and
   assert.match(page, /useChatNotifier\(\{/);
   assert.match(page, /<ChatToasts /);
   assert.match(page, /chatPoll\.requestOpen\(channelId, messageId\)/);
-  assert.match(workspace, /poll\.setViewing\(/);
-  assert.match(workspace, /poll\.consumeOpen\(openRequest\.seq\)/);
+  assert.match(workspace, /setViewing\(/);
+  assert.match(workspace, /consumeOpen\(openRequest\.seq\)/);
+  // 회귀 가드: poll 객체는 셸이 다시 그려질 때마다 새로 생긴다. 의존성에 넣으면 읽음 PUT → 기록 재요청이 되풀이된다.
+  for (const [file, source] of [['app/chat-workspace.tsx', workspace], ['app/chat-notify.ts', notify]]) {
+    assert.deepEqual(source.match(/\[[^\]\n]*\bpoll\b[^\]\n]*\]\)/g) ?? [], [], `${file}: no hook may depend on the poll object`);
+  }
   assert.match(workspace, /action: "THREAD_READ"/);
   assert.match(notify, /window\.isSecureContext && "Notification" in window/, 'system notifications only in a secure context (ME-MD2)');
   for (const file of ['app/chat-notify.ts', 'app/chat-toasts.tsx', 'app/chat-panels.tsx']) assert.doesNotMatch(read(file), /dangerouslySetInnerHTML|innerHTML/, file);
@@ -575,7 +579,10 @@ test('ME-FR-12 files: members list the channel files newest first with paging; d
 
   const list = await lee.call('attachments', 'GET', undefined, `?channelId=${id}`);
   assert.equal(list.status, 200);
-  assert.deepEqual(list.body.files.map((item) => item.attachment.fileName), ['명단.xlsx', '사진.png', '보고서.pdf']);
+  const names = list.body.files.map((item) => item.attachment.fileName);
+  assert.equal(names[0], '명단.xlsx', 'newest message first');
+  // 같은 밀리초에 올라간 첨부끼리는 id 순서라 정해져 있지 않다.
+  assert.deepEqual(names.slice(1).sort(), ['보고서.pdf', '사진.png'].sort());
   assert.equal(list.body.files[0].messageId, second.id);
   assert.equal(list.body.files[0].uploaderName, '이두리');
   assert.equal(list.body.files.find((item) => item.attachment.fileName === '사진.png').attachment.isImage, true);
@@ -648,4 +655,38 @@ test('ME-FR-10~13 UI wiring: pin/save buttons, side panels, saved view and searc
   assert.match(workspace, /<SearchFilters /);
   assert.match(workspace, /\/api\/chat\/messages\?\$\{searchQuery\(q, filters\)\}/);
   assert.match(panels, /query\.set\("in", filters\.in\)/, 'the conversation filter is "in", not the channelId selector');
+});
+
+// ── Check 단계 보완(Act-1) ──────────────────────────────────────────────────
+test('ME Act-1: a mention in a thread reply is read once the thread is read, in the badge and in activity', async () => {
+  const { kim, lee } = await world();
+  const id = await channel(kim, '스레드멘션', 'public', [lee.id]);
+  const root = await post(kim, id, '보고서 검토');
+  const reply = await post(kim, id, '@이두리 2쪽 확인 부탁', root.id);
+  const before = await summaryOf(lee);
+  assert.equal(channelRow(before, id).mentions, 1);
+  const read = await lee.call('me', 'PUT', { action: 'THREAD_READ', threadRootId: root.id, lastReadReplyId: reply.id });
+  assert.equal(channelRow(read.body.unread, id).mentions, 0, 'reading the thread clears the reply mention even though the channel was not read past it');
+  const items = (await lee.call('me', 'GET', undefined, '?view=activity')).body.items;
+  assert.equal(items.find((item) => item.message.id === reply.id).unread, false);
+});
+
+test('ME Act-1: presence drops accounts that lost chat access on the next summary poll', async () => {
+  const { kim, lee } = await world();
+  await lee.call('poll', 'GET', undefined, '?since=0');
+  assert.ok((await kim.call('poll', 'GET', undefined, '?since=1')).body.presence[lee.id] > 0);
+  await db.prepare(`UPDATE auth_accounts SET tabs_json = '{}' WHERE id = ?`).bind(lee.id).run();
+  await kim.call('poll', 'GET', undefined, '?since=0&summary=1');
+  assert.equal((await kim.call('poll', 'GET', undefined, '?since=1')).body.presence[lee.id], undefined);
+});
+
+test('ME Act-1 UI: mentioning a non-member in a public channel offers an invite; poll is never a hook dependency', () => {
+  const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const workspace = read('app/chat-workspace.tsx');
+  const message = read('app/chat-message.tsx');
+  assert.match(workspace, /void offerInvite\(message\);/);
+  assert.match(workspace, /님은 이 채널에 없어 알림을 받지 못합니다\. 채널에 초대할까요\?/);
+  assert.match(workspace, /action: "ADD_MEMBERS", channelId, accountIds: missing/);
+  assert.match(workspace, /presence=\{poll\.presence\}/, 'the composer shows presence next to @ suggestions');
+  assert.ok(message.indexOf('chat-read-count') > message.indexOf('<Attachments attachments'), 'the read count sits under the bubble');
 });

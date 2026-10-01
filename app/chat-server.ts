@@ -281,7 +281,9 @@ export async function messageDto(db: D1Database, id: number) {
 export async function unreadSummary(db: D1Database, accountId: string): Promise<UnreadSummary> {
   const unreadBase = `x.channel_id = mem.channel_id AND x.id > mem.last_read_message_id
          AND x.deleted_at IS NULL AND x.author_account_id != ?1
-         AND (x.thread_root_id IS NULL OR EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1))`;
+         AND (x.thread_root_id IS NULL OR EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1))
+         AND (x.thread_root_id IS NULL OR NOT EXISTS (SELECT 1 FROM chat_thread_reads tr WHERE tr.account_id = ?1 AND tr.thread_root_id = x.thread_root_id AND tr.last_read_reply_id >= x.id))`;
+  // ↑ 나를 멘션한 답글은 스레드를 열어 읽었으면(chat_thread_reads) 채널 읽음 위치와 상관없이 읽은 것이다(Check Minor).
   const [rows, threads] = await Promise.all([
     db.prepare(`SELECT mem.channel_id AS channel_id, c.kind AS kind, c.name AS name, COALESCE(p.notify_level, 'all') AS notify_level,
       (SELECT COUNT(*) FROM chat_messages x WHERE ${unreadBase}) AS unread,

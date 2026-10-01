@@ -43,10 +43,12 @@ const NOTIFY_LABELS: Record<ChatNotifyLevel, string> = { all: "모든 새 글", 
 type Pending = { key: string; name: string; size: number; attachment?: ChatAttachmentDto; error?: string };
 
 
-function Composer({ channelId, threadRootId, disabledReason, placeholder, mentionPeople, mentionChannel, onSent, onError }: {
+function Composer({ channelId, threadRootId, disabledReason, placeholder, mentionPeople, mentionChannel, presence = {}, onSent, onError }: {
   channelId: string; threadRootId?: number; disabledReason: string | null; placeholder: string;
   /** @ 자동완성 후보(서버가 멘션으로 인정하는 사람, 채널 멤버 먼저). */
   mentionPeople: ChatPerson[]; mentionChannel: boolean;
+  /** ME-FR-09 후보 옆 접속 점. */
+  presence?: Record<string, number>;
   onSent: (message: ChatMessageDto) => void; onError: (message: string) => void;
 }) {
   const [body, setBody] = useState("");
@@ -186,7 +188,7 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, mentio
                 onMouseDown={(event) => event.preventDefault()} onMouseEnter={() => setMentionIndex(index)} onClick={() => chooseMention(person)}>
                 <span className="chat-mention-avatar" aria-hidden="true">{person.accountId === "@channel" ? "@" : person.name.slice(0, 1)}</span>
                 <strong>{person.accountId === "@channel" ? "@채널" : person.name}</strong>
-                {person.accountId === "@channel" && <small>이 대화의 모두에게 알림</small>}
+                {person.accountId === "@channel" ? <small>이 대화의 모두에게 알림</small> : <PresenceDot lastSeen={presence[person.accountId]} />}
               </button>
             </li>
           ))}
@@ -244,6 +246,10 @@ function ModalFrame({ title, children, onClose }: { title: string; children: Rea
 
 export default function ChatWorkspace({ accountId, poll }: Props) {
   const dialog = useErpDialog();
+  // useChatPoll 이 돌려주는 객체는 셸이 다시 그려질 때마다 새로 만들어진다(unread·reads·presence 가 바뀔 때).
+  // 효과·콜백의 의존성에는 poll 객체가 아니라 useCallback 으로 고정된 함수만 쓴다. 그렇지 않으면 읽음 PUT → setUnread →
+  // 셸 재렌더 → loadHistory 재생성 → 기록 재요청 → 읽음 PUT … 이 되풀이되고, 이동(around)한 구간도 풀린다.
+  const { setUnread: setPollUnread, setWatch, setViewing, consumeOpen, subscribe: subscribePoll, pollNow } = poll;
   const [data, setData] = useState<ChatChannelsResponse | null>(null);
   const [loadError, setLoadError] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -314,15 +320,15 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     const last = replies.reduce((max, reply) => Math.max(max, reply.id), 0);
     if (document.visibilityState !== "visible") return;
     const result = await chatRequest<{ unread: UnreadSummary }>("/api/chat/me", { method: "PUT", body: { action: "THREAD_READ", threadRootId: rootId, lastReadReplyId: last } });
-    if (result.ok && result.body.unread) poll.setUnread(result.body.unread);
-  }, [poll]);
+    if (result.ok && result.body.unread) setPollUnread(result.body.unread);
+  }, [setPollUnread]);
 
   const markRead = useCallback(async (channelId: string, messages: ChatMessageDto[]) => {
     const last = messages.reduce((max, message) => Math.max(max, message.id), 0);
     if (!last || document.visibilityState !== "visible") return;
     const result = await chatRequest<{ unread: UnreadSummary }>("/api/chat/read-state", { method: "PUT", body: { channelId, lastReadMessageId: last } });
-    if (result.ok && result.body.unread) poll.setUnread(result.body.unread);
-  }, [poll]);
+    if (result.ok && result.body.unread) setPollUnread(result.body.unread);
+  }, [setPollUnread]);
 
   const openThreadOf = useCallback(async (root: ChatMessageDto) => {
     const result = await chatRequest<{ root: ChatMessageDto; replies: ChatMessageDto[] }>(`/api/chat/messages?threadRootId=${root.id}`);
@@ -395,8 +401,8 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   }, [focus]);
 
   // ME-FR-02: 셸 알림은 지금 열어 둔 대화의 새 글에 소리·토스트를 내지 않는다.
-  useEffect(() => { poll.setViewing(activity || results || savedItems ? null : activeId); }, [poll, activeId, activity, results, savedItems]);
-  useEffect(() => () => poll.setViewing(null), [poll]);
+  useEffect(() => { setViewing(activity || results || savedItems ? null : activeId); }, [setViewing, activeId, activity, results, savedItems]);
+  useEffect(() => () => setViewing(null), [setViewing]);
 
   // 셸 토스트에서 온 이동 요청. 목록을 읽은 뒤에 처리한다(처음 마운트 때는 저장해 둔 대화보다 우선한다).
   const loaded = data !== null;
@@ -407,11 +413,11 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     void (async () => {
       await Promise.resolve();
       if (!current) return;
-      poll.consumeOpen(openRequest.seq);
+      consumeOpen(openRequest.seq);
       openTarget(openRequest.channelId, openRequest.messageId);
     })();
     return () => { current = false; };
-  }, [loaded, openRequest, poll, openTarget]);
+  }, [loaded, openRequest, consumeOpen, openTarget]);
 
   // ME-FR-10 고정 패널: 열 때와 고정 수가 바뀔 때(channel.updated → 목록 다시 읽기) 다시 읽는다.
   const sideKind = side?.kind ?? null;
@@ -445,7 +451,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
 
   const activeMember = Boolean(joined);
   useEffect(() => {
-    poll.setWatch(activeId && !activeMember ? activeId : null);
+    setWatch(activeId && !activeMember ? activeId : null);
     // 참여 여부가 바뀌어도(참여 직후) 기록을 다시 읽는다.
     if (!activeId) return;
     let current = true;
@@ -454,9 +460,9 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
       if (current) await loadHistory(activeId, activeMember);
     })();
     return () => { current = false; };
-  }, [activeId, activeMember, loadHistory, poll]);
+  }, [activeId, activeMember, loadHistory, setWatch]);
 
-  useEffect(() => () => poll.setWatch(null), [poll]);
+  useEffect(() => () => setWatch(null), [setWatch]);
 
   // @ 자동완성용 채널 멤버. 멤버 수가 바뀌면(참여·추가·내보내기) 다시 읽는다. DM 은 목록의 dmMemberIds 를 쓴다.
   const memberCount = joined?.memberCount ?? preview?.memberCount ?? 0;
@@ -515,7 +521,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   }, []);
 
   // 폴링 이벤트.
-  useEffect(() => poll.subscribe((events: ChatPollEvent[], meta) => {
+  useEffect(() => subscribePoll((events: ChatPollEvent[], meta) => {
     let reloadChannels = meta.resync;
     let newTopLevel = false;
     for (const event of events) {
@@ -545,7 +551,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
       const messages = [...historyRef.current.messages, ...events.flatMap((event) => event.message && event.message.threadRootId === null ? [event.message] : [])];
       void markRead(channelId, messages);
     }
-  }), [poll, applyMessage, loadChannels, loadHistory, markRead, markThreadRead, flash, selectChannel]);
+  }), [subscribePoll, applyMessage, loadChannels, loadHistory, markRead, markThreadRead, flash, selectChannel]);
 
   async function loadOlder() {
     if (!activeId || history.loading || !history.hasMore || !history.messages.length) return;
@@ -686,7 +692,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     if (!joined) return;
     const result = await chatRequest<{ unread: UnreadSummary }>("/api/chat/me", { method: "PUT", body: { action: "SET_NOTIFY", channelId: joined.id, level } });
     if (!result.ok) { flash(result.body.error ?? "알림 설정을 바꾸지 못했습니다."); return; }
-    if (result.body.unread) poll.setUnread(result.body.unread);
+    if (result.body.unread) setPollUnread(result.body.unread);
     await loadChannels();
   }
 
@@ -775,7 +781,28 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     // 옛 구간을 보다가 새 최상위 글을 보내면 최신 구간으로 돌아간다.
     if (historyRef.current.hasNewer && message.threadRootId === null && activeRef.current) void loadHistory(activeRef.current, true);
     else { stickToBottom.current = true; applyMessage(message, "upsert"); }
-    poll.pollNow();
+    pollNow();
+    void offerInvite(message);
+  }
+
+  /**
+   * 공개 채널에서 멤버가 아닌 사람을 @멘션하면 그 사람은 알림·배지·활동함을 받지 못한다(멤버 채널만 본다).
+   * 보낸 직후 "채널에 없어 알림을 받지 못합니다. 초대할까요?"를 묻고, 초대하면 ADD_MEMBERS 로 참여시킨다(Check 단계 결정).
+   */
+  async function offerInvite(message: ChatMessageDto) {
+    const channelId = message.channelId;
+    const isPublic = joined?.id === channelId ? joined.kind === "public" : preview?.id === channelId;
+    if (!isPublic || !canWrite || !message.mentions.length) return;
+    const members = new Set(channelMembers?.channelId === channelId ? channelMembers.ids : []);
+    const missing = [...new Set(message.mentions)].filter((id) => id !== accountId && !members.has(id));
+    if (!missing.length) return;
+    const names = missing.map(nameOf).join(", ");
+    const ok = await dialog.confirm(`${names} 님은 이 채널에 없어 알림을 받지 못합니다. 채널에 초대할까요?`, { title: "채널 초대", confirmLabel: "초대" });
+    if (!ok) return;
+    const result = await channelAction({ action: "ADD_MEMBERS", channelId, accountIds: missing }, "초대하지 못했습니다.");
+    if (!result.ok) { flash(result.error); return; }
+    setChannelMembers((current) => current?.channelId === channelId ? { channelId, ids: [...current.ids, ...missing] } : current);
+    flash(`${names} 님을 초대했습니다.`);
   }
 
   const activityCount = (poll.unread?.mentions ?? 0) + (poll.unread?.threads ?? 0);
@@ -916,7 +943,10 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
           <>
             <header className="chat-header">
               <div>
-                <strong>{joined ? (joined.kind === "public" ? "# " : joined.kind === "private" ? "🔒 " : "") + channelLabel(joined) : preview ? `# ${preview.name}` : ""}</strong>
+                <strong>
+                  {joined ? (joined.kind === "public" ? "# " : joined.kind === "private" ? "🔒 " : "") + channelLabel(joined) : preview ? `# ${preview.name}` : ""}
+                  {joined?.kind === "dm" && othersOf(joined).length === 1 && <PresenceDot lastSeen={poll.presence[othersOf(joined)[0]]} withText={false} />}
+                </strong>
                 <span>
                   {(joined?.topic || preview?.topic) && <>{joined?.topic || preview?.topic} · </>}
                   {dmPresence ? <>{dmPresence} · </> : null}멤버 {joined?.memberCount ?? preview?.memberCount ?? 0}명{archived ? " · 보관됨" : ""}
@@ -989,11 +1019,12 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
                     ))}
                   </div>
                   <Composer channelId={activeId} threadRootId={thread.root.id} placeholder="답글 쓰기" onError={flash} mentionPeople={mentionPeople} mentionChannel={mentionChannel}
+                    presence={poll.presence}
                     disabledReason={disabledReason ?? (thread.root.deleted ? "삭제된 메시지에는 답글을 달 수 없습니다." : null)} onSent={onSent} />
                 </aside>
               )}
             </div>
-            <Composer channelId={activeId} mentionPeople={mentionPeople} mentionChannel={mentionChannel} placeholder={preview ? "보내면 이 채널에 참여합니다" : "메시지 쓰기 (@이름으로 멘션)"} onError={flash}
+            <Composer channelId={activeId} mentionPeople={mentionPeople} mentionChannel={mentionChannel} presence={poll.presence} placeholder={preview ? "보내면 이 채널에 참여합니다" : "메시지 쓰기 (@이름으로 멘션)"} onError={flash}
               disabledReason={disabledReason} onSent={(message) => { onSent(message); if (preview) void loadChannels(); }} />
           </>
         )}
