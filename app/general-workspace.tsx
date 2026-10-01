@@ -186,7 +186,6 @@ const DOCUMENT_FIELDS: FieldSpec[] = [
   { name: "contractAmount", label: "계약 금액", type: "money", show: (v) => v.kind === "B2B_CONTRACT" },
   { name: "autoRenew", label: "자동 연장", type: "checkbox", show: (v) => v.kind === "B2B_CONTRACT" },
   { name: "noticeDays", label: "해지 통보 기한(일)", type: "number", placeholder: "종료일 며칠 전까지", show: (v) => v.kind === "B2B_CONTRACT" },
-  { name: "storageLocation", label: "원본 보관 위치", type: "text", required: true, placeholder: "예: 금고 1단, 계약서 바인더 A" },
   { name: "managerEmployeeId", label: "관리 책임자", type: "employee" },
   { name: "alertOff", label: "만료 알림 끄기", type: "checkbox" }, { name: "memo", label: "메모", type: "textarea", placeholder: "필요한 내용을 자유롭게 적어 주세요" },
 ];
@@ -524,13 +523,13 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
         </div>
         {!documents ? <p className="ga-muted">불러오는 중…</p> : shown.length === 0 ? <p className="ga-muted">서류가 없습니다.</p> : (
           <table className="ga-table selectable">
-            <thead><tr><th>종류</th><th>서류명·계약명</th><th>상대방·발급기관</th><th>만료·종료</th><th>보관 위치</th><th>상태</th></tr></thead>
+            <thead><tr><th>종류</th><th>서류명·계약명</th><th>상대방·발급기관</th><th>만료·종료</th><th>상태</th></tr></thead>
             <tbody>{shown.map((document) => (
               <tr key={document.id} className={document.id === selected ? "selected" : ""} onClick={() => setSelected(document.id)}>
                 <td>{DOCUMENT_KIND_LABEL[document.kind]}{document.kind === "B2B_CONTRACT" && document.contractType ? ` · ${CONTRACT_TYPE_LABEL[document.contractType]}` : ""}</td>
                 <td>{document.title}</td><td>{document.counterparty || document.issuer || "-"}</td>
                 <td>{due(document) ?? "-"}{document.kind === "B2B_CONTRACT" && document.noticeDays > 0 ? ` (통보 ${document.noticeDays}일 전)` : ""}</td>
-                <td>{document.storageLocation || "-"}</td><td>{document.checkedOut ? <span className="ga-status out">반출 중</span> : "보관"}</td>
+                <td>{document.checkedOut ? <span className="ga-status out">반출 중</span> : "보관"}</td>
               </tr>
             ))}</tbody>
           </table>
@@ -538,7 +537,7 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
       </div>
       {d && detail && (
         <aside className="ga-detail" aria-label="서류 상세">
-          <header><div><small>{DOCUMENT_KIND_LABEL[d.kind]}</small><strong>{d.title}</strong><span>{d.storageLocation || "보관 위치 미기록"}</span></div>
+          <header><div><small>{DOCUMENT_KIND_LABEL[d.kind]}</small><strong>{d.title}</strong><span>{d.kind === "B2B_CONTRACT" ? d.counterparty : d.issuer || "발급기관 미기록"}</span></div>
             <button type="button" aria-label="닫기" onClick={() => { setSelected(null); setDetail(null); }}>×</button></header>
           <dl className="ga-fields">
             {d.kind === "B2B_CONTRACT" ? <>

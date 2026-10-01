@@ -57,7 +57,7 @@ export const GA_SHEETS: Record<GaSheet, SheetDefinition> = {
     { header: "종류", field: "kind", type: "enum", required: true, options: DOCUMENT_KINDS, example: "사업자등록증" },
     T("서류명", "title", { required: true, example: "사업자등록증 원본" }), T("발급기관", "issuer", { example: "세무서" }),
     { header: "발급일", field: "issuedOn", type: "date" }, { header: "만료일", field: "expiresOn", type: "date" },
-    { header: "유효기간(개월)", field: "validityMonths", type: "int", example: "" }, T("보관위치", "storageLocation", { required: true, example: "금고 1단" }),
+    { header: "유효기간(개월)", field: "validityMonths", type: "int", example: "" },
     { header: "관리책임자", field: "managerEmployeeId", type: "employee" }, T("메모", "memo", { max: 1000 }),
   ] },
   B2B_CONTRACT: { sheet: "B2B_CONTRACT", title: "기업간계약서", columns: [
@@ -66,7 +66,7 @@ export const GA_SHEETS: Record<GaSheet, SheetDefinition> = {
     T("상대방", "counterparty", { required: true, example: "○○상사" }), { header: "계약일", field: "signedOn", type: "date" },
     { header: "시작일", field: "startsOn", type: "date" }, { header: "종료일", field: "endsOn", type: "date", example: "2027-06-30" },
     { header: "계약금액", field: "contractAmount", type: "money" }, { header: "자동연장", field: "autoRenew", type: "yn", example: "Y" },
-    { header: "해지통보기한(일)", field: "noticeDays", type: "int", example: "30" }, T("보관위치", "storageLocation", { example: "계약서 바인더 A" }),
+    { header: "해지통보기한(일)", field: "noticeDays", type: "int", example: "30" },
     { header: "관리책임자", field: "managerEmployeeId", type: "employee" }, T("메모", "memo", { max: 1000 }),
   ] },
   CHECKOUT: { sheet: "CHECKOUT", title: "반출대장", columns: [

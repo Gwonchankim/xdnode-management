@@ -71,6 +71,8 @@ export async function POST(request: Request) {
       if (!current) return gaNotFound("서류");
       const people = new Map((await gaPeople(db)).map((person) => [person.employeeId, person]));
       const fields = documentFields({ ...payload, kind: payload.kind ?? current.kind }, people);
+      // GA-D6: 화면이 보관 위치를 보내지 않으므로, 빠지면 예전에 적어 둔 값을 그대로 둔다.
+      if (payload.storageLocation === undefined) fields.storage_location = current.storage_location;
       const result = await db.prepare(`UPDATE ga_documents SET kind = ?, title = ?, issuer = ?, issued_on = ?, expires_on = ?, validity_months = ?,
         storage_location = ?, manager_employee_id = ?, contract_type = ?, counterparty = ?, signed_on = ?, starts_on = ?, ends_on = ?, contract_amount = ?,
         auto_renew = ?, notice_days = ?, alert_off = ?, memo = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL AND updated_at = ?`)

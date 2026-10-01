@@ -352,3 +352,17 @@ test('GA UI: the document and asset create forms take files and upload them to t
   assert.match(css, /height: 40px;/);
   assert.match(workspace, /!fileExtensionAllowed\(file\.name\)/, 'the same extension table as the server, checked before upload');
 });
+
+test('GA-D6: documents register without a storage location, and editing keeps a value recorded earlier', async () => {
+  await world();
+  const created = await ga('documents', 'POST', { action: 'CREATE', kind: 'BUSINESS_REG', title: '사업자등록증' });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  const legacy = (await ga('documents', 'POST', { action: 'CREATE', kind: 'PERMIT', title: '허가증', storageLocation: '금고 1단' })).body.document;
+  const edited = await ga('documents', 'POST', { action: 'UPDATE', id: legacy.id, kind: 'PERMIT', title: '허가증(갱신)', updatedAt: legacy.updatedAt });
+  assert.equal(edited.status, 200);
+  assert.deepEqual([edited.body.document.title, edited.body.document.storageLocation], ['허가증(갱신)', '금고 1단']);
+  const { GA_SHEETS } = importRules;
+  assert.ok(!GA_SHEETS.DOCUMENT.columns.some((column) => column.field === 'storageLocation'));
+  assert.ok(!GA_SHEETS.B2B_CONTRACT.columns.some((column) => column.field === 'storageLocation'));
+  assert.doesNotMatch(readFileSync(new URL('../app/general-workspace.tsx', import.meta.url), 'utf8'), /label: "원본 보관 위치"/);
+});

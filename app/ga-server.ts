@@ -261,7 +261,8 @@ export function documentFields(input: Record<string, unknown>, people: Map<strin
     issued_on: contract ? null : date(input, "issuedOn", "발급일"),
     expires_on: contract ? null : date(input, "expiresOn", "만료일"),
     validity_months: contract ? 0 : amount(input, "validityMonths", "유효기간"),
-    storage_location: text(input, "storageLocation", "보관위치", { max: 120, required: !contract }),
+    // GA-D6: 입력하지 않는다(값이 오면 받아 두지만 필수가 아니다). 수정 때 빠지면 라우트가 기존 값을 유지한다.
+    storage_location: text(input, "storageLocation", "보관위치", { max: 120 }),
     manager_employee_id: employee(input, "managerEmployeeId", "관리책임자", people),
     contract_type: contract ? oneOf(input, "contractType", "계약종류", GA_CONTRACT_TYPES, { required: true }) : "",
     counterparty: contract ? text(input, "counterparty", "상대방", { max: 120, required: true }) : "",
