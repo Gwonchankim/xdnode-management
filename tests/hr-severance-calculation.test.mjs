@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   DAILY_WORK_HOURS, MONTHLY_ORDINARY_HOURS, dailyOrdinaryWageOn, normalizeDate, workingTimeRuleFor,
-  averageWageMonths, calculateLeaveAllowance, calculateSeverance, daysInYearMonth, isMonthEnd,
+  averageWageMonths, averageWagePeriod, calculateLeaveAllowance, calculateSeverance, daysInYearMonth, isMonthEnd, retirementDayAfter,
   ordinaryDailyWageOf, precedingMonths,
 } from "../app/hr-severance-calculation.ts";
 
@@ -72,7 +72,7 @@ test("직전 급여 자료가 빠진 달은 분모에서도 빼고 사유를 남
   });
   assert.equal(result.averageWageDays, 31);
   assert.equal(result.months.length, 1);
-  assert.match(result.reason, /2개월치 급여 자료가 없어/);
+  assert.match(result.reason, /2026-09, 2026-07 급여 자료가 없어 나머지 31일로 산정했습니다/);
   // 있는 달만으로 산정하므로 금액 자체는 나온다.
   assert.ok(result.severance > 0);
 });
@@ -89,15 +89,13 @@ test("자료도 통상임금도 없으면 0원과 사유를 돌려준다", () =>
 test("입사일이 점 구분자로 저장돼 있어도 계산한다", () => {
   // 실서버 hr_employee_records.join_date 는 "2024.11.14" 형식이고 retirement_date 는 "2026-08-13" 형식이다.
   // 하이픈만 받던 시절에는 퇴직금이 전부 "입사일과 퇴사일을 모두 확인해 주세요"로 떨어졌다.
+  // 8/13 까지 근무하면 산정기간은 5/14~8/13 이라 8월(13일 근무분) 급여도 필요하다.
+  const recentWages = wages([["2026-08", 1_360_000], ["2026-07", 3_250_000], ["2026-06", 3_250_000], ["2026-05", 3_250_000]]);
   const dotted = calculateSeverance({
-    joinDate: "2024.11.14", retirementDate: "2026-08-13",
-    recentWages: wages([["2026-07", 3_250_000], ["2026-06", 3_250_000], ["2026-05", 3_250_000]]),
-    monthlyOrdinaryWage: 3_250_000,
+    joinDate: "2024.11.14", retirementDate: "2026-08-13", recentWages, monthlyOrdinaryWage: 3_250_000,
   });
   const dashed = calculateSeverance({
-    joinDate: "2024-11-14", retirementDate: "2026-08-13",
-    recentWages: wages([["2026-07", 3_250_000], ["2026-06", 3_250_000], ["2026-05", 3_250_000]]),
-    monthlyOrdinaryWage: 3_250_000,
+    joinDate: "2024-11-14", retirementDate: "2026-08-13", recentWages, monthlyOrdinaryWage: 3_250_000,
   });
   assert.equal(dotted.tenureDays, dashed.tenureDays);
   assert.equal(dotted.severance, dashed.severance);
@@ -145,7 +143,7 @@ test("추정치는 법정 산식과 어긋나는 지점을 스스로 밝힌다",
   });
   // 이 값이 확정 지급액으로 오해되지 않도록, 화면이 그대로 보여줄 한계를 함께 돌려준다.
   assert.equal(result.limitations.length, 3);
-  assert.ok(result.limitations.some((item) => item.includes("퇴직일 이전 3개월")));
+  assert.ok(result.limitations.some((item) => item.includes("근무일수로 나눠 걸친 날짜만큼")));
   assert.ok(result.limitations.some((item) => item.includes("제외기간")));
   assert.ok(result.limitations.some((item) => item.includes("3/12")));
 });
@@ -275,9 +273,43 @@ test("말일 퇴사는 퇴직월을 평균임금 산정기간에 넣는다", () 
   assert.equal(isMonthEnd("2024-02-29"), true);   // 윤년 2월
   assert.equal(isMonthEnd("2026-07-10"), false);
   assert.deepEqual(averageWageMonths("2026-08-31"), ["2026-08", "2026-07", "2026-06"]);
-  // 중도 퇴사는 그 달이 일할이라 예전처럼 뺀다.
-  assert.deepEqual(averageWageMonths("2026-07-10"), ["2026-06", "2026-05", "2026-04"]);
+  // 중도 퇴사(7/10 까지 근무)는 퇴직일 7/11 이전 3개월 4/11~7/10 에 걸친 네 달이다.
+  assert.deepEqual(averageWageMonths("2026-07-10"), ["2026-07", "2026-06", "2026-05", "2026-04"]);
   assert.deepEqual(averageWageMonths(""), []);
+});
+
+test("10/30 까지 근무하면 퇴직일은 10/31 이고 평균임금은 7/31~10/30(8·9·10월과 7월 하루)로 잡는다", () => {
+  assert.equal(retirementDayAfter("2026-10-30"), "2026-10-31");
+  assert.equal(retirementDayAfter("2026-12-31"), "2027-01-01");
+  const period = averageWagePeriod("2026-10-30", "2024-01-15");
+  assert.equal(period.start, "2026-07-31");
+  assert.equal(period.end, "2026-10-30");
+  assert.equal(period.days, 92);
+  assert.deepEqual(period.months.map((month) => [month.yearMonth, month.overlapDays, month.workedDays]), [
+    ["2026-10", 30, 30], ["2026-09", 30, 30], ["2026-08", 31, 31], ["2026-07", 1, 31],
+  ]);
+  // 10월 급여(10/1~10/30 근무분)는 전부, 7월은 1/31 만 들어간다.
+  const result = calculateSeverance({
+    joinDate: "2024-01-15", retirementDate: "2026-10-30", monthlyOrdinaryWage: 0,
+    recentWages: wages([["2026-10", 3_100_000], ["2026-09", 3_100_000], ["2026-08", 3_100_000], ["2026-07", 3_100_000]]),
+  });
+  assert.deepEqual(result.months, ["2026-10", "2026-09", "2026-08", "2026-07"]);
+  assert.equal(result.averageWageDays, 92);
+  assert.equal(result.averageWageTotal, 3_100_000 * 3 + 3_100_000 / 31);
+  assert.deepEqual(result.averagePeriod, { start: "2026-07-31", end: "2026-10-30", days: 92 });
+  assert.equal(result.reason, "");
+  // 계속근로기간은 입사일부터 마지막 근무일까지다(퇴직일은 넣지 않는다).
+  assert.equal(result.tenureDays, 1020);
+});
+
+test("산정기간 시작 달에 같은 날짜가 없으면 그 달 말일부터 센다", () => {
+  // 5/30 까지 근무 → 퇴직일 5/31 → 2월에는 31일이 없으므로 2/28 부터.
+  const period = averageWagePeriod("2026-05-30");
+  assert.equal(period.start, "2026-02-28");
+  assert.equal(period.days, 92);
+  // 입사가 산정기간 안이면 입사일부터만 센다.
+  assert.equal(averageWagePeriod("2026-10-30", "2026-09-01").start, "2026-09-01");
+  assert.equal(averageWagePeriod("2026-10-30", "2026-09-10").months.find((month) => month.yearMonth === "2026-09").workedDays, 21);
 });
 
 test("확정되지 않은 급여월은 잠정으로 표시하고 사유를 남긴다", () => {

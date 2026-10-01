@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import "./globals.css";
 import "./compensation-calculator.css";
 import "./chat-workspace.css";
+import "./general-workspace.css";
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();

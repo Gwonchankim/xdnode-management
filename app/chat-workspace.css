@@ -58,6 +58,10 @@
 .chat-message.theirs .chat-bubble { border: 1px solid #e4e4e7; border-top-left-radius: 4px; background: #fff; }
 .chat-message.mine .chat-bubble { border: 1px solid #cfe3b4; border-top-right-radius: 4px; background: #e3efd2; }
 .chat-message.deleted .chat-bubble { border-style: dashed; background: transparent; }
+/* 시스템 글(총무 알림, general-affairs GD-8): 가운데, 알림 카드 모양 */
+.chat-message.system { align-items: center; }
+.chat-message.system .chat-bubble { max-width: min(640px, 92%); border: 1px solid #d4d4d8; border-left: 4px solid var(--brand-green); border-radius: 12px; background: #fff; }
+.chat-message.system > header strong::before { content: "🔔 "; }
 .chat-bubble.editing { width: min(560px, 75%); }
 .chat-thread .chat-bubble { max-width: 88%; }
 .chat-thread .chat-bubble.editing { width: 88%; }

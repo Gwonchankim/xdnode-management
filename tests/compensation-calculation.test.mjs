@@ -240,6 +240,26 @@ test("a manual meal amount for one month replaces the prorated meal allowance wi
   assert.equal(september.meal, 200_000);
 });
 
+// 2026-10-01: 지급이 끝난 달은 급여 시스템의 급여대장과 같아야 한다. 8월 급여대장은 8월 2일부터 일할한 금액을
+// 8월 3일 입사로 적고, 기본급을 내림으로 계산했다. 그 달 기본급·자가운전·육아를 직접 적으면 계산 대신 그 값을 쓴다.
+test("a month's basic pay, car and childcare can be typed to match the paid ledger without touching other months", () => {
+  const base = employee({ annualSalary: 55_000_000, joinDate: "2026-08-10", meal: 200_000, car: 200_000, child: 200_000 });
+  const auto = calculateCompensation(base, 2026, 8, "round", columns);
+  assert.equal(auto.days, 22);
+  const paid = { "2026-08": { basicOverride: 3_163_288, meal: 151_232, car: 151_232, child: 0 } };
+  const pinned = calculateCompensation({ ...base, monthly: paid }, 2026, 8, "round", columns);
+  assert.equal(pinned.days, 22);
+  assert.deepEqual([pinned.basic, pinned.meal, pinned.car, pinned.child], [3_163_288, 151_232, 151_232, 0]);
+  assert.equal(pinned.total, 3_163_288 + 151_232 * 2);
+  // 다른 달은 그대로 계산한다.
+  const september = calculateCompensation({ ...base, monthly: paid }, 2026, 9, "round", columns);
+  assert.deepEqual([september.car, september.child], [200_000, 200_000]);
+  assert.equal(september.basic, calculateCompensation(base, 2026, 9, "round", columns).basic);
+  // 수기 기본급(월 기준액, 일할 대상)과는 다른 값이다. 둘 다 있으면 그 달 금액이 이긴다.
+  const manual = calculateCompensation({ ...base, manualBasic: true, monthly: { "2026-08": { basic: 4_000_000, basicOverride: 1_000_000 } } }, 2026, 8, "round", columns);
+  assert.equal(manual.basic, 1_000_000);
+});
+
 test("full-month basic pay is ceil(annual × rate / 12) − allowances regardless of the rounding setting, matching the contract formula", () => {
   // 33,000,000 / 12 = 2,750,000 exactly; 35,000,000 / 12 = 2,916,666.67 → ceil 2,916,667.
   const exact = calculateCompensation(employee({ annualSalary: 33_000_000, meal: 200_000, car: 0, child: 0 }), 2026, 9, "down", columns);

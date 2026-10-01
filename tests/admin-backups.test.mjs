@@ -238,3 +238,11 @@ test('verify + record-run: a good copy is recorded OK in the stopped live DB; a 
   assert.notEqual(liveRefusal.code, 0);
   if (existsSync(path.join(root, '.wrangler', 'state', 'v3'))) assert.match(liveRefusal.stderr, /운영 중인/);
 });
+
+test('account screen: the row action menu is fixed to the viewport so the scrolling table cannot clip it', () => {
+  const source = readFileSync(path.join(root, 'app', 'admin-accounts-workspace.tsx'), 'utf8');
+  assert.match(source, /function RowActions\(/);
+  assert.match(source, /setStyle\(\{ position: "fixed", top, left, right: "auto", width: ROW_MENU_WIDTH \}\)/);
+  assert.match(source, /window\.addEventListener\("scroll", close, true\)/, 'a fixed menu closes when the page or table scrolls');
+  assert.doesNotMatch(source, /<details className="admin-accounts-actions">\s*<summary>작업<\/summary>\s*<div>/, 'the clipped absolute menu is gone');
+});

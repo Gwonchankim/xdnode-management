@@ -20,6 +20,7 @@ param(
   [string]$ProdRoot = "C:\xdm\prod",
   [string]$User = "$env:USERDOMAIN\$env:USERNAME",
   [string]$BackupTime = "03:00",
+  [string]$AlertsTime = "09:00",
   [string]$MirrorRoot = "",
   [System.Management.Automation.PSCredential]$Credential
 )
@@ -27,6 +28,7 @@ $ErrorActionPreference = "Stop"
 
 $AutostartTask = "XDnodeManagement-Autostart"
 $BackupTask = "XDnodeManagement-Backup"
+$AlertsTask = "XDnodeManagement-Alerts"
 $ProtectedTasks = @("XDNODE 견적서 서버")
 
 function Resolve-FullPath([string]$Path) { [System.IO.Path]::GetFullPath($Path).TrimEnd("\") }
@@ -51,7 +53,7 @@ function Assert-NotDevFolder([string]$Root) {
 
 $ProdRoot = Resolve-FullPath $ProdRoot
 Assert-NotDevFolder $ProdRoot
-foreach ($name in @($AutostartTask, $BackupTask)) {
+foreach ($name in @($AutostartTask, $BackupTask, $AlertsTask)) {
   if ($ProtectedTasks -contains $name) { throw "refusing to overwrite a protected task: $name" }
 }
 $startScript = Join-Path $ProdRoot "scripts\Start-XDNodeManagement.ps1"
@@ -66,6 +68,11 @@ $autostartAction = New-ScheduledTaskAction -Execute $powershell -Argument "$comm
 $backupArgument = "$common `"$backupScript`""
 if ($MirrorRoot) { $backupArgument += " -MirrorRoot `"$MirrorRoot`"" }
 $backupAction = New-ScheduledTaskAction -Execute $powershell -Argument $backupArgument -WorkingDirectory $ProdRoot
+# 총무 알림(general-affairs GD-7): 매일 09:00. 스크립트가 없으면(총무 탭 전 버전) 이 작업은 만들지 않는다.
+$alertsScript = Join-Path $ProdRoot "scripts\Run-GaAlerts.ps1"
+$alertsAction = New-ScheduledTaskAction -Execute $powershell -Argument "$common `"$alertsScript`"" -WorkingDirectory $ProdRoot
+$alertsTrigger = New-ScheduledTaskTrigger -Daily -At $AlertsTime
+$alertsSettings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -MultipleInstances IgnoreNew -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 
 if ($Mode -eq "Startup") {
   $autostartTrigger = New-ScheduledTaskTrigger -AtStartup
@@ -89,11 +96,14 @@ $definitions = @(
   @{ Name = $AutostartTask; Action = $autostartAction; Trigger = $autostartTrigger; Settings = $autostartSettings; Description = "XDnode management: vite preview 3000 + bridges 3120/3130 (Start-XDNodeManagement.ps1 -Headless). All restarts go through this task." },
   @{ Name = $BackupTask; Action = $backupAction; Trigger = $backupTrigger; Settings = $backupSettings; Description = "XDnode management: daily stop-copy-verify backup to C:\xdm\backup (Backup-XDNodeManagement.ps1)." }
 )
+if (Test-Path -LiteralPath $alertsScript) {
+  $definitions += @{ Name = $AlertsTask; Action = $alertsAction; Trigger = $alertsTrigger; Settings = $alertsSettings; Description = "XDnode management: daily 총무 알림 digest to the messenger (Run-GaAlerts.ps1, idempotent per day)." }
+}
 
 foreach ($definition in $definitions) {
   Write-Host ("{0}: {1} {2} | user {3} | logon {4}" -f $definition.Name, $definition.Action.Execute, $definition.Action.Arguments, $User, $logonType)
 }
-if (-not $PSCmdlet.ShouldProcess("$AutostartTask, $BackupTask", "Register-ScheduledTask ($Mode)")) { return }
+if (-not $PSCmdlet.ShouldProcess((($definitions | ForEach-Object { $_.Name }) -join ", "), "Register-ScheduledTask ($Mode)")) { return }
 
 $password = $null
 if ($logonType -eq "Password") {
@@ -118,5 +128,5 @@ foreach ($definition in $definitions) {
 }
 $password = $null
 
-Get-ScheduledTask -TaskName $AutostartTask, $BackupTask | Select-Object TaskName, State, @{ n = "LogonType"; e = { $_.Principal.LogonType } } | Format-Table -AutoSize
+Get-ScheduledTask -TaskName ($definitions | ForEach-Object { $_.Name }) | Select-Object TaskName, State, @{ n = "LogonType"; e = { $_.Principal.LogonType } } | Format-Table -AutoSize
 Write-Host "Next: Start-ScheduledTask $AutostartTask, then check C:\xdm\logs\xdm-yyyyMMdd.log for 'ready'. Rehearse a reboot without logging on (SC-12)."

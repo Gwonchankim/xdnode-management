@@ -722,3 +722,25 @@ test('ME QA: @ suggestions list only members (public channels too); the composer
   assert.match(css, /\.chat-composer-field > textarea \{ position: relative; z-index: 1; color: transparent; caret-color:/);
   assert.doesNotMatch(css.match(/\.chat-composer-highlight mark \{[^}]*\}/)?.[0] ?? '', /font-weight/, 'bold mentions would shift the caret');
 });
+
+test('ME × 총무: a system:ga message works with the enhancement DTO, unread count, notifier and read count', async () => {
+  const { kim, lee } = await world();
+  const id = await channel(kim, '총무알림', 'public', [lee.id]);
+  const now = Date.now();
+  await db.prepare(`INSERT INTO chat_messages (client_key, channel_id, thread_root_id, author_account_id, body, mention_channel, reply_count, last_reply_at, created_at)
+    VALUES ('system:ga:test', ?, NULL, 'system:ga', '오늘 만료 1건', 0, 0, NULL, ?)`).bind(id, now).run();
+  const message = (await lee.call('messages', 'GET', undefined, `?channelId=${id}`)).body.messages.at(-1);
+  assert.equal(message.author.name, 'XDnode 알림');
+  assert.deepEqual([message.reactions, message.pinnedAt], [[], null]);
+  assert.equal(channelRow(await summaryOf(lee), id).unread, 1, 'system messages count as unread like any other author');
+
+  const { shouldNotify } = await import('../app/chat-notify.ts');
+  const event = { seq: 1, kind: 'message.created', channelId: id, message };
+  assert.equal(shouldNotify(event, { me: lee.id, channel: { kind: 'public', name: '총무알림', notifyLevel: 'all' }, viewingChannelId: null }), true);
+  assert.equal(shouldNotify(event, { me: lee.id, channel: { kind: 'public', name: '총무알림', notifyLevel: 'mute' }, viewingChannelId: null }), false, 'a muted 총무 channel stays quiet');
+
+  const { unreadCountFor } = await import('../app/chat-client.ts');
+  const reads = (await kim.call('poll', 'GET', undefined, `?since=0&active=${id}`)).body.reads;
+  assert.equal(unreadCountFor(message, reads), 2, 'both members still have to read the system message');
+  assert.equal((await lee.call('reactions', 'POST', { messageId: message.id, emoji: '✅' })).status, 200, 'members can acknowledge a 총무 alert with a reaction');
+});

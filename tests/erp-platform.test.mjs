@@ -652,7 +652,11 @@ test("employee lifecycle opens each retirement in its own modal beside the onboa
   assert.doesNotMatch(operations, /UPDATE hr_payroll_records|INSERT INTO hr_payroll_records/);
   // 체크와 정산 입력이 모두 모달 안에서 이루어져야 한다.
   assert.match(workspace, /className="retirement-modal-checklist"/);
-  assert.match(workspace, /<RetirementSettlementPanel requestId=\{request\.id\} \/>/);
+  // general-affairs GD-11: 정산 패널은 직원 id 도 받아 미반납 지급 자산을 보여 준다.
+  assert.match(workspace, /<RetirementSettlementPanel requestId=\{request\.id\} employeeId=\{request\.employee_id\} retirementDate=\{request\.retirement_date\} \/>/);
+  // 퇴직 절차 팝업에서도 확정된 마지막 근무일을 바꿀 수 있다(2026-10-01).
+  assert.match(workspace, /onChangeDate=\{\(date\) => changeRetirementDate\(openRetirement, date\)\}/);
+  assert.match(workspace, /<span>퇴직일<\/span><strong>\{retirementDayAfter\(request\.retirement_date\)\}/);
   assert.doesNotMatch(workspace, /expandedCards|toggleCard\(/);
   assert.match(styles, /\.retirement-process-modal \{[^}]*max-height: 92vh/);
   assert.match(styles, /\.lifecycle-board \{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
@@ -765,7 +769,11 @@ test("direct retirement approval activates a durable checklist and applies the d
   assert.match(api, /resource === "retirementDecision"/);
   assert.match(workspace, /onLegacyDecision\("APPROVED"\)/);
   assert.match(api, /resource === "retirementChecklist"/);
-  assert.match(activator, /WHERE retirement_date <= \? AND \(status IN \('IN_PROGRESS', 'READY'\) OR \(status = 'EFFECTIVE'/);
+  assert.match(api, /resource === "retirementDate"/);
+  assert.match(api, /action: "RETIREMENT_DATE_CHANGED"/);
+  assert.doesNotMatch(activator, /retirement_date <= \?/);
+  // retirement_date 는 마지막 근무일이라 퇴직 처리는 그 다음 날부터다(<=  였다면 마지막 근무일 아침에 퇴직자가 된다).
+  assert.match(activator, /WHERE retirement_date < \? AND \(status IN \('IN_PROGRESS', 'READY'\) OR \(status = 'EFFECTIVE'/);
   assert.match(activator, /"COMPLETED" : "EFFECTIVE"/);
   assert.match(activator, /RETIREMENT_EFFECTIVE/);
   assert.match(records, /applyDueRetirements\(db\)/);
@@ -1108,17 +1116,23 @@ test("wage calculator can append new hires from HR records without rebuilding th
 test("wage table lets the meal allowance be typed for a month and reverted to automatic", async () => {
   const calculator = await read("app/compensation-calculator.tsx");
   // 자동 금액은 버튼이라 누르면 그 달 식대가 수기 입력으로 바뀐다. 시작값은 자동 계산값이다.
-  assert.match(calculator, /className="allowance-value" title="[^"]*" onClick=\{\(\) => \{ setMealEditingId\(employee\.id\); updateMonthly\(employee\.id, "meal", row\.meal\)/);
-  assert.match(calculator, /focusOnEdit=\{mealEditingId === employee\.id\}/);
+  assert.match(calculator, /className="allowance-value" title=\{`[^`]*`\} onClick=\{\(\) => \{ setEditingCell\(`\$\{employee\.id}:\$\{field}`\); updateMonthly\(employee\.id, field, row\[field\]\)/);
+  assert.match(calculator, /focusOnEdit=\{editingCell === `\$\{employee\.id}:\$\{field}`\}/);
   const wonInput = await read("app/won-input.tsx");
   assert.match(wonInput, /if \(focusOnEdit\) inputRef\.current\?\.focus\(\)/);
   const calculatorCss = await read("app/compensation-calculator.css");
   assert.match(calculatorCss, /\.allowance-cell input\.money-input \{ width: 92px/);
   // 되돌리기는 0을 넣는 게 아니라 월별 값을 지운다.
   assert.match(calculator, /function clearMonthly/);
-  assert.match(calculator, /className="allowance-auto"[^>]*onClick=\{\(\) => clearMonthly\(employee\.id, "meal"\)/);
+  assert.match(calculator, /className="allowance-auto"[^>]*onClick=\{\(\) => clearMonthly\(employee\.id, field\)/);
+  // 기본급도 같은 방식으로 그 달 금액을 그대로 적는다(급여대장과 맞출 때). 수기 기본급(월 기준액)과는 다른 칸이다.
+  assert.match(calculator, /updateMonthly\(employee\.id, "basicOverride", row\.basic\)/);
+  assert.match(calculator, /clearMonthly\(employee\.id, "basicOverride"\)/);
+  // 그 달 지급액 값은 다음 달로 이어받지 않는다.
+  assert.match(calculator, /const MONTH_ONLY_FIELDS = new Set\(\["basicOverride", "car", "child"\]\)/);
   const engine = await read("app/compensation-calculation.ts");
   assert.match(engine, /monthly\.meal !== undefined \? monthly\.meal : allowance\(employee\.meal\)/);
+  assert.match(engine, /if \(monthly\.basicOverride !== undefined\) basic = monthly\.basicOverride;/);
 });
 
 test("연차관리 라우트는 권한·감사 가드를 거치고, 발생은 저장하지 않고 엔진이 계산하며 차감 제외 종류를 구분한다", async () => {
@@ -1325,4 +1339,24 @@ test("임금 계산은 수습(첫 계약) 표시를 인사기록과 맞춰 보�
   assert.match(calculator, /const hrDates = useMemo\(\(\) => reviewHrDates\(rows, hrSnapshot\), \[rows, hrSnapshot\]\);/);
   assert.ok(calculator.includes("<b>입·퇴사일 불일치 {"));
   assert.match(calculator, /onClick=\{\(\) => applyHrFixes\(hrDates\)\}>인사기록대로 맞추기<\/button>/);
+});
+
+test("근로계약서 양식 제5조(휴일)는 2026-09-30 검토안대로 법 문구에 맞춘다", async () => {
+  for (const kind of ["fixed-term", "regular"]) {
+    const files = unzipSync(new Uint8Array(await readFile(`public/hr/employment-contract-${kind}.docx`)));
+    const text = strFromU8(files["word/document.xml"]).replace(/<[^>]+>/g, "");
+    const article5 = text.slice(text.indexOf("제 5 조"), text.indexOf("제 6 조"));
+    // 주휴 요건은 시행령 제30조의 「개근」, 토요일 근로는 시간외근로 조항(제8조)으로 보낸다.
+    assert.ok(article5.includes("1주 동안의 소정근로일을 개근한 경우 1일 소정근로시간(7시간)분의 유급휴일로 한다."), kind);
+    assert.ok(article5.includes("휴일근로가 아닌 소정근로시간 외 근로로 보아 제8조에 따라 처리한다."), kind);
+    assert.ok(!article5.includes("제7조에 따라 처리한다"), kind);
+    assert.ok(article5.includes("관공서의 공휴일(일요일은 제외한다) 및 대체공휴일은 유급휴일로 한다."), kind);
+    // 휴일 대체: 공휴일은 근로자대표 서면합의, 근로자의 날은 대체 불가.
+    assert.ok(article5.includes("근로자대표와 서면으로 합의한 경우에만 특정한 근로일로 대체할 수 있으며, 근로자의 날은 대체하지 아니한다."), kind);
+    assert.ok(article5.includes("⑤ 휴일에 근로한 경우 제8조에 따라 휴일근로 가산수당을 지급한다."), kind);
+    // 같은 검토에서 고친 항 번호(제4조 ③·④, 번호 뒤 마침표)와 임금 지급일.
+    assert.ok(text.includes("③ 시업·종업 및 휴게시간을") && text.includes("④ 1개월 평균 실제 소정근로시간은"), kind);
+    assert.doesNotMatch(text, /[①②③④⑤]\. /, kind);
+    assert.ok(text.includes("지급일이 휴일인 경우에는 직전 근로일에 지급"), kind);
+  }
 });

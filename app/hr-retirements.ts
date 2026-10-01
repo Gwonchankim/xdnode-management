@@ -22,7 +22,7 @@ async function backfillPendingRetirementHistory(db: D1Database, now: number, kor
       record.department, record.position, record.history_json
     FROM hr_retirement_requests request
     JOIN hr_employee_records record ON record.employee_id = request.employee_id
-    WHERE request.status IN ('SUBMITTED', 'IN_PROGRESS', 'READY') AND request.retirement_date > ?`)
+    WHERE request.status IN ('SUBMITTED', 'IN_PROGRESS', 'READY') AND request.retirement_date >= ?`)
     .bind(koreaDate).all<PendingRetirement>();
   for (const row of pending.results) {
     const date = row.retirement_date.replaceAll("-", ".");
@@ -37,6 +37,8 @@ async function backfillPendingRetirementHistory(db: D1Database, now: number, kor
   }
 }
 
+// retirement_date 는 마지막 근무일이다. 퇴직은 그 다음 날(퇴직일)부터라 "retirement_date < 오늘"인 건만 처리한다.
+// 예전에는 <= 라서 10/30 까지 근무하는 사람이 10/30 아침에 이미 퇴직자로 바뀌었다(2026-10-01 바로잡음).
 export async function applyDueRetirements(db: D1Database, now = Date.now()) {
   const table = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'hr_retirement_requests'")
     .first<{ name: string }>();
@@ -44,7 +46,7 @@ export async function applyDueRetirements(db: D1Database, now = Date.now()) {
   const koreaDate = new Date(now + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
   await backfillPendingRetirementHistory(db, now, koreaDate);
   const due = await db.prepare(`SELECT id, employee_id, retirement_date, reason FROM hr_retirement_requests
-    WHERE retirement_date <= ? AND (status IN ('IN_PROGRESS', 'READY') OR (status = 'EFFECTIVE'
+    WHERE retirement_date < ? AND (status IN ('IN_PROGRESS', 'READY') OR (status = 'EFFECTIVE'
       AND completed_tasks = total_tasks AND total_tasks > 0
       AND EXISTS (SELECT 1 FROM hr_retirement_settlements settlement
         WHERE settlement.request_id = hr_retirement_requests.id AND settlement.status = 'READY')))
@@ -63,7 +65,7 @@ export async function applyDueRetirements(db: D1Database, now = Date.now()) {
       .first<{ name: string }>();
     const statements = [
       db.prepare(`UPDATE hr_retirement_requests SET status = ?, completed_at = CASE WHEN ? = 'COMPLETED' THEN ? ELSE completed_at END, updated_at = ?
-        WHERE id = ? AND status IN ('IN_PROGRESS', 'READY', 'EFFECTIVE') AND retirement_date <= ?`)
+        WHERE id = ? AND status IN ('IN_PROGRESS', 'READY', 'EFFECTIVE') AND retirement_date < ?`)
         .bind(nextStatus, nextStatus, now, now, retirement.id, koreaDate),
       db.prepare(`UPDATE hr_employee_records SET status = '퇴직',
         retirement_json = json_set(CASE WHEN json_valid(retirement_json) THEN retirement_json ELSE '{}' END,
