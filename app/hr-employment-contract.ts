@@ -56,7 +56,7 @@ export const contractKindLabels: Record<ContractKind, string> = {
 /** 첫 계약의 기간. 회사 기준이라 화면에서 고르지 않는다. */
 export const FIXED_TERM_MONTHS = 3;
 
-/** 양식 제4조 ⑤의 월 임금 환산 기준시간. (주 35시간 + 주휴 7시간) × 365 ÷ 7 ÷ 12. */
+/** 양식 제4조 ④의 월 임금 환산 기준시간. (주 35시간 + 주휴 7시간) × 365 ÷ 7 ÷ 12. */
 export const MONTHLY_WAGE_HOURS = 182.5;
 
 /** 최저시급. 해마다 고시되므로 연초에 갱신한다. 3개월 기간제에는 수습 감액이 없어 이 선 아래로는 계약할 수 없다. */
