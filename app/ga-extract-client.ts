@@ -71,9 +71,17 @@ export async function fileToExtractInput(file: File): Promise<ExtractInput> {
 }
 
 /** 서버(/api/general/extract)에 읽혀 화면 필드를 받는다. 실패하면 사용자에게 보일 문구를 던진다. */
-export async function extractFields(target: ExtractTarget, file: File): Promise<Record<string, string | number | boolean>> {
+/** 이미지 여러 장(간식 주문내역 캡처 등)을 한 번에 읽힌다. 4장까지. */
+export async function imagesToExtractInput(files: File[]): Promise<ExtractInput> {
+  const images = [];
+  for (const file of files.slice(0, 4)) images.push({ mediaType: "image/jpeg" as const, data: await imageInput(file) });
+  return { text: "", images, fileName: files.map((file) => file.name).join(", ") };
+}
+
+export async function extractFields(target: ExtractTarget, file: File | File[]): Promise<Record<string, unknown>> {
   let input: ExtractInput;
-  try { input = await fileToExtractInput(file); } catch { throw new Error("파일을 읽지 못했습니다. 손상되지 않은 PDF·이미지인지 확인해 주세요."); }
+  try { input = Array.isArray(file) ? await imagesToExtractInput(file) : await fileToExtractInput(file); }
+  catch { throw new Error("파일을 읽지 못했습니다. 손상되지 않은 PDF·이미지인지 확인해 주세요."); }
   let response: Response;
   try {
     response = await fetch("/api/general/extract", {
@@ -81,7 +89,7 @@ export async function extractFields(target: ExtractTarget, file: File): Promise<
       body: JSON.stringify({ target, ...input }),
     });
   } catch { throw new Error("서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요."); }
-  const body = await response.json().catch(() => ({})) as { fields?: Record<string, string | number | boolean>; error?: string };
+  const body = await response.json().catch(() => ({})) as { fields?: Record<string, unknown>; error?: string };
   if (!response.ok || !body.fields) throw new Error(body.error ?? "AI가 서류를 읽지 못했습니다.");
   return body.fields;
 }

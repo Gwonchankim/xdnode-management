@@ -2,8 +2,10 @@
 // 모델이 무엇을 돌려주든 정해진 필드만, 정해진 형식(날짜·정수·선택값)으로만 통과시킨다. 나머지는 버린다.
 import { isDate } from "./ga-alerts";
 
-export type ExtractTarget = "DOCUMENT" | "EQUIPMENT" | "SUPPLY" | "CONTRACT" | "FIXED";
-export const EXTRACT_TARGETS: readonly ExtractTarget[] = ["DOCUMENT", "EQUIPMENT", "SUPPLY", "CONTRACT", "FIXED"];
+export type ExtractTarget = "DOCUMENT" | "EQUIPMENT" | "SUPPLY" | "CONTRACT" | "FIXED" | "SNACK";
+export const EXTRACT_TARGETS: readonly ExtractTarget[] = ["DOCUMENT", "EQUIPMENT", "SUPPLY", "CONTRACT", "FIXED", "SNACK"];
+/** 간식 구입(GA-D10) 한 건에 담을 수 있는 제품 줄 수. */
+export const SNACK_MAX_ITEMS = 200;
 export const EXTRACT_MAX_IMAGES = 4;
 export const EXTRACT_MAX_IMAGE_BASE64 = 4 * 1024 * 1024;
 export const EXTRACT_MAX_TEXT = 60_000;
@@ -14,6 +16,8 @@ const text = (max = 120): FieldRule => ({ type: "text", max });
 const DOCUMENT_KIND_CODES = ["BUSINESS_REG", "CORP_REGISTRY", "SEAL_CERT", "SEAL_USAGE", "CERTIFICATE", "PERMIT", "B2B_CONTRACT", "OTHER"] as const;
 
 const RULES: Record<ExtractTarget, Record<string, FieldRule>> = {
+  // 제품 줄(items)은 배열이라 아래 normalizeSnack 이 따로 거른다. 여기에는 머리 칸만 둔다.
+  SNACK: { purchasedOn: { type: "date" }, vendor: text(80), shippingFee: { type: "int" }, discount: { type: "int" }, total: { type: "int" } },
   DOCUMENT: {
     kind: { type: "enum", values: DOCUMENT_KIND_CODES }, title: text(), issuer: text(), issuedOn: { type: "date" }, expiresOn: { type: "date" },
     validityMonths: { type: "int" }, contractType: { type: "enum", values: ["SUPPLY", "PARTNER", "SERVICE", "NDA", "OTHER"] },
@@ -47,12 +51,41 @@ const DESCRIPTIONS: Record<string, string> = {
 };
 
 const TARGET_LABEL: Record<ExtractTarget, string> = {
+  SNACK: "직원용 간식을 산 쇼핑몰 주문내역·장바구니·결제 화면 캡처 또는 영수증(여러 장이면 한 주문으로 본다)",
   DOCUMENT: "회사 서류 또는 회사 간 계약서", EQUIPMENT: "직원에게 지급하는 장비의 구매 영수증·견적서·거래명세서",
   SUPPLY: "비품·소모품 구매 영수증·거래명세서", CONTRACT: "계약·구독(라이선스·도메인·호스팅·리스·보험·유지보수) 계약서·증권·청구서",
   FIXED: "고정자산 구매 영수증·계약서·세금계산서",
 };
 
+const SNACK_DESCRIPTIONS: Record<string, string> = {
+  purchasedOn: "주문일·결제일(YYYY-MM-DD)", vendor: "구입처(쿠팡·마켓컬리·이마트 등)", shippingFee: "배송비(원)", discount: "할인·쿠폰·적립금 사용 합계(원, 양수)",
+  total: "실제 결제 총액(원)",
+};
+
+function snackSchema() {
+  const head = Object.fromEntries(Object.keys(RULES.SNACK).map((name) => [name, { type: [name === "purchasedOn" || name === "vendor" ? "string" : "integer", "null"], description: SNACK_DESCRIPTIONS[name] }]));
+  return {
+    type: "object", additionalProperties: false, required: [...Object.keys(head), "items"],
+    properties: {
+      ...head,
+      items: {
+        type: "array", description: "주문한 제품 한 줄씩. 같은 제품이 여러 줄이면 그대로 둔다. 배송비·할인 줄은 넣지 않는다",
+        items: {
+          type: "object", additionalProperties: false, required: ["name", "quantity", "unitPrice", "amount"],
+          properties: {
+            name: { type: "string", description: "제품명(브랜드·용량 포함, 옵션은 괄호). 예: 농심 새우깡 90g" },
+            quantity: { type: ["integer", "null"], description: "수량(묶음 단위 그대로. '3개 묶음 × 2'면 2)" },
+            unitPrice: { type: ["integer", "null"], description: "1개(1수량) 가격(원, 할인 적용 후 화면에 보이는 가격)" },
+            amount: { type: ["integer", "null"], description: "그 줄의 금액(원) = 수량 × 단가" },
+          },
+        },
+      },
+    },
+  };
+}
+
 export function extractSchema(target: ExtractTarget) {
+  if (target === "SNACK") return snackSchema();
   const properties = Object.fromEntries(Object.entries(RULES[target]).map(([name, rule]) => {
     const base = rule.type === "int" ? { type: ["integer", "null"] } : rule.type === "bool" ? { type: ["boolean", "null"] }
       : rule.type === "enum" ? { type: ["string", "null"], enum: [...rule.values, null] } : { type: ["string", "null"] };
@@ -78,14 +111,44 @@ export function extractPrompts(target: ExtractTarget, fileName: string, pdfText:
 }
 
 /** 모델 출력(JSON 문자열 또는 객체) → 화면 필드. 규칙에 맞는 값만 남긴다. */
-export function normalizeExtracted(target: ExtractTarget, output: unknown): Record<string, string | number | boolean> {
+export type SnackItem = { name: string; quantity: number; unitPrice: number; amount: number };
+
+function toAmount(value: unknown) {
+  const number = typeof value === "number" ? value : typeof value === "string" ? Number(value.replace(/[,\s원]/g, "")) : NaN;
+  return Number.isSafeInteger(number) && number >= 0 ? number : null;
+}
+
+/**
+ * 제품 줄: 이름이 있는 줄만. 수량이 없으면 1, 금액·단가 중 하나만 있으면 나머지를 계산한다(나누어떨어지지 않으면 반올림).
+ * 배송비·할인으로 보이는 줄은 버린다(머리 칸에 따로 받는다).
+ */
+export function normalizeSnackItems(value: unknown): SnackItem[] {
+  if (!Array.isArray(value)) return [];
+  const out: SnackItem[] = [];
+  for (const row of value.slice(0, SNACK_MAX_ITEMS)) {
+    if (!row || typeof row !== "object") continue;
+    const source = row as Record<string, unknown>;
+    const name = typeof source.name === "string" ? source.name.trim().slice(0, 120) : "";
+    if (!name || /^(배송비|택배비|할인|쿠폰|적립금)/.test(name)) continue;
+    const quantity = toAmount(source.quantity) || 1;
+    let unitPrice = toAmount(source.unitPrice);
+    let amount = toAmount(source.amount);
+    if (unitPrice === null && amount !== null) unitPrice = Math.round(amount / quantity);
+    if (amount === null && unitPrice !== null) amount = unitPrice * quantity;
+    out.push({ name, quantity, unitPrice: unitPrice ?? 0, amount: amount ?? 0 });
+  }
+  return out;
+}
+
+export function normalizeExtracted(target: ExtractTarget, output: unknown): Record<string, unknown> {
   let data = output;
   if (typeof output === "string") {
     try { data = JSON.parse(output); } catch { return {}; }
   }
   if (!data || typeof data !== "object" || Array.isArray(data)) return {};
   const source = data as Record<string, unknown>;
-  const out: Record<string, string | number | boolean> = {};
+  const out: Record<string, unknown> = {};
+  if (target === "SNACK") out.items = normalizeSnackItems(source.items);
   for (const [name, rule] of Object.entries(RULES[target])) {
     const value = source[name];
     if (value === null || value === undefined || value === "") continue;

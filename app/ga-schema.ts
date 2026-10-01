@@ -139,6 +139,45 @@ const GA_DDL = [
   created_at INTEGER NOT NULL,
   reverted_at INTEGER
 )`,
+  // 간식 구입(GA-D10): 구입 1건 = 머리(날짜·구입처·배송비·할인·결제 총액) + 제품 줄. 캡처(영수증)는 ga_snack_receipts.
+  // ga_attachments 의 owner_type CHECK 는 바꿀 수 없어(DROP·재생성 금지, D4) 영수증 표를 따로 둔다.
+  `CREATE TABLE IF NOT EXISTS ga_snack_purchases (
+  id TEXT PRIMARY KEY NOT NULL,
+  purchased_on TEXT NOT NULL,
+  vendor TEXT NOT NULL DEFAULT '',
+  items_total INTEGER NOT NULL DEFAULT 0,
+  shipping_fee INTEGER NOT NULL DEFAULT 0,
+  discount INTEGER NOT NULL DEFAULT 0,
+  total_amount INTEGER NOT NULL DEFAULT 0,
+  memo TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  deleted_at INTEGER
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_ga_snack_purchases_date ON ga_snack_purchases(purchased_on) WHERE deleted_at IS NULL`,
+  `CREATE TABLE IF NOT EXISTS ga_snack_items (
+  id TEXT PRIMARY KEY NOT NULL,
+  purchase_id TEXT NOT NULL,
+  position INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  quantity INTEGER NOT NULL,
+  unit_price INTEGER NOT NULL,
+  amount INTEGER NOT NULL
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_ga_snack_items_purchase ON ga_snack_items(purchase_id, position)`,
+  `CREATE TABLE IF NOT EXISTS ga_snack_receipts (
+  id TEXT PRIMARY KEY NOT NULL,
+  purchase_id TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  content_type TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  storage_key TEXT NOT NULL UNIQUE,
+  uploaded_by TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  deleted_at INTEGER
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_ga_snack_receipts_purchase ON ga_snack_receipts(purchase_id)`,
   `CREATE TABLE IF NOT EXISTS ga_alert_runs (
   run_date TEXT PRIMARY KEY NOT NULL,
   trigger TEXT NOT NULL,

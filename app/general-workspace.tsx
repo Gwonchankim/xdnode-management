@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from
 import readXlsxFile from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
 import { useErpDialog } from "./erp-dialog";
+import GeneralSnacksView from "./general-snacks-view";
 import { fileExtensionAllowed } from "./chat-client";
 import { extractFields, extractable } from "./ga-extract-client";
 import type { ExtractTarget } from "./ga-extract";
@@ -34,10 +35,10 @@ type Checkout = { id: string; targetType: string; targetId: string; targetName: 
 type AlertItem = { key: string; kind: string; ownerType: string; ownerId: string; title: string; detail: string; dueOn: string | null; daysLeft: number | null; bucket: string };
 type Attachment = { id: string; fileName: string; size: number; isImage: boolean; url: string };
 
-type View = "overview" | "assets" | "documents" | "custody" | "io";
+type View = "overview" | "assets" | "documents" | "custody" | "snacks" | "io";
 const VIEWS: Array<{ key: View; label: string }> = [
   { key: "overview", label: "현황" }, { key: "assets", label: "자산" }, { key: "documents", label: "회사 서류" },
-  { key: "custody", label: "인감·반출" }, { key: "io", label: "가져오기·내보내기" },
+  { key: "custody", label: "인감·반출" }, { key: "snacks", label: "간식 구입" }, { key: "io", label: "가져오기·내보내기" },
 ];
 const VIEW_KEY = "xdnode-general-view";
 const VIEW_ONLY = "보기 권한만 있습니다. 저장·지급·반출은 거부됩니다.";
@@ -886,7 +887,7 @@ export default function GeneralWorkspace({ canEdit }: { canEdit: boolean }) {
   return (
     <main className="ga-page">
       <header className="ga-head">
-        <div><h2>총무</h2><p>자산 · 회사 서류 · 인감 반출 · 만료 관리</p></div>
+        <div><h2>총무</h2><p>자산 · 회사 서류 · 인감 반출 · 간식 구입 · 만료 관리</p></div>
         <nav className="ga-tabs" aria-label="총무 화면">
           {VIEWS.map((item) => <button type="button" key={item.key} className={view === item.key ? "active" : ""} aria-current={view === item.key ? "page" : undefined} onClick={() => select(item.key)}>{item.label}</button>)}
         </nav>
@@ -896,6 +897,7 @@ export default function GeneralWorkspace({ canEdit }: { canEdit: boolean }) {
       {view === "assets" && <AssetsView key={`a${focus.key}`} canEdit={canEdit} people={people} focusId={focus.assetId} notify={notify} />}
       {view === "documents" && <DocumentsView key={`d${focus.key}`} canEdit={canEdit} people={people} focusId={focus.documentId} notify={notify} />}
       {view === "custody" && <CustodyView canEdit={canEdit} people={people} notify={notify} />}
+      {view === "snacks" && <GeneralSnacksView canEdit={canEdit} notify={notify} />}
       {view === "io" && <IoView canEdit={canEdit} people={people} notify={notify} />}
       {notice && <div className="ga-notice" role="status">{notice}</div>}
     </main>

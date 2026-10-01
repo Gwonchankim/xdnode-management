@@ -289,7 +289,8 @@ Write-Log "INFO" "ready: GET http://127.0.0.1:$Port/api/me -> 401"
 
 # 총무 알림(general-affairs GD-7): 기동(재부팅·배포·백업 재기동) 때 오늘 알림을 한 번 실행한다. 같은 날 두 번째부터는 서버가 건너뛴다.
 # 운영 포트(3000)에서만 하고, 실패해도 기동은 성공으로 둔다(경고만).
-if ($Headless -and $Port -eq 3000) {
+# 09:00 전(03:00 백업 재기동 등)에는 건너뛴다. 그날 알림은 09:00 작업이 보내고, 09:00 이후 재부팅·배포면 여기서 따라잡는다.
+if ($Headless -and $Port -eq 3000 -and (Get-Date).Hour -ge 9) {
   $alertScript = Join-Path $PSScriptRoot "Run-GaAlerts.ps1"
   if (Test-Path -LiteralPath $alertScript) {
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $alertScript -Port $Port -LogRoot $LogRoot -Trigger "startup" | Out-Null

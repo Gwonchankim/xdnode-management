@@ -329,7 +329,8 @@ test('GA scripts: Run-GaAlerts posts with the task header from the server PC; St
   assert.match(run, /\$base = "http:\/\/127\.0\.0\.1:\$Port"/);
   assert.match(run, /"X-XDM-Task" = "ga-alerts"; "Origin" = \$base/);
   const start = read('scripts/Start-XDNodeManagement.ps1').toString('utf8');
-  assert.match(start, /if \(\$Headless -and \$Port -eq 3000\) \{\s*\$alertScript = Join-Path \$PSScriptRoot "Run-GaAlerts\.ps1"/);
+  // 09:00 전 재기동(03:00 백업)은 알림을 건너뛴다. 그날 알림은 09:00 작업이 보낸다.
+  assert.match(start, /if \(\$Headless -and \$Port -eq 3000 -and \(Get-Date\)\.Hour -ge 9\) \{\s*\$alertScript = Join-Path \$PSScriptRoot "Run-GaAlerts\.ps1"/);
   assert.ok(start.indexOf('Run-GaAlerts.ps1') > start.indexOf('ready: GET http://127.0.0.1:$Port/api/me -> 401'), 'alerts run only after the server is ready');
   const register = read('scripts/Register-XDNodeManagementTasks.ps1').toString('utf8');
   assert.match(register, /\$AlertsTask = "XDnodeManagement-Alerts"/);
@@ -423,4 +424,65 @@ test('GA-D7: AI fill keeps only known fields in known formats, and the route for
   const workspace = readFileSync(new URL('../app/general-workspace.tsx', import.meta.url), 'utf8');
   assert.match(workspace, /extractTarget: "DOCUMENT"/);
   assert.match(workspace, /extractTarget: assetKind as ExtractTarget/);
+});
+
+test('GA-D10 snacks: purchases keep item rows and totals, edits replace rows atomically, receipts are images under ga/SNACK', async () => {
+  const extract = await import('../app/ga-extract.ts');
+  // AI 출력 정리: 배송비·할인 줄은 빼고, 단가·금액 중 하나만 있으면 나머지를 계산한다.
+  assert.deepEqual(extract.normalizeSnackItems([
+    { name: '농심 새우깡 90g', quantity: 10, unitPrice: 1200, amount: null },
+    { name: '오리온 초코파이 12개입', quantity: 2, unitPrice: null, amount: 9600 },
+    { name: '배송비', quantity: 1, unitPrice: 3000, amount: 3000 },
+    { name: ' ', quantity: 1, unitPrice: 1, amount: 1 },
+    { name: '제주 감귤주스', quantity: null, unitPrice: '2,500원', amount: null },
+  ]), [
+    { name: '농심 새우깡 90g', quantity: 10, unitPrice: 1200, amount: 12000 },
+    { name: '오리온 초코파이 12개입', quantity: 2, unitPrice: 4800, amount: 9600 },
+    { name: '제주 감귤주스', quantity: 1, unitPrice: 2500, amount: 2500 },
+  ]);
+  const snack = extract.normalizeExtracted('SNACK', { purchasedOn: '2026-10-01', vendor: '쿠팡', shippingFee: 0, discount: 1000, total: 23100, items: [{ name: '새우깡', quantity: 1, unitPrice: 1200, amount: 1200 }] });
+  assert.deepEqual(snack, { items: [{ name: '새우깡', quantity: 1, unitPrice: 1200, amount: 1200 }], purchasedOn: '2026-10-01', vendor: '쿠팡', shippingFee: 0, discount: 1000, total: 23100 });
+  assert.ok(extract.extractSchema('SNACK').properties.items.items.required.includes('unitPrice'));
+
+  await world();
+  const items = [{ name: '새우깡 90g', quantity: 10, unitPrice: 1200 }, { name: '초코파이', quantity: 2, unitPrice: 4800, amount: 9600 }];
+  const created = await ga('snacks', 'POST', { action: 'CREATE', purchasedOn: '2026-10-01', vendor: '쿠팡', shippingFee: 3000, discount: 1000, items });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  let list = (await ga('snacks', 'GET', undefined, '?from=2026-01-01')).body.purchases;
+  assert.equal(list.length, 1);
+  assert.deepEqual([list[0].itemsTotal, list[0].totalAmount], [21600, 23600], 'total = items + shipping - discount when not given');
+  assert.deepEqual(list[0].items.map((item) => [item.name, item.quantity, item.amount]), [['새우깡 90g', 10, 12000], ['초코파이', 2, 9600]]);
+  for (const bad of [{ purchasedOn: '2026-13-01', items }, { purchasedOn: '2026-10-01', items: [] }, { purchasedOn: '2026-10-01', items: [{ name: 'x', quantity: 0, unitPrice: 1 }] },
+    { purchasedOn: '2026-10-01', items: [{ name: '', quantity: 1, unitPrice: 1 }] }]) {
+    assert.equal((await ga('snacks', 'POST', { action: 'CREATE', ...bad })).status, 400, JSON.stringify(bad).slice(0, 80));
+  }
+  // 수정: 줄을 통째로 바꾸고, 결제 총액을 직접 주면 그 값을 쓴다. 낡은 updatedAt 이면 409 이고 줄도 그대로다.
+  const stale = list[0].updatedAt;
+  const updated = await ga('snacks', 'POST', { action: 'UPDATE', id: list[0].id, updatedAt: stale, purchasedOn: '2026-10-01', vendor: '쿠팡', totalAmount: 5000,
+    items: [{ name: '감귤주스', quantity: 2, unitPrice: 2500 }] });
+  assert.equal(updated.status, 200);
+  const conflict = await ga('snacks', 'POST', { action: 'UPDATE', id: list[0].id, updatedAt: stale, purchasedOn: '2026-10-02', items: [{ name: '덮어쓰면 안 됨', quantity: 1, unitPrice: 1 }] });
+  assert.equal(conflict.status, 409);
+  list = (await ga('snacks')).body.purchases;
+  assert.deepEqual([list[0].totalAmount, list[0].items.map((item) => item.name)], [5000, ['감귤주스']]);
+  // 캡처(영수증): 이미지만 받고, 보기 권한자도 내려받을 수 있다.
+  const png = new TextEncoder().encode('PNG-SNACK');
+  const put = (name, headers = { 'content-length': String(png.byteLength) }) => ga('snacks', 'PUT', undefined, `?purchaseId=${list[0].id}&name=${encodeURIComponent(name)}`, { rawBody: png, contentType: 'image/png', headers });
+  assert.equal((await put('주문내역.png')).status, 201);
+  assert.equal((await put('page.svg')).status, 415);
+  assert.ok([...objects.keys()].some((key) => key.startsWith(`ga/SNACK/${list[0].id}/gasr_`)));
+  const receipt = (await ga('snacks')).body.purchases[0].receipts[0];
+  const viewer = await as({ general: 'view' });
+  const got = await viewer.call('snacks', 'GET', undefined, `?receiptId=${receipt.id}`);
+  assert.deepEqual([got.status, got.headers.get('content-security-policy')], [200, "sandbox; default-src 'none'"]);
+  assert.equal((await viewer.call('snacks', 'POST', { action: 'CREATE', purchasedOn: '2026-10-01', items })).status, 403);
+  assert.equal((await ga('snacks', 'POST', { action: 'DELETE', id: list[0].id })).status, 200);
+  assert.equal((await ga('snacks')).body.purchases.length, 0);
+  assert.equal((await ga('snacks', 'GET', undefined, `?receiptId=${receipt.id}`)).status, 404, 'receipts of a deleted purchase are gone');
+  const audit = (await rows(`SELECT after_json FROM erp_audit_logs WHERE action LIKE 'GA_SNACK_%'`)).map((row) => row.after_json).join('\n');
+  assert.doesNotMatch(audit, /새우깡|초코파이|쿠팡|감귤/, 'no product or vendor names in the audit trail');
+  const view = readFileSync(new URL('../app/general-snacks-view.tsx', import.meta.url), 'utf8');
+  assert.match(view, /document\.addEventListener\("paste", onPaste\)/, 'Ctrl+V anywhere in the dialog');
+  assert.match(view, /void readWithAi\(next\.map\(\(image\) => image\.file\)\);/, 'pasting starts the AI read right away');
+  assert.match(readFileSync(new URL('../app/general-workspace.tsx', import.meta.url), 'utf8'), /\{ key: "snacks", label: "간식 구입" \}/);
 });
