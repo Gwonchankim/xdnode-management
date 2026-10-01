@@ -142,6 +142,13 @@
 .ga-file-button { box-sizing: border-box; height: 40px; display: flex; align-items: center; justify-content: center; border: 1px dashed #a1a1aa; border-radius: 10px; background: #fafafa; color: #3f3f46; font-size: 14px; font-weight: 700; cursor: pointer; }
 .ga-file-button:hover { border-color: var(--brand-green-strong); background: var(--brand-green-tint); }
 .ga-files ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
+/* AI 자동 채우기(GA-D7): 버튼과 안내, 채운 칸 표시(사용자가 고치면 표시가 사라진다) */
+.ga-ai-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.ga-ai-button { height: 36px; padding: 0 14px; border: 1px solid var(--brand-green-dark); border-radius: 10px; background: var(--brand-green-dark); color: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
+.ga-ai-button:disabled { opacity: .5; cursor: not-allowed; }
+.ga-ai-row small { color: #52525b; font-size: 12px; font-weight: 600; }
+.ga-field.ai-filled input, .ga-field.ai-filled select, .ga-field.ai-filled textarea, .ga-field.ai-filled .ga-toggle { border-color: var(--brand-green); background: var(--brand-green-tint); }
+.ga-field.ai-filled .ga-field-label::after { content: " · AI"; color: var(--brand-green-strong); font-weight: 900; }
 .ga-files li { min-height: 32px; padding: 0 10px; display: flex; align-items: center; gap: 8px; border: 1px solid #f4f4f5; border-radius: 8px; color: #18181b; font-size: 13px; }
 .ga-files li span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ga-files li small { color: #a1a1aa; }

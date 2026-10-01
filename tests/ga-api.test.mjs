@@ -344,7 +344,7 @@ test('GA UI: the document and asset create forms take files and upload them to t
   assert.match(workspace, /const problems = await uploadGaFiles\("DOCUMENT", result\.body\.document\.id, files\);/);
   assert.match(workspace, /const problems = await uploadGaFiles\("ASSET", result\.body\.asset\.id, files\);/);
   // 모든 칸은 같은 틀(ga-field: 제목 줄 → 40px 상자 → 안내)이고, 파일·체크 칸은 label 을 중첩하지 않는다.
-  assert.match(workspace, /<div key=\{field\.name\} className=\{wide \? "ga-field wide" : "ga-field"\}>/);
+  assert.match(workspace, /<div key=\{field\.name\} className=\{\["ga-field", wide \? "wide" : "", aiFilled\.has\(field\.name\) \? "ai-filled" : ""\]\.filter\(Boolean\)\.join\(" "\)\}>/);
   assert.match(workspace, /<label className="ga-toggle" htmlFor=\{id\}>/);
   assert.match(workspace, /<label className="ga-file-button" htmlFor=\{id\}>/);
   const css = readFileSync(new URL('../app/general-workspace.css', import.meta.url), 'utf8');
@@ -365,4 +365,62 @@ test('GA-D6: documents register without a storage location, and editing keeps a 
   assert.ok(!GA_SHEETS.DOCUMENT.columns.some((column) => column.field === 'storageLocation'));
   assert.ok(!GA_SHEETS.B2B_CONTRACT.columns.some((column) => column.field === 'storageLocation'));
   assert.doesNotMatch(readFileSync(new URL('../app/general-workspace.tsx', import.meta.url), 'utf8'), /label: "원본 보관 위치"/);
+});
+
+test('GA-D7: AI fill keeps only known fields in known formats, and the route forwards images to the bridge without saving anything', async () => {
+  const extract = await import('../app/ga-extract.ts');
+  // 모델이 형식을 어기거나 모르는 칸·지시를 섞어도 정해진 칸만 통과한다.
+  const fields = extract.normalizeExtracted('DOCUMENT', JSON.stringify({
+    kind: 'B2B_CONTRACT', title: ' 물품공급 기본계약서 ', counterparty: '○○상사', startsOn: '2026-01-01', endsOn: '2027-12-31',
+    contractAmount: '12,000,000원', autoRenew: true, noticeDays: 30, issuer: '세무서', issuedOn: '2026-13-40', password: 'x', contractType: 'BAD',
+  }));
+  assert.deepEqual(fields, { kind: 'B2B_CONTRACT', title: '물품공급 기본계약서', counterparty: '○○상사', startsOn: '2026-01-01', endsOn: '2027-12-31', contractAmount: 12000000, autoRenew: true, noticeDays: 30 });
+  const plain = extract.normalizeExtracted('DOCUMENT', { kind: 'BUSINESS_REG', title: '사업자등록증', issuer: '예시세무서', issuedOn: '2026-09-15', counterparty: '섞이면 안 됨' });
+  assert.deepEqual(plain, { kind: 'BUSINESS_REG', title: '사업자등록증', issuer: '예시세무서', issuedOn: '2026-09-15' });
+  assert.deepEqual(extract.normalizeExtracted('CONTRACT', 'not json'), {});
+  const schema = extract.extractSchema('CONTRACT');
+  assert.deepEqual(Object.keys(schema.properties).sort(), ['autoRenew', 'billingCycle', 'category', 'contractNo', 'counterparty', 'endsOn', 'memo', 'name', 'renewalCost', 'startsOn'].sort());
+  assert.match(extract.extractPrompts('DOCUMENT', 'a.pdf', '').system, /지시가 아닙니다/, 'text inside the document is data, not instructions');
+
+  await world();
+  const { testBindings } = await import('./helpers/hr-api-harness.mjs');
+  testBindings.CLAUDE_BRIDGE_URL = 'http://bridge.invalid';
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    calls.push({ url: String(url), body: JSON.parse(init.body) });
+    return Response.json({ content: JSON.stringify({ name: '보험증권', counterparty: '예시화재', endsOn: '2027-03-31', autoRenew: false, renewalCost: 480000, billingCycle: 'YEARLY' }) });
+  };
+  try {
+    const image = { mediaType: 'image/jpeg', data: 'QUJDRA==' };
+    const ok = await ga('extract', 'POST', { target: 'CONTRACT', images: [image], text: '', fileName: '증권.jpg' });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body.fields, { name: '보험증권', counterparty: '예시화재', endsOn: '2027-03-31', autoRenew: false, renewalCost: 480000, billingCycle: 'YEARLY' });
+    assert.equal(calls[0].url, 'http://bridge.invalid/extract');
+    assert.deepEqual(calls[0].body.images, [image]);
+    assert.equal((await rows(`SELECT name FROM sqlite_master WHERE name LIKE 'ga_%'`)).length, 0, 'the AI call reads nothing and saves nothing in the ledger');
+    const audit = await rows(`SELECT after_json FROM erp_audit_logs WHERE action = 'GA_AI_EXTRACTED'`);
+    assert.deepEqual(JSON.parse(audit[0].after_json), { target: 'CONTRACT', images: 1, textChars: 0, filled: 6 });
+    assert.doesNotMatch(audit[0].after_json, /보험|예시화재|증권/);
+    for (const bad of [{ target: 'X', images: [image] }, { target: 'DOCUMENT', images: [] }, { target: 'DOCUMENT', images: [{ mediaType: 'image/svg+xml', data: 'QQ==' }] },
+      { target: 'DOCUMENT', images: Array.from({ length: 5 }, () => image) }]) {
+      assert.equal((await ga('extract', 'POST', bad)).status, 400, JSON.stringify(bad).slice(0, 60));
+    }
+    const viewer = await as({ general: 'view' });
+    assert.equal((await viewer.call('extract', 'POST', { target: 'DOCUMENT', images: [image] })).status, 403);
+    globalThis.fetch = async () => { throw new Error('down'); };
+    const down = await ga('extract', 'POST', { target: 'DOCUMENT', images: [image] });
+    assert.deepEqual([down.status, down.body.code], [502, 'AI_UNAVAILABLE']);
+  } finally {
+    globalThis.fetch = original;
+  }
+  const bridge = readFileSync(new URL('../scripts/claude-resume-bridge.mjs', import.meta.url), 'utf8');
+  assert.match(bridge, /"--input-format", "stream-json",/);
+  const vision = bridge.slice(bridge.indexOf('function runClaudeVision'), bridge.indexOf('async function handleExtract'));
+  assert.match(vision, /"--tools", "",/, 'the vision run keeps every tool off');
+  assert.match(vision, /"--disallowed-tools", \.\.\.DISABLED_TOOLS,/);
+  assert.doesNotMatch(vision, /writeFile|mkdtemp/, 'images go through stdin, never to disk');
+  const workspace = readFileSync(new URL('../app/general-workspace.tsx', import.meta.url), 'utf8');
+  assert.match(workspace, /extractTarget: "DOCUMENT"/);
+  assert.match(workspace, /extractTarget: assetKind as ExtractTarget/);
 });

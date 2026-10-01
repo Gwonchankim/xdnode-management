@@ -7,6 +7,8 @@ import readXlsxFile from "read-excel-file/browser";
 import writeXlsxFile from "write-excel-file/browser";
 import { useErpDialog } from "./erp-dialog";
 import { fileExtensionAllowed } from "./chat-client";
+import { extractFields, extractable } from "./ga-extract-client";
+import type { ExtractTarget } from "./ga-extract";
 import { readScoped, writeScoped } from "./client-runtime";
 import { depreciationSchedule } from "./ga-alerts";
 import { GA_SHEETS, GA_SHEET_ORDER, rowsFromTable, BILLING_CYCLES, CONTRACT_TYPES, DOCUMENT_KINDS, EQUIPMENT_STATUS, type GaSheet, type RawCell } from "./ga-import";
@@ -46,13 +48,33 @@ type FieldSpec = {
   options?: Record<string, string>; required?: boolean; hint?: string; placeholder?: string; show?: (values: Record<string, unknown>) => boolean;
 };
 
-function FormModal({ title, fields, initial, people, submitLabel = "저장", onSubmit, onClose }: {
+function FormModal({ title, fields, initial, people, submitLabel = "저장", extractTarget, onSubmit, onClose }: {
   title: string; fields: FieldSpec[]; initial: Record<string, unknown>; people: Person[]; submitLabel?: string;
+  /** 있으면 파일 칸에 「AI로 채우기」가 생긴다(general-affairs GA-D7). 읽은 값은 해당 칸을 덮어쓴다(GA-D8). */
+  extractTarget?: ExtractTarget;
   onSubmit: (values: Record<string, unknown>, files: File[]) => Promise<string | null>; onClose: () => void;
 }) {
   const [values, setValues] = useState<Record<string, unknown>>(initial);
   const [files, setFiles] = useState<File[]>([]);
   const formId = useId();
+  const [aiFilled, setAiFilled] = useState<Set<string>>(new Set());
+  const [aiState, setAiState] = useState<{ busy: boolean; message: string }>({ busy: false, message: "" });
+  const aiFile = files.find(extractable) ?? null;
+  async function fillWithAi() {
+    if (!extractTarget || !aiFile) return;
+    setAiState({ busy: true, message: "AI가 서류를 읽고 있습니다(10~40초)…" });
+    setError("");
+    try {
+      const filled = await extractFields(extractTarget, aiFile);
+      const names = Object.keys(filled).filter((name) => fields.some((field) => field.name === name));
+      setValues((current) => ({ ...current, ...Object.fromEntries(names.map((name) => [name, filled[name]])) }));
+      setAiFilled(new Set(names));
+      setAiState({ busy: false, message: names.length ? `AI가 ${names.length}칸을 채웠습니다. 연두색 칸을 확인한 뒤 저장해 주세요.` : "AI가 채울 수 있는 값을 찾지 못했습니다. 직접 입력해 주세요." });
+    } catch (caught) {
+      setAiState({ busy: false, message: "" });
+      setError(caught instanceof Error ? caught.message : "AI가 서류를 읽지 못했습니다.");
+    }
+  }
   function addFiles(list: FileList | null) {
     const picked = [...(list ?? [])];
     const problems = checkFiles(picked);
@@ -61,7 +83,10 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
   }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const set = (name: string, value: unknown) => setValues((current) => ({ ...current, [name]: value }));
+  const set = (name: string, value: unknown) => {
+    setValues((current) => ({ ...current, [name]: value }));
+    setAiFilled((current) => { if (!current.has(name)) return current; const next = new Set(current); next.delete(name); return next; });
+  };
   async function submit() {
     setBusy(true); setError("");
     const payload: Record<string, unknown> = {};
@@ -88,7 +113,7 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
             const wide = field.type === "textarea" || field.type === "files";
             const value = values[field.name];
             return (
-              <div key={field.name} className={wide ? "ga-field wide" : "ga-field"}>
+              <div key={field.name} className={["ga-field", wide ? "wide" : "", aiFilled.has(field.name) ? "ai-filled" : ""].filter(Boolean).join(" ")}>
                 {/* 제목 줄은 모든 칸이 같은 높이다. 체크 칸도 빈 제목 줄을 두어 옆 칸의 입력 상자와 높이를 맞춘다. */}
                 {field.type === "checkbox" || field.type === "files"
                   ? <span className={field.type === "files" ? "ga-field-label" : "ga-field-label spacer"} aria-hidden={field.type === "files" ? undefined : true}>{field.type === "files" ? field.label : "\u00a0"}</span>
@@ -111,6 +136,14 @@ function FormModal({ title, fields, initial, people, submitLabel = "저장", onS
                       <input id={id} type="file" multiple hidden onChange={(event) => { addFiles(event.target.files); event.target.value = ""; }} />
                       <span>＋ 파일 선택</span>
                     </label>
+                    {extractTarget && (
+                      <div className="ga-ai-row">
+                        <button type="button" className="ga-ai-button" disabled={!aiFile || aiState.busy} onClick={() => void fillWithAi()}>
+                          {aiState.busy ? "AI가 읽는 중…" : "✦ AI로 채우기"}
+                        </button>
+                        <small>{aiState.message || (files.length && !aiFile ? "AI는 PDF·이미지 파일만 읽습니다." : "파일을 고르면 AI가 서류를 읽어 아래 칸을 채웁니다. 저장 전에 꼭 확인해 주세요.")}</small>
+                      </div>
+                    )}
                     {files.length > 0 && <ul>{files.map((file, index) => (
                       <li key={`${file.name}-${index}`}><span>{file.name}</span><small>{Math.max(1, Math.round(file.size / 1024)).toLocaleString("ko-KR")}KB</small>
                         <button type="button" className="ga-link danger" onClick={() => setFiles((current) => current.filter((_, position) => position !== index))}>빼기</button></li>
@@ -337,7 +370,7 @@ function AssetsView({ canEdit, people, focusId, notify }: { canEdit: boolean; pe
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(focusId);
   const [detail, setDetail] = useState<AssetDetail | null>(null);
-  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null> }>(null);
+  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null>; extractTarget?: ExtractTarget }>(null);
   const dialog = useErpDialog();
   const load = useCallback(async () => {
     const result = await gaRequest<{ assets: Asset[] }>("/api/general/assets");
@@ -369,12 +402,13 @@ function AssetsView({ canEdit, people, focusId, notify }: { canEdit: boolean; pe
   function openCreate(assetKind: string) {
     setForm({ title: `${ASSET_KIND_LABEL[assetKind]} 등록`, initial: { autoRenew: false },
       fields: [
+        { name: "files", label: "첨부(사진·영수증·계약서 등, 선택)", type: "files", hint: ATTACHMENT_HINT },
         ...(assetKind === "EQUIPMENT" ? [{ name: "holderEmployeeId", label: "지급할 사용자(선택)", type: "employee" as const }] : []),
         ...(assetKind === "SUPPLY" ? [{ name: "quantity", label: "현재 수량", type: "number" as const, required: true }] : []),
         ...ASSET_FIELDS[assetKind],
         { name: "assetNo", label: "자산번호(비우면 자동)", type: "text" },
-        { name: "files", label: "첨부(사진·영수증·계약서 등, 선택)", type: "files", hint: ATTACHMENT_HINT },
       ],
+      extractTarget: assetKind as ExtractTarget,
       submit: (values, files) => post({ action: "CREATE", kind: assetKind, ...values }, files) });
   }
 
@@ -473,7 +507,7 @@ function AssetsView({ canEdit, people, focusId, notify }: { canEdit: boolean; pe
           </ol>
         </aside>
       )}
-      {form && <FormModal title={form.title} fields={form.fields} initial={form.initial} people={people} onSubmit={form.submit} onClose={() => setForm(null)} />}
+      {form && <FormModal title={form.title} fields={form.fields} initial={form.initial} people={people} extractTarget={form.extractTarget} onSubmit={form.submit} onClose={() => setForm(null)} />}
     </div>
   );
 }
@@ -484,7 +518,7 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
   const [kind, setKind] = useState("");
   const [selected, setSelected] = useState<string | null>(focusId);
   const [detail, setDetail] = useState<{ document: Document; attachments: Attachment[]; checkouts: Checkout[] } | null>(null);
-  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null> }>(null);
+  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null>; extractTarget?: ExtractTarget }>(null);
   const dialog = useErpDialog();
   const load = useCallback(async () => {
     const result = await gaRequest<{ documents: Document[] }>("/api/general/documents");
@@ -518,7 +552,7 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
           <select value={kind} onChange={(event) => setKind(event.target.value)} aria-label="서류 종류"><option value="">전체 종류</option>
             {Object.entries(DOCUMENT_KIND_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           {canEdit && <button type="button" className="primary-button" onClick={() => setForm({ title: "서류 등록",
-            fields: [...DOCUMENT_FIELDS, { name: "files", label: "서류 파일(스캔본·사진, 선택)", type: "files", hint: ATTACHMENT_HINT }],
+            fields: [{ name: "files", label: "서류 파일(스캔본·사진, 선택)", type: "files", hint: ATTACHMENT_HINT }, ...DOCUMENT_FIELDS], extractTarget: "DOCUMENT",
             initial: { kind: kind || "BUSINESS_REG" }, submit: (values, files) => post({ action: "CREATE", ...values }, files) })}>+ 서류 등록</button>}
         </div>
         {!documents ? <p className="ga-muted">불러오는 중…</p> : shown.length === 0 ? <p className="ga-muted">서류가 없습니다.</p> : (
@@ -567,7 +601,7 @@ function DocumentsView({ canEdit, people, focusId, notify }: { canEdit: boolean;
           )}
         </aside>
       )}
-      {form && <FormModal title={form.title} fields={form.fields} initial={form.initial} people={people} onSubmit={form.submit} onClose={() => setForm(null)} />}
+      {form && <FormModal title={form.title} fields={form.fields} initial={form.initial} people={people} extractTarget={form.extractTarget} onSubmit={form.submit} onClose={() => setForm(null)} />}
     </div>
   );
 }
@@ -579,7 +613,7 @@ function CustodyView({ canEdit, people, notify }: { canEdit: boolean; people: Pe
   const [data, setData] = useState<{ items: CustodyItem[]; checkouts: Checkout[] } | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [showAll, setShowAll] = useState(false);
-  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null> }>(null);
+  const [form, setForm] = useState<null | { title: string; fields: FieldSpec[]; initial: Record<string, unknown>; submit: (values: Record<string, unknown>, files: File[]) => Promise<string | null>; extractTarget?: ExtractTarget }>(null);
   const load = useCallback(async () => {
     const [custody, docs] = await Promise.all([gaRequest<{ items: CustodyItem[]; checkouts: Checkout[] }>("/api/general/custody"), gaRequest<{ documents: Document[] }>("/api/general/documents")]);
     if (custody.ok) setData(custody.body); else notify(custody.body.error ?? "반출 대장을 불러오지 못했습니다.");
@@ -651,7 +685,7 @@ function CustodyView({ canEdit, people, notify }: { canEdit: boolean; people: Pe
           </>
         )}
       </Section>
-      {form && <FormModal title={form.title} fields={form.fields} initial={form.initial} people={people} onSubmit={form.submit} onClose={() => setForm(null)} />}
+      {form && <FormModal title={form.title} fields={form.fields} initial={form.initial} people={people} extractTarget={form.extractTarget} onSubmit={form.submit} onClose={() => setForm(null)} />}
     </div>
   );
 }

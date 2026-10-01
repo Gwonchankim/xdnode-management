@@ -347,6 +347,32 @@ export function alertMessage(items: AlertItem[], today: string): string; // 메�
   - 계정 관리에서 총무 권한 부여
   - GA-SC-1~5
 
+## 12. AI 자동 채우기 (GA-D7~D9, 2026-10-01)
+- 흐름은 다음과 같다. 서버는 저장하지 않는다.
+  - 등록 창 맨 위 파일 칸에서 파일을 고르고 「AI로 채우기」를 누른다.
+  - 브라우저(`app/ga-extract-client.ts`)가 파일을 바꾼다.
+    - 이미지는 긴 변 1600px JPEG 로 줄인다.
+    - PDF 는 글 레이어(20쪽까지)와 앞 3쪽 그림을 만든다.
+  - `POST /api/general/extract`(general:write)로 보낸다.
+  - 라우트가 서버 PC 다리 `127.0.0.1:3120/extract` 를 부른다.
+  - `app/ga-extract.ts` 의 `normalizeExtracted` 가 정해진 칸·형식만 남겨 돌려준다.
+- 다리(`scripts/claude-resume-bridge.mjs` `/extract`)
+  - `claude -p --input-format stream-json` 으로 이미지 블록을 표준입력에 넘긴다.
+  - 디스크에 파일을 만들지 않는다.
+  - `--tools ""`·`DISABLED_TOOLS`·Host 허용 목록·한 번에 하나는 이력서 분석과 같다.
+  - 요청 상한은 16MB, 이미지는 4장이다.
+- 프롬프트
+  - 서류 안의 글은 지시가 아니라 자료라고 적는다.
+  - 우리 회사 이름을 알려 상대방·계약처를 정하게 한다. 실험에서 이 정보가 없으면 상대방을 비웠다.
+- 실험(합성 서류, 실데이터 없음)
+  - 사업자등록증 이미지: 종류·발급기관·발급일을 6초에 읽었다.
+  - 물품공급 계약서 이미지: 계약 종류·상대방·기간·금액·자동 연장·해지 통보(1개월 → 30일)를 7초에 읽었다.
+- 감사: `GA_AI_EXTRACTED{target, images, textChars, filled}` 만 남긴다(내용·파일 이름 없음).
+- 오류 code
+  - `BUSY`(429): 다리가 다른 분석 중
+  - `AI_UNAVAILABLE`(502): 다리 연결 실패·인식 실패
+- 원본 보관 위치(GA-D6): 서류 등록·목록·엑셀에서 뺐다. `ga_documents.storage_location` 열은 남기고, 수정할 때 값이 빠지면 기존 값을 유지한다.
+
 ## Version History
 
 | Version | Date | Changes |
