@@ -703,3 +703,22 @@ test('ME QA: reselecting the open conversation keeps its history; the tab badge 
   assert.ok(workspace.indexOf('selectChannel(visible ? saved') < workspace.indexOf('"/api/chat/me?view=bookmarks"'), 'bookmarks load after the first conversation is chosen');
   assert.match(css, /\.erp-tab-badge \{ position: absolute; top: 4px; right: 4px;/, 'a badge outside the tab adds a horizontal scrollbar to the tab row');
 });
+
+test('ME QA: the search-box style targets only the search input, so filter checkboxes and dates keep their size', () => {
+  const css = readFileSync(new URL('../app/chat-workspace.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css, /\.chat-search input \{/, 'a bare ".chat-search input" also styles the filter checkbox and date inputs');
+  assert.match(css, /\.chat-search input\[type="search"\] \{ width: 100%;/);
+  assert.match(css, /\.chat-search-filters input\[type="checkbox"\] \{ width: 16px; height: 16px;/);
+});
+
+test('ME QA: @ suggestions list only members (public channels too); the composer colours recognised mentions', () => {
+  const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const workspace = read('app/chat-workspace.tsx');
+  const css = read('app/chat-workspace.css');
+  assert.doesNotMatch(workspace, /return \[\.\.\.inChannel, \.\.\.others\.filter/, 'non-members are no longer suggested in public channels');
+  assert.match(workspace, /className="chat-composer-highlight"/);
+  assert.match(workspace, /highlightMentions\(body, known\)/);
+  assert.match(workspace, /mentionKnown=\{mentionKnown\}/, 'typed @names the server accepts are still coloured');
+  assert.match(css, /\.chat-composer-field > textarea \{ position: relative; z-index: 1; color: transparent; caret-color:/);
+  assert.doesNotMatch(css.match(/\.chat-composer-highlight mark \{[^}]*\}/)?.[0] ?? '', /font-weight/, 'bold mentions would shift the caret');
+});

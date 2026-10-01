@@ -5,7 +5,7 @@
 // 실시간 갱신은 셸의 useChatPoll 이벤트를 구독한다. 권한 판정은 서버가 다시 한다(여기서 숨기는 것은 편의일 뿐이다).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
-import { applyMention, mentionQueryAt, mentionSuggestions } from "./chat-mentions";
+import { applyMention, highlightMentions, mentionQueryAt, mentionSuggestions } from "./chat-mentions";
 import { MessageItem, PresenceDot, fileSize, when } from "./chat-message";
 import {
   ActivityPanel, ChatNotifySettings, EMPTY_SEARCH_FILTERS, FilesPanel, PinsPanel, SavedPanel, SearchFilters, searchFilterCount, searchQuery,
@@ -43,16 +43,22 @@ const NOTIFY_LABELS: Record<ChatNotifyLevel, string> = { all: "모든 새 글", 
 type Pending = { key: string; name: string; size: number; attachment?: ChatAttachmentDto; error?: string };
 
 
-function Composer({ channelId, threadRootId, disabledReason, placeholder, mentionPeople, mentionChannel, presence = {}, onSent, onError }: {
+function Composer({ channelId, threadRootId, disabledReason, placeholder, mentionPeople, mentionKnown, mentionChannel, presence = {}, onSent, onError }: {
   channelId: string; threadRootId?: number; disabledReason: string | null; placeholder: string;
-  /** @ 자동완성 후보(서버가 멘션으로 인정하는 사람, 채널 멤버 먼저). */
+  /** @ 자동완성 후보: 이 대화의 멤버만(QA 2026-10-01: 공개 채널에서도 멤버가 아닌 사람은 띄우지 않는다). */
   mentionPeople: ChatPerson[]; mentionChannel: boolean;
+  /** 작성란 강조에 쓰는 이름: 서버가 멘션으로 인정하는 사람(공개 채널이면 메신저 권한자 전원). 직접 친 @이름도 색으로 보인다. */
+  mentionKnown?: ChatPerson[];
   /** ME-FR-09 후보 옆 접속 점. */
   presence?: Record<string, number>;
   onSent: (message: ChatMessageDto) => void; onError: (message: string) => void;
 }) {
   const [body, setBody] = useState("");
   const textRef = useRef<HTMLTextAreaElement>(null);
+  // 작성란 멘션 강조(QA 2026-10-01): textarea 는 글자별 색을 못 칠하므로, 같은 글을 뒤 층에 그리고 textarea 글자는 투명하게 둔다.
+  const highlightRef = useRef<HTMLDivElement>(null);
+  const known = mentionKnown ?? mentionPeople;
+  const highlighted = useMemo(() => highlightMentions(body, known), [body, known]);
   // @ 자동완성: 커서 앞 '@질의'와 고른 줄. Esc 로 닫은 '@'는 커서가 떠날 때까지 다시 열지 않는다.
   const [mention, setMention] = useState<{ start: number; caret: number; query: string } | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -194,11 +200,18 @@ function Composer({ channelId, threadRootId, disabledReason, placeholder, mentio
           ))}
         </ul>
       )}
-      <textarea ref={textRef} value={body} maxLength={CHAT_MESSAGE_MAX_LENGTH} rows={2} placeholder={placeholder} aria-label="메시지"
-        aria-autocomplete="list"
-        onChange={(event) => { setBody(event.target.value); trackMention(event.target); }}
-        onSelect={(event) => trackMention(event.currentTarget)} onBlur={() => setMention(null)}
-        onKeyDown={onKeyDown} onPaste={onPaste} />
+      <div className="chat-composer-field">
+        <div className="chat-composer-highlight" ref={highlightRef} aria-hidden="true">
+          {highlighted.map((piece, index) => piece.mention ? <mark key={index}>{piece.text}</mark> : <span key={index}>{piece.text}</span>)}
+          {"\n"}
+        </div>
+        <textarea ref={textRef} value={body} maxLength={CHAT_MESSAGE_MAX_LENGTH} rows={2} placeholder={placeholder} aria-label="메시지"
+          aria-autocomplete="list"
+          onChange={(event) => { setBody(event.target.value); trackMention(event.target); }}
+          onScroll={(event) => { if (highlightRef.current) highlightRef.current.scrollTop = event.currentTarget.scrollTop; }}
+          onSelect={(event) => trackMention(event.currentTarget)} onBlur={() => setMention(null)}
+          onKeyDown={onKeyDown} onPaste={onPaste} />
+      </div>
       <div className="chat-composer-actions">
         <input ref={fileInput} type="file" multiple hidden onChange={(event) => { const files = [...(event.target.files ?? [])]; event.target.value = ""; void addFiles(files); }} />
         <button type="button" onClick={() => fileInput.current?.click()} disabled={pending.length >= CHAT_ATTACHMENTS_PER_MESSAGE}>첨부</button>
@@ -487,8 +500,14 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     const members = new Set(channelMembers?.channelId === activeId ? channelMembers.ids : []);
     const inChannel = others.filter((person) => members.has(person.accountId));
     if (joined?.kind === "private") return inChannel;
-    return [...inChannel, ...others.filter((person) => !members.has(person.accountId))];
+    // 공개 채널도 멤버만 띄운다(QA 2026-10-01). 직접 친 @이름은 서버가 그대로 멘션으로 받고, 보낸 뒤 초대를 묻는다(offerInvite).
+    return inChannel;
   }, [people, accountId, isDirect, joined, channelMembers, activeId]);
+  /** 작성란 강조: 서버가 멘션으로 인정하는 사람(비공개·DM 은 멤버, 공개는 메신저 권한자 전원). */
+  const mentionKnown = useMemo(() => {
+    if (isDirect || joined?.kind === "private") return mentionPeople;
+    return people.filter((person) => person.accountId !== accountId);
+  }, [isDirect, joined, mentionPeople, people, accountId]);
   const mentionChannel = joined?.kind !== "dm";
 
   // 새 글이 오면 바닥에 붙어 있을 때만 따라 내려간다.
@@ -1021,13 +1040,13 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
                         onEdit={(body) => editMessage(reply, body)} onDelete={() => void deleteMessage(reply)} />
                     ))}
                   </div>
-                  <Composer channelId={activeId} threadRootId={thread.root.id} placeholder="답글 쓰기" onError={flash} mentionPeople={mentionPeople} mentionChannel={mentionChannel}
+                  <Composer channelId={activeId} threadRootId={thread.root.id} placeholder="답글 쓰기" onError={flash} mentionPeople={mentionPeople} mentionKnown={mentionKnown} mentionChannel={mentionChannel}
                     presence={poll.presence}
                     disabledReason={disabledReason ?? (thread.root.deleted ? "삭제된 메시지에는 답글을 달 수 없습니다." : null)} onSent={onSent} />
                 </aside>
               )}
             </div>
-            <Composer channelId={activeId} mentionPeople={mentionPeople} mentionChannel={mentionChannel} presence={poll.presence} placeholder={preview ? "보내면 이 채널에 참여합니다" : "메시지 쓰기 (@이름으로 멘션)"} onError={flash}
+            <Composer channelId={activeId} mentionPeople={mentionPeople} mentionKnown={mentionKnown} mentionChannel={mentionChannel} presence={poll.presence} placeholder={preview ? "보내면 이 채널에 참여합니다" : "메시지 쓰기 (@이름으로 멘션)"} onError={flash}
               disabledReason={disabledReason} onSent={(message) => { onSent(message); if (preview) void loadChannels(); }} />
           </>
         )}
