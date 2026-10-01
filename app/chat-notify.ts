@@ -70,33 +70,46 @@ export async function setSystemNotify(on: boolean) {
 
 // ── 소리(ME-DD11) ────────────────────────────────────────────────────────────
 let audio: AudioContext | null = null;
-/** 브라우저 autoplay 정책 때문에 첫 사용자 제스처 때 만든다. */
-function primeAudio() {
+/** 브라우저 autoplay 정책 때문에 첫 사용자 제스처 때 만든다. 소리 시험 버튼도 이것을 부른다. */
+export function primeAudio() {
   try {
     if (!audio) audio = new AudioContext();
     if (audio.state === "suspended") void audio.resume();
   } catch {
     audio = null;
   }
+  return audio;
 }
 
-/** 짧은 2음(880Hz → 660Hz, 약 180ms). 준비되지 않았으면 조용히 넘어간다. */
-export function beep() {
-  if (!audio || audio.state !== "running") return;
-  const start = audio.currentTime;
+/**
+ * 짧은 2음(880Hz → 660Hz, 각 220ms). QA(2026-10-01)에서 0.08·85ms 는 들리지 않았고 0.3·150ms 도 작아 0.6·220ms 로 올렸다.
+ * 컨텍스트가 일시정지(탭을 오래 두었거나 정책)면 먼저 다시 켠다. 한 번도 사용자 제스처가 없었으면 조용히 넘어간다.
+ * 돌려주는 값: 실제로 울렸는지(소리 시험 안내용).
+ */
+export async function beep() {
+  if (!audio) return false;
+  try {
+    if (audio.state === "suspended") await audio.resume();
+  } catch {
+    return false;
+  }
+  if (audio.state !== "running") return false;
+  const context = audio;
+  const start = context.currentTime + 0.02;
   [880, 660].forEach((frequency, index) => {
-    const oscillator = audio!.createOscillator();
-    const gain = audio!.createGain();
-    const at = start + index * 0.09;
-    oscillator.type = "sine";
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const at = start + index * 0.24;
+    oscillator.type = "triangle";
     oscillator.frequency.value = frequency;
     gain.gain.setValueAtTime(0.0001, at);
-    gain.gain.exponentialRampToValueAtTime(0.08, at + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.085);
-    oscillator.connect(gain).connect(audio!.destination);
+    gain.gain.exponentialRampToValueAtTime(0.6, at + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+    oscillator.connect(gain).connect(context.destination);
     oscillator.start(at);
-    oscillator.stop(at + 0.09);
+    oscillator.stop(at + 0.23);
   });
+  return true;
 }
 
 // ── 파비콘 배지(ME-FR-03, DD12) ──────────────────────────────────────────────
@@ -192,7 +205,7 @@ export function useChatNotifier({ poll, enabled, accountId, chatActive, onOpen }
       fresh.push(toast);
     }
     if (!fresh.length) return;
-    if (soundEnabled()) beep();
+    if (soundEnabled()) void beep();
     setToasts((current) => [...current.filter((item) => !seen.has(item.messageId)), ...fresh].slice(-CHAT_TOAST_MAX));
     if (!visible && systemNotifyEnabled()) {
       for (const toast of fresh.slice(-CHAT_TOAST_MAX)) {

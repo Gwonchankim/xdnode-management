@@ -378,7 +378,9 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     setActivity(null);
     setSavedItems(null);
     setSide(null);
-    setHistory(id ? { ...EMPTY_HISTORY, loading: true } : EMPTY_HISTORY);
+    // 이미 열린 대화를 다시 고르면 기록을 비우지 않는다. activeId 가 그대로라 기록을 읽는 효과가 다시 돌지 않아
+    // '불러오는 중'에 멈추기 때문이다(QA 2026-10-01: 새로고침 뒤 빈 대화, 사이드바에서 열린 대화를 다시 누를 때).
+    if (id !== activeRef.current) setHistory(id ? { ...EMPTY_HISTORY, loading: true } : EMPTY_HISTORY);
     setActiveId(id);
     if (id) writeScoped(ACTIVE_CHANNEL_KEY, id);
   }, []);
@@ -439,13 +441,14 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     void (async () => {
       const loaded = await loadChannels();
       if (!loaded) return;
-      const marks = await chatRequest<{ bookmarks: ChatBookmarkItem[] }>("/api/chat/me?view=bookmarks");
-      if (marks.ok && Array.isArray(marks.body.bookmarks)) setBookmarkIds(new Set(marks.body.bookmarks.map((item) => item.message.id)));
       // 저장해 둔 대화가 아직 보이면(내 채널·DM 이거나 참여 가능한 공개 채널) 그것을, 아니면 참여한 첫 대화를 연다.
       const saved = readScoped(ACTIVE_CHANNEL_KEY, []);
       const visible = saved && (loaded.channels.some((channel) => channel.id === saved) || loaded.joinable.some((channel) => channel.id === saved));
       const first = loaded.channels.find((channel) => !channel.archived) ?? loaded.channels[0] ?? null;
       selectChannel(visible ? saved : first?.id ?? loaded.joinable[0]?.id ?? null);
+      // ☆/★ 표시용 저장 id. 첫 대화를 여는 것을 막지 않게 고른 뒤에 읽는다.
+      const marks = await chatRequest<{ bookmarks: ChatBookmarkItem[] }>("/api/chat/me?view=bookmarks");
+      if (marks.ok && Array.isArray(marks.body.bookmarks)) setBookmarkIds(new Set(marks.body.bookmarks.map((item) => item.message.id)));
     })();
   }, [loadChannels, selectChannel]);
 
@@ -715,7 +718,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   /** ME-FR-11 저장·저장 해제. 저장됨 화면이 열려 있으면 거기서도 뺀다. */
   async function toggleBookmark(message: ChatMessageDto, save: boolean) {
     const result = await chatRequest<{ bookmarked: boolean }>("/api/chat/me", { method: "PUT", body: { action: save ? "BOOKMARK" : "UNBOOKMARK", messageId: message.id } });
-    if (!result.ok) { flash(result.body.error ?? "저장하지 못했습니다."); return; }
+    if (!result.ok) { flash(result.body.error ?? "즐겨찾기를 바꾸지 못했습니다."); return; }
     setBookmarkIds((current) => {
       const next = new Set(current);
       if (result.body.bookmarked) next.add(message.id); else next.delete(message.id);
@@ -730,7 +733,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     setThread(null);
     setSavedItems("loading");
     const result = await chatRequest<{ bookmarks: ChatBookmarkItem[] }>("/api/chat/me?view=bookmarks");
-    if (!result.ok) { setSavedItems(null); flash(result.body.error ?? "저장한 메시지를 불러오지 못했습니다."); return; }
+    if (!result.ok) { setSavedItems(null); flash(result.body.error ?? "즐겨찾기를 불러오지 못했습니다."); return; }
     setSavedItems(result.body.bookmarks);
     setBookmarkIds(new Set(result.body.bookmarks.map((item) => item.message.id)));
   }
@@ -884,7 +887,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
           <li>
             <button type="button" className={savedItems ? "chat-channel active" : "chat-channel"} onClick={() => void openSaved()}>
               <span className="chat-channel-glyph" aria-hidden="true">☆</span>
-              <span className="chat-channel-name">저장됨</span>
+              <span className="chat-channel-name">즐겨찾기</span>
             </button>
           </li>
         </ul>

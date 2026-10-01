@@ -342,7 +342,11 @@ test('ME-FR-07 reactions toggle, arrive as message.edited without (edited), and 
   assert.equal(added.body.added, true);
   assert.deepEqual(added.body.message.reactions, [{ emoji: '👍', accountIds: [lee.id] }]);
   assert.equal(added.body.message.editedAt, null, 'a reaction is not an edit');
+  // 누른 순서는 created_at(ms)이다. 같은 ms 면 계정 id 순이라 테스트에서는 간격을 둔다.
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 3));
+  await tick();
   await react(kim, message.id, '👍');
+  await tick();
   const both = await react(kim, message.id, '✅');
   assert.deepEqual(both.body.message.reactions, [{ emoji: '👍', accountIds: [lee.id, kim.id] }, { emoji: '✅', accountIds: [kim.id] }]);
 
@@ -647,7 +651,7 @@ test('ME-FR-10~13 UI wiring: pin/save buttons, side panels, saved view and searc
   const message = read('app/chat-message.tsx');
   const workspace = read('app/chat-workspace.tsx');
   const panels = read('app/chat-panels.tsx');
-  assert.match(message, /☆ 저장/);
+  assert.match(message, /☆ 즐겨찾기/);
   assert.match(message, /"고정 해제"/);
   assert.match(workspace, /<PinsPanel /);
   assert.match(workspace, /<FilesPanel /);
@@ -689,4 +693,13 @@ test('ME Act-1 UI: mentioning a non-member in a public channel offers an invite;
   assert.match(workspace, /action: "ADD_MEMBERS", channelId, accountIds: missing/);
   assert.match(workspace, /presence=\{poll\.presence\}/, 'the composer shows presence next to @ suggestions');
   assert.ok(message.indexOf('chat-read-count') > message.indexOf('<Attachments attachments'), 'the read count sits under the bubble');
+});
+
+test('ME QA: reselecting the open conversation keeps its history; the tab badge stays inside the tab', () => {
+  const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+  const workspace = read('app/chat-workspace.tsx');
+  const css = read('app/chat-workspace.css');
+  assert.match(workspace, /if \(id !== activeRef\.current\) setHistory\(/, 'same id → the history effect does not rerun, so do not blank it');
+  assert.ok(workspace.indexOf('selectChannel(visible ? saved') < workspace.indexOf('"/api/chat/me?view=bookmarks"'), 'bookmarks load after the first conversation is chosen');
+  assert.match(css, /\.erp-tab-badge \{ position: absolute; top: 4px; right: 4px;/, 'a badge outside the tab adds a horizontal scrollbar to the tab row');
 });

@@ -1,6 +1,9 @@
 /* 메신저 탭(R5, Design §5.7). layout.tsx 가 전역으로 import 한다. 셸 여백은 globals.css 의 .chat-module-shell 이 준다. */
 
-.erp-tab-badge { min-width: 20px; height: 20px; margin-left: 4px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; line-height: 1; }
+/* 상단 탭 배지: 탭 버튼(2칸 그리드)의 오른쪽 위 안쪽 모서리에 겹쳐 둔다. 그리드 칸에 넣으면 다음 줄로 밀리고,
+   버튼 밖으로 빼면 탭 줄(overflow-x: auto)에 가로 스크롤바가 생긴다(QA 2026-10-01). */
+.erp-module-tab:has(.erp-tab-badge) { position: relative; }
+.erp-tab-badge { position: absolute; top: 4px; right: 4px; min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; line-height: 1; box-shadow: 0 0 0 2px #fff; pointer-events: none; }
 
 .chat-page { height: calc(100vh - var(--erp-nav-height)); display: grid; grid-template-columns: 272px minmax(0, 1fr); background: #fafaf9; color: var(--ink); }
 .chat-loading, .chat-empty { grid-column: 1 / -1; display: grid; place-items: center; color: #71717a; font-size: 14px; }
@@ -65,8 +68,8 @@
 .chat-bubble .chat-attachments { margin-top: 0; }
 .chat-bubble .chat-message-body + .chat-attachments { margin-top: 6px; }
 .chat-mention { padding: 0 3px; border-radius: 4px; background: #fef3c7; color: #92400e; font-weight: 800; }
-.chat-message > footer { min-height: 0; padding: 2px 6px 0; display: flex; gap: 10px; }
-.chat-link-button { padding: 0; border: 0; background: none; color: var(--brand-green-strong); font-size: 12px; font-weight: 800; cursor: pointer; }
+.chat-message > footer { min-height: 0; padding: 2px 6px 0; display: flex; align-items: center; gap: 10px; }
+.chat-link-button { padding: 0; display: inline-flex; align-items: center; gap: 3px; border: 0; background: none; color: var(--brand-green-strong); font-size: 12px; font-weight: 800; line-height: 18px; cursor: pointer; }
 .chat-link-button.danger { color: #b91c1c; }
 .chat-message > footer .chat-link-button:not(:first-child) { opacity: 0; }
 .chat-message:hover > footer .chat-link-button, .chat-message:focus-within > footer .chat-link-button { opacity: 1; }
@@ -154,14 +157,16 @@
 .chat-channel.active.muted .chat-channel-name { color: #e4e4e7; }
 .chat-channel-bell { font-size: 11px; opacity: .8; }
 .chat-shortcuts { margin: 0; padding: 0; list-style: none; }
-.chat-notify-select { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; font-size: 13px; }
-.chat-notify-select select { border: 0; background: transparent; font: inherit; font-weight: 800; color: #18181b; cursor: pointer; }
+/* 🔔 알림 수준: 옆 버튼들(멤버 관리·파일)과 같은 높이·여백. 글자가 좁게 붙지 않게 선택 상자에 최소 폭을 준다(QA 2026-10-01). */
+.chat-notify-select { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 8px 0 12px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; font-size: 13px; }
+.chat-notify-select select { min-width: 96px; min-height: 30px; padding: 0 4px; border: 0; background: transparent; font: inherit; font-weight: 800; color: #18181b; cursor: pointer; }
 .chat-activity.unread { background: #fffbeb; }
 .chat-activity-glyph { margin-right: 4px; }
 .chat-activity-dot { display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: #dc2626; vertical-align: middle; }
 .chat-settings { padding: 10px 6px 0; border-top: 1px solid var(--line); display: grid; gap: 6px; }
 .chat-settings > header { color: #52525b; font-size: 12px; font-weight: 900; }
 .chat-settings label.chat-inline { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #3f3f46; }
+.chat-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .chat-settings .chat-muted { margin: 0; font-size: 12px; }
 
 /* messenger-enhancement M3: 반응(ME-FR-07), 읽음 숫자(ME-FR-08), 접속 점(ME-FR-09). */
@@ -172,9 +177,8 @@
 .chat-reaction small { color: #52525b; font-size: 11px; font-weight: 800; }
 .chat-reaction.mine { border-color: #86c06a; background: #eef7e6; }
 .chat-reaction:disabled { cursor: default; }
-.chat-reaction.ghost { color: #a1a1aa; opacity: 0; }
-.chat-message:hover .chat-reaction.ghost, .chat-reaction.ghost:focus-visible, .chat-reaction.ghost[aria-expanded="true"] { opacity: 1; }
-.chat-reaction-add { position: relative; }
+.chat-reaction-add.open > .chat-link-button { opacity: 1; }
+.chat-reaction-add { position: relative; display: inline-flex; align-items: center; }
 .chat-reaction-picker { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 5; padding: 4px; display: flex; gap: 2px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fff; box-shadow: 0 8px 20px rgb(0 0 0 / 14%); }
 .chat-message.mine .chat-reaction-picker { left: auto; right: 0; }
 .chat-reaction-picker button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: none; font-size: 18px; cursor: pointer; }
@@ -213,3 +217,7 @@
 .chat-search-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .chat-search-submit { width: 100%; margin-top: 6px; min-height: 34px; border: 1px solid var(--brand-green-dark); border-radius: 10px; background: var(--brand-green-dark); color: #fff; font-weight: 800; cursor: pointer; }
 .chat-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.chat-message > footer .chat-reaction-add:not(.open) > .chat-link-button { opacity: 0; }
+.chat-message:hover > footer .chat-reaction-add > .chat-link-button, .chat-message:focus-within > footer .chat-reaction-add > .chat-link-button { opacity: 1; }
+/* 내 글: 숨은(투명) 링크가 자리를 차지해 "답글"이 말풍선보다 왼쪽에 뜨지 않게, 오른쪽부터 쌓는다(QA 2026-10-01). */
+.chat-message.mine > footer { flex-direction: row-reverse; }

@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { authorizeErpRequest } from "../../../erp-platform";
 import { CHAT_POLL_EVENT_LIMIT, chatPeople, chatValidation, messageDtos, unreadSummary, type ChatEventKind, type ChatMessageDto, type ChatReadsSnapshot } from "../../../chat-server";
-import { presenceSnapshot, prunePresence, touchPresence } from "../../../chat-presence";
+import { presenceSnapshot, prunePresence, seedPresence, touchPresence } from "../../../chat-presence";
 
 // Design §4.2.8 GET /api/chat/poll?since=<seq>&summary=0|1&watch=<publicChannelId?> (chat:read).
 // hot path: 게이트(메모, 0쿼리) → 세션(1) → 이벤트(1). DDL·감사·쓰기가 없다(세션 last_seen_at 시간당 1회만 예외).
@@ -91,6 +91,10 @@ async function presenceFor(wantSummary: boolean, now: number) {
   prunePresence(allowed);
   const out: Record<string, number> = {};
   for (const [id, at] of Object.entries(snapshot)) if (allowed.has(id)) out[id] = at;
-  for (const row of sessions.results) if (allowed.has(row.account_id) && out[row.account_id] === undefined) out[row.account_id] = Number(row.seen);
+  for (const row of sessions.results) {
+    if (!allowed.has(row.account_id) || out[row.account_id] !== undefined) continue;
+    out[row.account_id] = Number(row.seen);
+    seedPresence(row.account_id, Number(row.seen));
+  }
   return out;
 }

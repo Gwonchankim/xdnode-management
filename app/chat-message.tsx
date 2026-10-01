@@ -78,32 +78,12 @@ export function PresenceDot({ lastSeen, self = false, withText = true }: { lastS
   );
 }
 
-/** ME-FR-07 반응 바: 반응마다 칩(누른 사람은 title), 내가 누른 칩은 강조. 쓸 수 있으면 ☺+ 로 8개 가운데 고른다. */
-function ReactionBar({ message, accountId, people, canReact, onReact }: {
+/** ME-FR-07 반응 칩: 반응이 있을 때만 그린다(없을 때 빈 줄이 생기지 않게). 누른 사람은 title, 내가 누른 칩은 강조. */
+function ReactionChips({ message, accountId, people, canReact, onReact }: {
   message: ChatMessageDto; accountId: string; people: ChatPerson[]; canReact: boolean; onReact: (emoji: string) => void;
 }) {
-  const [picking, setPicking] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
+  if (!message.reactions.length) return null;
   const nameOf = (id: string) => people.find((person) => person.accountId === id)?.name ?? "알 수 없는 사용자";
-  useEffect(() => {
-    if (!picking) return;
-    pickerRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
-    const close = (event: MouseEvent) => { if (!pickerRef.current?.contains(event.target as Node)) setPicking(false); };
-    window.addEventListener("mousedown", close);
-    return () => window.removeEventListener("mousedown", close);
-  }, [picking]);
-  if (!message.reactions.length && !canReact) return null;
-
-  function onPickerKey(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") { setPicking(false); return; }
-    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
-    const buttons = [...(pickerRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
-    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
-    const next = buttons[(index + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length];
-    next?.focus();
-    event.preventDefault();
-  }
-
   return (
     <div className="chat-reactions">
       {message.reactions.map((reaction) => {
@@ -116,19 +96,43 @@ function ReactionBar({ message, accountId, people, canReact, onReact }: {
           </button>
         );
       })}
-      {canReact && (
-        <span className="chat-reaction-add">
-          <button type="button" className="chat-reaction ghost" aria-label="반응 추가" aria-expanded={picking} onClick={() => setPicking((open) => !open)}>☺+</button>
-          {picking && (
-            <div className="chat-reaction-picker" ref={pickerRef} role="toolbar" aria-label="반응 고르기" onKeyDown={onPickerKey}>
-              {CHAT_REACTIONS.map((emoji) => (
-                <button type="button" key={emoji} aria-label={`${emoji} 반응`} onClick={() => { setPicking(false); onReact(emoji); }}>{emoji}</button>
-              ))}
-            </div>
-          )}
-        </span>
-      )}
     </div>
+  );
+}
+
+/** ME-FR-07 반응 고르기: footer 의 "☺ 반응" → 고정 8개 팝오버. 화살표 키로 옮기고 Esc 로 닫는다. */
+function ReactionPicker({ onReact }: { onReact: (emoji: string) => void }) {
+  const [picking, setPicking] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!picking) return;
+    pickerRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    const close = (event: MouseEvent) => { if (!pickerRef.current?.parentElement?.contains(event.target as Node)) setPicking(false); };
+    window.addEventListener("mousedown", close);
+    return () => window.removeEventListener("mousedown", close);
+  }, [picking]);
+
+  function onPickerKey(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Escape") { setPicking(false); return; }
+    if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+    const buttons = [...(pickerRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? [])];
+    const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+    const next = buttons[(index + (event.key === "ArrowRight" ? 1 : buttons.length - 1)) % buttons.length];
+    next?.focus();
+    event.preventDefault();
+  }
+
+  return (
+    <span className={picking ? "chat-reaction-add open" : "chat-reaction-add"}>
+      <button type="button" className="chat-link-button" aria-label="반응 추가" aria-expanded={picking} onClick={() => setPicking((open) => !open)}>☺ 반응</button>
+      {picking && (
+        <div className="chat-reaction-picker" ref={pickerRef} role="toolbar" aria-label="반응 고르기" onKeyDown={onPickerKey}>
+          {CHAT_REACTIONS.map((emoji) => (
+            <button type="button" key={emoji} aria-label={`${emoji} 반응`} onClick={() => { setPicking(false); onReact(emoji); }}>{emoji}</button>
+          ))}
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -180,7 +184,7 @@ export function MessageItem({
       {/* ME-FR-08 Design §5.1: 말풍선 바로 아래 바깥쪽(내 글은 오른쪽, 남의 글은 왼쪽 — article 의 정렬을 따른다). */}
       {unreadCount ? <span className="chat-read-count" title={`안 읽은 사람 ${unreadCount}명`} aria-label={`안 읽은 사람 ${unreadCount}명`}>{unreadCount}</span> : null}
       {!message.deleted && onReact && (
-        <ReactionBar message={message} accountId={accountId} people={people} canReact={canReact && !archived} onReact={onReact} />
+        <ReactionChips message={message} accountId={accountId} people={people} canReact={canReact && !archived} onReact={onReact} />
       )}
       <footer>
         {onReply && message.threadRootId === null && !message.deleted && (
@@ -189,9 +193,10 @@ export function MessageItem({
         {onReply && message.threadRootId === null && message.deleted && message.replyCount > 0 && (
           <button type="button" className="chat-link-button" onClick={onReply}>답글 {message.replyCount}개</button>
         )}
+        {onReact && canReact && !archived && !message.deleted && <ReactionPicker onReact={onReact} />}
         {onBookmark && !message.deleted && (
           <button type="button" className={bookmarked ? "chat-link-button saved" : "chat-link-button"} aria-pressed={bookmarked} onClick={() => onBookmark(!bookmarked)}>
-            {bookmarked ? "★ 저장됨" : "☆ 저장"}
+            {bookmarked ? "★ 즐겨찾기" : "☆ 즐겨찾기"}
           </button>
         )}
         {canPin && onPin && !message.deleted && message.threadRootId === null && (

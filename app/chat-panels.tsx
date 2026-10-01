@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { fileSize, when } from "./chat-message";
-import { setSoundEnabled, setSystemNotify, soundEnabled, systemNotifyEnabled, systemNotifySupported } from "./chat-notify";
+import { beep, primeAudio, setSoundEnabled, setSystemNotify, soundEnabled, systemNotifyEnabled, systemNotifySupported } from "./chat-notify";
 import type { ChatActivityItem, ChatBookmarkItem, ChatFileItem, ChatPerson, ChatPinItem } from "./chat-client";
 
 const ACTIVITY_GLYPH: Record<ChatActivityItem["kind"], string> = { mention: "@", channel_mention: "@", thread_reply: "💬" };
@@ -53,10 +53,16 @@ export function ChatNotifySettings({ onNotice }: { onNotice: (message: string) =
   return (
     <section className="chat-settings" aria-label="알림 설정">
       <header><span>알림</span></header>
-      <label className="chat-inline">
-        <input type="checkbox" checked={sound} onChange={(event) => { setSoundEnabled(event.target.checked); setSound(event.target.checked); }} />
-        <span>알림음</span>
-      </label>
+      <div className="chat-settings-row">
+        <label className="chat-inline">
+          <input type="checkbox" checked={sound} onChange={(event) => { setSoundEnabled(event.target.checked); setSound(event.target.checked); }} />
+          <span>알림음</span>
+        </label>
+        <button type="button" className="chat-link-button" onClick={async () => {
+          primeAudio();
+          if (!(await beep())) onNotice("이 브라우저에서 소리를 낼 수 없습니다. 탭의 소리 설정이나 장치 음량을 확인해 주세요.");
+        }}>소리 시험</button>
+      </div>
       {supported ? (
         <label className="chat-inline">
           <input type="checkbox" checked={system} onChange={async (event) => {
@@ -141,7 +147,7 @@ export function FilesPanel({ files, hasMore, loading, onMore, onOpen, onClose }:
   );
 }
 
-/** ME-FR-11 저장됨(가운데 영역). */
+/** ME-FR-11 즐겨찾기(가운데 영역, 화면 문구는 '즐겨찾기'). */
 export function SavedPanel({ items, placeOf, onOpen, onRemove, onClose }: {
   items: ChatBookmarkItem[] | "loading"; placeOf: (item: ChatBookmarkItem) => string;
   onOpen: (item: ChatBookmarkItem) => void; onRemove: (item: ChatBookmarkItem) => void; onClose: () => void;
@@ -149,12 +155,12 @@ export function SavedPanel({ items, placeOf, onOpen, onRemove, onClose }: {
   return (
     <div className="chat-results">
       <header className="chat-header">
-        <div><strong>저장됨</strong><span>나만 보입니다</span></div>
+        <div><strong>즐겨찾기</strong><span>나만 보입니다</span></div>
         <button type="button" onClick={onClose}>닫기</button>
       </header>
       <div className="chat-list">
         {items === "loading" && <p className="chat-muted" role="status">불러오는 중…</p>}
-        {items !== "loading" && items.length === 0 && <p className="chat-muted">저장한 메시지가 없습니다. 메시지 아래 ☆ 저장을 눌러 보세요.</p>}
+        {items !== "loading" && items.length === 0 && <p className="chat-muted">즐겨찾기한 메시지가 없습니다. 메시지 아래 ☆ 즐겨찾기를 눌러 보세요.</p>}
         {items !== "loading" && items.map((item) => (
           <div key={item.message.id} className="chat-saved-row">
             <button type="button" className="chat-result" onClick={() => onOpen(item)}>
@@ -163,7 +169,7 @@ export function SavedPanel({ items, placeOf, onOpen, onRemove, onClose }: {
               <time>{when(item.message.createdAt)}</time>
               <p>{item.message.body || (item.message.attachments.length ? "📎 파일" : "")}</p>
             </button>
-            <button type="button" className="chat-saved-remove" aria-label="저장 해제" onClick={() => onRemove(item)}>×</button>
+            <button type="button" className="chat-saved-remove" aria-label="즐겨찾기 해제" onClick={() => onRemove(item)}>×</button>
           </div>
         ))}
       </div>

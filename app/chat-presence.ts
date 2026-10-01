@@ -21,6 +21,11 @@ export function presenceSnapshot(now = Date.now()): Record<string, number> {
   return out;
 }
 
+/** 맵에 없을 때만 넣는다(summary poll 이 세션 last_seen_at 으로 채운 값을 다음 일반 poll 에도 싣게, QA 2026-10-01). */
+export function seedPresence(accountId: string, at: number) {
+  if (!lastSeen.has(accountId)) lastSeen.set(accountId, at);
+}
+
 /** 메신저 권한을 잃은 계정은 맵에서 뺀다(summary poll 이 chatPeople 로 부른다). */
 export function prunePresence(allowed: ReadonlySet<string>) {
   for (const accountId of lastSeen.keys()) if (!allowed.has(accountId)) lastSeen.delete(accountId);
