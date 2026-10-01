@@ -204,6 +204,7 @@ powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\xdm\prod\
 4. 복사본의 읽기 전용 속성을 푼다: `attrib -R C:\xdm\prod\.wrangler\state\v3\* /S`.
 5. `Start-ScheduledTask XDnodeManagement-Autostart` → 로그인, HR 직원 조회, 녹음 1건 다운로드.
 6. 리허설은 운영이 아니라 새 폴더(점검 인스턴스 `C:\xdm\staging`, 포트 3001)에 3~4단계를 해서 확인한다. 복구본을 멈춘 상태에서 `verify-state-snapshot.mjs <복구본 v3>`의 integrity·행 수·R2 객체 수가 그날 `backup-report.json`과 같아야 한다. 끝나면 staging과 3001 규칙을 지운다. R5 뒤에 채팅 기록·첨부로 한 번 더 한다.
+   - 2026-10-01 실행(채팅 포함): `git clone --no-checkout <개발 폴더> C:\xdm\staging` → 운영과 같은 태그 checkout → `npm ci`(`.env.local`은 복사하지 않는다) → 3~4단계 → 개발 폴더의 `verify-state-snapshot.mjs`로 비교(차이 0) → `Start-XDNodeManagement.ps1 -Port 3001 -Headless`(브리지는 운영 것을 같이 쓴다) → `/api/me`가 `UNAUTHENTICATED`(빈 DB면 `BOOTSTRAP_REQUIRED`)인지 확인 → 서버 PC InPrivate 창에서 `http://127.0.0.1:3001` 확인(쿠키는 포트를 구분하지 않으므로 InPrivate) → `stop-3001.request`로 정지 → staging 삭제. 다음에는 총무 첨부도 확인한다.
 
 ## 12. 배포 (`scripts/Deploy-XDNodeManagement.ps1`, R4)
 
