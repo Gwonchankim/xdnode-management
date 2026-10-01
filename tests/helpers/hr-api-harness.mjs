@@ -89,6 +89,8 @@ registerHooks({
 const { companyEmployees } = await import('../../app/hr-company-data.ts');
 const { ensureErpPlatformSchema, resetPlatformSchemaGate } = await import('../../app/erp-platform.ts');
 const { hashPassword } = await import('../../app/auth-password.ts');
+// messenger-enhancement ME-DD6: 접속 상태는 모듈 메모리다. 테스트마다 비운다.
+const { resetPresence } = await import('../../app/chat-presence.ts');
 const administrator = companyEmployees.find(employee => employee.id === 'gc.kim');
 
 export const TEST_ADMIN_ACCOUNT_ID = 'acct_test_admin';
@@ -113,6 +115,7 @@ function refreshHeaders() { runtime.headers = baseHeaders(); }
 export async function resetDatabase({ migrate = false } = {}) {
   sqlite?.close();
   resetPlatformSchemaGate();
+  resetPresence();
   sqlite = new DatabaseSync(':memory:');
   runtime.beforeBatch = null;
   runtime.forbiddenTables = null;

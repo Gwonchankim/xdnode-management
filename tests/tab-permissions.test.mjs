@@ -471,8 +471,11 @@ test('source guard: every exported handler authorizes first and reads the body o
 test('source guard: every mutating route writes an audit row', () => {
   for (const file of routeFiles().filter((file) => !SESSION_ONLY.test(file))) {
     const source = read(file);
-    // R5: 읽음 위치 PUT 만 감사하지 않는다(Design §4.2.8).
-    if (file === 'app/api/chat/read-state/route.ts') continue;
+    // R5: 읽음 위치 PUT 은 감사하지 않는다(Design §4.2.8). messenger-enhancement(ME-MD9, DD14): 개인 상태 chat/me 도 같다.
+    if (file === 'app/api/chat/read-state/route.ts' || file === 'app/api/chat/me/route.ts') {
+      assert.doesNotMatch(source, /writeErpAudit\(/, file);
+      continue;
+    }
     if (handlers(source).some(({ method }) => method !== 'GET')) assert.match(source, /writeErpAudit\(/, file);
   }
 });

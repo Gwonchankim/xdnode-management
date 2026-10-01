@@ -19,6 +19,8 @@ test("payroll Excel export accepts the styled title and header rows", async () =
   assert.equal(workbook[1], 0x4b);
 });
 
+const UNAUDITED_PERSONAL_ROUTES = ["chat/read-state/route.ts", "chat/me/route.ts"];
+
 test("every mutating API route calls the authorization helper and writes an audit trail", async () => {
   // R1(Design §8.7): 삭제된 재무·영업 라우트 목록 대신, 남은 app/api 라우트 전부를 훑는다.
   const entries = await readdir(new URL("../app/api/", import.meta.url), { recursive: true });
@@ -36,8 +38,9 @@ test("every mutating API route calls the authorization helper and writes an audi
     } else {
       assert.match(source, /authorizeErpRequest\(/, `${route}: missing authorizeErpRequest`);
     }
-    // R5(Design §4.2.8): 읽음 위치 PUT 은 감사하지 않는 유일한 쓰기 라우트다(읽을 때마다 감사 행이 쌓이지 않게).
-    if (route === "chat/read-state/route.ts") { assert.doesNotMatch(source, /writeErpAudit\(/, route); continue; }
+    // R5(Design §4.2.8): 읽음 위치 PUT 은 감사하지 않는다(읽을 때마다 감사 행이 쌓이지 않게).
+    // messenger-enhancement(ME-MD9, DD14): 나만 보는 개인 상태(알림 수준·스레드 읽음·북마크)의 chat/me 도 같다. 예외는 이 두 파일뿐이다.
+    if (UNAUDITED_PERSONAL_ROUTES.includes(route)) { assert.doesNotMatch(source, /writeErpAudit\(/, route); continue; }
     assert.match(source, /writeErpAudit\(/, `${route}: missing writeErpAudit`);
   }
   assert.ok(mutating >= 20, `only ${mutating} mutating routes found`);

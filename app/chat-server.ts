@@ -16,11 +16,23 @@ export const CHAT_ATTACHMENTS_PER_MESSAGE = 10;
 export const CHAT_R2_PREFIX = "chat/";
 export const CHAT_CHANNEL_NAME_MAX = 40;
 export const CHAT_TOPIC_MAX = 200;
+/** 이동(ME-FR-01): 대상 앞뒤로 읽는 개수. */
+export const CHAT_AROUND_SIDE = 25;
+/** ME-FR-10 채널당 고정 수. */
+export const CHAT_PIN_LIMIT = 10;
+/** ME-FR-11 저장됨 목록 길이. */
+export const CHAT_BOOKMARK_LIMIT = 100;
+/** 고정 8개 반응(ME-MD4, DD16). chat-client.ts 의 같은 배열과 테스트로 맞춘다. */
+export const CHAT_REACTIONS = ["👍", "✅", "👀", "🙏", "😂", "🎉", "❤️", "😮"] as const;
+export type ChatReaction = typeof CHAT_REACTIONS[number];
 
 /** D1 은 문장당 바인드 값이 100개까지다. IN 목록은 이 크기로 나눈다. */
 const IN_CHUNK = 90;
 
 export type ChatChannelKind = "public" | "private" | "dm" | "group_dm";
+/** ME-FR-04 대화별 알림 수준. 행이 없으면 all 이다. */
+export type ChatNotifyLevel = "all" | "mentions" | "mute";
+export const CHAT_NOTIFY_LEVELS: readonly ChatNotifyLevel[] = ["all", "mentions", "mute"];
 export type ChatEventKind = "message.created" | "message.edited" | "message.deleted"
   | "channel.updated" | "channel.archived" | "member.joined" | "member.left";
 
@@ -43,19 +55,48 @@ export interface ChatAttachmentRow {
 }
 
 export interface ChatAttachmentDto { id: string; fileName: string; size: number; contentType: string; isImage: boolean; url: string }
+/** 보는 사람과 무관하다(ME-DD2). 내가 눌렀는지·이름은 클라이언트가 accountIds 로 정한다. 누른 순서. */
+export interface ChatReactionDto { emoji: string; accountIds: string[] }
 export interface ChatMessageDto {
   id: number; channelId: string; threadRootId: number | null;
   author: { accountId: string; name: string };
   body: string | null; mentions: string[]; mentionChannel: boolean; attachments: ChatAttachmentDto[];
   replyCount: number; lastReplyAt: number | null; createdAt: number; editedAt: number | null; deleted: boolean;
+  reactions: ChatReactionDto[]; pinnedAt: number | null;
 }
 export interface ChatChannelDto {
   id: string; kind: ChatChannelKind; name: string; topic: string; memberCount: number; dmMemberIds?: string[];
   unread: number; mentions: number;
   lastMessage: { id: number; authorName: string; preview: string | null; createdAt: number } | null;
-  myRole: "owner" | "member"; archived: boolean;
+  myRole: "owner" | "member"; archived: boolean; notifyLevel: ChatNotifyLevel;
+  /** ME-FR-10 고정 수(삭제된 메시지 제외). */
+  pinCount: number;
 }
-export interface UnreadSummary { total: number; mentions: number; channels: Array<{ channelId: string; unread: number; mentions: number; lastMessageId: number }> }
+/**
+ * total 은 알림 수준을 반영한 합계(탭 제목·셸 배지·파비콘)다. threads 는 참여 스레드의 새 답글이다.
+ * channels 의 kind·name·notifyLevel 은 셸 알림이 추가 요청 없이 쓰려고 싣는다(ME-DD10).
+ */
+export interface UnreadSummary {
+  total: number; mentions: number; threads: number;
+  channels: Array<{ channelId: string; unread: number; mentions: number; lastMessageId: number; kind: ChatChannelKind; name: string; notifyLevel: ChatNotifyLevel }>;
+}
+
+/** ME-FR-08 poll 의 읽음 위치 스냅샷(ME-DD7). 읽음 숫자는 클라이언트가 계산하고 숫자만 보여 준다(ME-MD3). */
+export interface ChatReadsSnapshot { channelId: string; members: Array<{ accountId: string; lastReadMessageId: number; joinedAt: number }> }
+
+/** ME-FR-10 고정 목록 항목. */
+export interface ChatPinItem { message: ChatMessageDto; pinnedBy: { accountId: string; name: string }; pinnedAt: number }
+/** ME-FR-11 저장됨 항목. channel 은 지금 볼 수 있는 대화다. */
+export interface ChatBookmarkItem { message: ChatMessageDto; channel: { id: string; kind: ChatChannelKind; name: string }; savedAt: number }
+/** ME-FR-12 채널 파일 목록 항목. */
+export interface ChatFileItem { attachment: ChatAttachmentDto; messageId: number; threadRootId: number | null; uploaderName: string; createdAt: number }
+
+/** ME-FR-05 활동함 항목. message 는 이동 대상이다(FR-01). */
+export type ChatActivityKind = "mention" | "channel_mention" | "thread_reply";
+export interface ChatActivityItem {
+  kind: ChatActivityKind; message: ChatMessageDto; unread: boolean;
+  channel: { id: string; kind: ChatChannelKind; name: string };
+}
 
 // ── 오류 ─────────────────────────────────────────────────────────────────
 export const chatNotFound = () => erpError(404, "NOT_FOUND", "대화를 찾을 수 없습니다.");
@@ -63,6 +104,7 @@ export const chatArchived = () => erpError(409, "CHANNEL_ARCHIVED", "보관된 �
 export const chatValidation = (error: string, field?: string) => erpError(400, "VALIDATION", error, field ? { field } : {});
 export const chatForbidden = (error = "이 작업을 수행할 권한이 없습니다.") => erpError(403, "FORBIDDEN", error);
 export const chatConflict = () => erpError(409, "CONFLICT", "다른 사용자가 먼저 상태를 바꿨습니다. 새로고침해 주세요.");
+export const chatPinLimit = () => erpError(409, "PIN_LIMIT", `고정은 채널당 ${CHAT_PIN_LIMIT}개까지입니다.`);
 
 /** 본문 JSON. 객체가 아니면 null(→ 400 "요청 내용을 읽을 수 없습니다."). 인가 뒤에만 부른다. */
 export async function readJsonBody(request: Request): Promise<Record<string, unknown> | null> {
@@ -154,12 +196,15 @@ export function joinStatements(db: D1Database, channelId: string, accountId: str
 }
 
 // ── 메시지 DTO ────────────────────────────────────────────────────────────
-type MessageQueryRow = ChatMessageRow & { author_name: string | null; attachments_json: string; mentions_json: string };
+type MessageQueryRow = ChatMessageRow & { author_name: string | null; attachments_json: string; mentions_json: string; reactions_json: string; pinned_at: number | null };
 
 const MESSAGE_SELECT = `SELECT m.*, a.display_name AS author_name,
   (SELECT json_group_array(json_object('id', t.id, 'fileName', t.file_name, 'size', t.size, 'contentType', t.content_type))
      FROM (SELECT * FROM chat_attachments WHERE message_id = m.id AND deleted_at IS NULL ORDER BY created_at, id) t) AS attachments_json,
-  (SELECT json_group_array(n.account_id) FROM chat_mentions n WHERE n.message_id = m.id) AS mentions_json
+  (SELECT json_group_array(n.account_id) FROM chat_mentions n WHERE n.message_id = m.id) AS mentions_json,
+  (SELECT json_group_array(json_object('emoji', r.emoji, 'accountId', r.account_id))
+     FROM (SELECT * FROM chat_reactions WHERE message_id = m.id ORDER BY created_at, account_id) r) AS reactions_json,
+  (SELECT p.pinned_at FROM chat_pins p WHERE p.message_id = m.id) AS pinned_at
   FROM chat_messages m LEFT JOIN auth_accounts a ON a.id = m.author_account_id`;
 
 export function attachmentDto(row: { id: string; fileName: string; size: number; contentType: string }): ChatAttachmentDto {
@@ -179,6 +224,13 @@ function parseArray<T>(value: string | null | undefined): T[] {
   }
 }
 
+/** 반응 행(누른 순서) → 이모지별 묶음. 이모지 순서는 처음 눌린 순서다. */
+function groupReactions(rows: Array<{ emoji: string; accountId: string }>): ChatReactionDto[] {
+  const groups = new Map<string, string[]>();
+  for (const row of rows) groups.set(row.emoji, [...(groups.get(row.emoji) ?? []), row.accountId]);
+  return [...groups].map(([emoji, accountIds]) => ({ emoji, accountIds }));
+}
+
 function toMessageDto(row: MessageQueryRow): ChatMessageDto {
   const deleted = row.deleted_at !== null;
   return {
@@ -195,6 +247,8 @@ function toMessageDto(row: MessageQueryRow): ChatMessageDto {
     createdAt: Number(row.created_at),
     editedAt: row.edited_at === null ? null : Number(row.edited_at),
     deleted,
+    reactions: deleted ? [] : groupReactions(parseArray<{ emoji: string; accountId: string }>(row.reactions_json)),
+    pinnedAt: deleted || row.pinned_at === null || row.pinned_at === undefined ? null : Number(row.pinned_at),
   };
 }
 
@@ -225,26 +279,54 @@ export async function messageDto(db: D1Database, id: number) {
  * unread: id > 읽음 위치, 삭제 안 됨, 남이 씀, 최상위이거나 나를 멘션한 답글. mentions: 그 가운데 @channel 이거나 나를 멘션.
  */
 export async function unreadSummary(db: D1Database, accountId: string): Promise<UnreadSummary> {
-  const rows = await db.prepare(`SELECT mem.channel_id AS channel_id,
-      (SELECT COUNT(*) FROM chat_messages x WHERE x.channel_id = mem.channel_id AND x.id > mem.last_read_message_id
+  const unreadBase = `x.channel_id = mem.channel_id AND x.id > mem.last_read_message_id
          AND x.deleted_at IS NULL AND x.author_account_id != ?1
-         AND (x.thread_root_id IS NULL OR EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1))) AS unread,
-      (SELECT COUNT(*) FROM chat_messages x WHERE x.channel_id = mem.channel_id AND x.id > mem.last_read_message_id
-         AND x.deleted_at IS NULL AND x.author_account_id != ?1
-         AND (x.thread_root_id IS NULL OR EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1))
+         AND (x.thread_root_id IS NULL OR EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1))`;
+  const [rows, threads] = await Promise.all([
+    db.prepare(`SELECT mem.channel_id AS channel_id, c.kind AS kind, c.name AS name, COALESCE(p.notify_level, 'all') AS notify_level,
+      (SELECT COUNT(*) FROM chat_messages x WHERE ${unreadBase}) AS unread,
+      (SELECT COUNT(*) FROM chat_messages x WHERE ${unreadBase}
          AND (x.mention_channel = 1 OR EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1))) AS mentions,
+      (SELECT COUNT(*) FROM chat_messages x WHERE ${unreadBase}
+         AND EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = x.id AND n.account_id = ?1)) AS direct,
       (SELECT COALESCE(MAX(x.id), 0) FROM chat_messages x WHERE x.channel_id = mem.channel_id AND x.thread_root_id IS NULL AND x.deleted_at IS NULL) AS last_message_id
     FROM chat_members mem JOIN chat_channels c ON c.id = mem.channel_id
+      LEFT JOIN chat_member_prefs p ON p.channel_id = mem.channel_id AND p.account_id = ?1
     WHERE mem.account_id = ?1 AND mem.left_at IS NULL AND c.archived_at IS NULL
-    ORDER BY mem.channel_id`).bind(accountId).all<{ channel_id: string; unread: number; mentions: number; last_message_id: number }>();
+    ORDER BY mem.channel_id`).bind(accountId).all<{
+      channel_id: string; kind: ChatChannelKind; name: string; notify_level: ChatNotifyLevel;
+      unread: number; mentions: number; direct: number; last_message_id: number;
+    }>(),
+    // ME-FR-05 참여 스레드의 새 답글. 나를 멘션했거나 @channel 인 답글은 위 mentions 쪽에서 세므로 뺀다.
+    db.prepare(`SELECT COUNT(*) AS n FROM chat_thread_reads tr
+      JOIN chat_members mem ON mem.channel_id = tr.channel_id AND mem.account_id = tr.account_id AND mem.left_at IS NULL
+      JOIN chat_channels c ON c.id = tr.channel_id AND c.archived_at IS NULL
+      JOIN chat_messages r ON r.thread_root_id = tr.thread_root_id AND r.id > tr.last_read_reply_id
+      WHERE tr.account_id = ?1 AND r.author_account_id != ?1 AND r.deleted_at IS NULL AND r.mention_channel = 0
+        AND NOT EXISTS (SELECT 1 FROM chat_mentions n WHERE n.message_id = r.id AND n.account_id = ?1)`)
+      .bind(accountId).first<{ n: number }>(),
+  ]);
   const channels = rows.results.map((row) => ({
     channelId: row.channel_id, unread: Number(row.unread), mentions: Number(row.mentions), lastMessageId: Number(row.last_message_id),
+    kind: row.kind, name: row.name, notifyLevel: row.notify_level, direct: Number(row.direct),
   }));
+  const threadCount = Number(threads?.n ?? 0);
   return {
-    total: channels.reduce((sum, row) => sum + row.unread, 0),
+    // ME-FR-04 §3.4: 전체는 안 읽은 글, 멘션만은 멘션(@channel 포함), 음소거는 나를 직접 멘션한 글만 합계에 넣는다.
+    total: channels.reduce((sum, row) => sum + notifyContribution(row), 0) + threadCount,
     mentions: channels.reduce((sum, row) => sum + row.mentions, 0),
-    channels,
+    threads: threadCount,
+    channels: channels.map((row) => ({
+      channelId: row.channelId, unread: row.unread, mentions: row.mentions, lastMessageId: row.lastMessageId,
+      kind: row.kind, name: row.name, notifyLevel: row.notifyLevel,
+    })),
   };
+}
+
+export function notifyContribution(row: { unread: number; mentions: number; direct: number; notifyLevel: ChatNotifyLevel }) {
+  if (row.notifyLevel === "mute") return row.direct;
+  if (row.notifyLevel === "mentions") return row.mentions;
+  return row.unread;
 }
 
 // ── 채널 DTO ──────────────────────────────────────────────────────────────
@@ -254,7 +336,7 @@ const PREVIEW_LENGTH = 80;
 export async function myChannelDtos(db: D1Database, accountId: string, onlyId?: string): Promise<ChatChannelDto[]> {
   const idFilter = onlyId ? "AND c.id = ?2" : "";
   const binds = onlyId ? [accountId, onlyId] : [accountId];
-  const [channels, members, lastMessages, unread] = await Promise.all([
+  const [channels, members, lastMessages, unread, pins] = await Promise.all([
     db.prepare(`SELECT c.*, mem.role AS my_role FROM chat_members mem JOIN chat_channels c ON c.id = mem.channel_id
       WHERE mem.account_id = ?1 AND mem.left_at IS NULL ${idFilter} ORDER BY c.archived_at IS NOT NULL, c.kind, c.name, c.created_at`)
       .bind(...binds).all<ChatChannelRow & { my_role: "owner" | "member" }>(),
@@ -267,7 +349,11 @@ export async function myChannelDtos(db: D1Database, accountId: string, onlyId?: 
         (SELECT channel_id FROM chat_members WHERE account_id = ?1 AND left_at IS NULL) GROUP BY channel_id)`)
       .bind(accountId).all<{ channel_id: string; id: number; body: string; deleted_at: number | null; created_at: number; author_name: string | null }>(),
     unreadSummary(db, accountId),
+    db.prepare(`SELECT p.channel_id, COUNT(*) AS n FROM chat_pins p JOIN chat_messages m ON m.id = p.message_id AND m.deleted_at IS NULL
+      WHERE p.channel_id IN (SELECT channel_id FROM chat_members WHERE account_id = ?1 AND left_at IS NULL) GROUP BY p.channel_id`)
+      .bind(accountId).all<{ channel_id: string; n: number }>(),
   ]);
+  const pinMap = new Map(pins.results.map((row) => [row.channel_id, Number(row.n)]));
   const memberMap = new Map<string, string[]>();
   for (const row of members.results) memberMap.set(row.channel_id, [...(memberMap.get(row.channel_id) ?? []), row.account_id]);
   const lastMap = new Map(lastMessages.results.map((row) => [row.channel_id, row]));
@@ -285,6 +371,8 @@ export async function myChannelDtos(db: D1Database, accountId: string, onlyId?: 
         preview: last.deleted_at === null ? last.body.slice(0, PREVIEW_LENGTH) : null, createdAt: Number(last.created_at),
       } : null,
       myRole: channel.my_role, archived: channel.archived_at !== null,
+      notifyLevel: counts?.notifyLevel ?? "all",
+      pinCount: pinMap.get(channel.id) ?? 0,
     };
   });
 }

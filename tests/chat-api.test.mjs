@@ -402,10 +402,11 @@ test('R5 channels?members=: lists current members for members only (private non-
 test('R5 source guards: no raw HTML in chat UI, Enter respects Korean IME composition, title shows the unread count', async () => {
   const { readFileSync } = await import('node:fs');
   const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-  for (const file of ['app/chat-workspace.tsx', 'app/chat-client.ts', 'app/chat-mentions.ts']) {
+  for (const file of ['app/chat-workspace.tsx', 'app/chat-message.tsx', 'app/chat-client.ts', 'app/chat-mentions.ts']) {
     assert.doesNotMatch(read(file), /dangerouslySetInnerHTML|innerHTML/, file);
   }
-  const workspace = read('app/chat-workspace.tsx');
+  // MessageItem 은 messenger-enhancement M1 에서 chat-message.tsx 로 옮겼다. 두 파일을 함께 본다.
+  const workspace = read('app/chat-workspace.tsx') + read('app/chat-message.tsx');
   assert.match(workspace, /event\.key === "Enter" && !event\.shiftKey && !event\.nativeEvent\.isComposing/);
   assert.match(workspace, /rel="noopener noreferrer"/);
   assert.match(workspace, /url\.protocol === "http:" \|\| url\.protocol === "https:"/);
@@ -424,7 +425,8 @@ test('R5 source guards: no raw HTML in chat UI, Enter respects Korean IME compos
 test('R5 bubbles and paste: my messages are right-aligned bubbles with their own colour; pasted captures become named image attachments', async () => {
   const { readFileSync } = await import('node:fs');
   const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
-  const workspace = read('app/chat-workspace.tsx');
+  // MessageItem 은 messenger-enhancement M1 에서 chat-message.tsx 로 옮겼다. 두 파일을 함께 본다.
+  const workspace = read('app/chat-workspace.tsx') + read('app/chat-message.tsx');
   const css = read('app/chat-workspace.css');
   assert.match(workspace, /"chat-message", mine \? "mine" : "theirs"/);
   assert.match(workspace, /className=\{editing \? "chat-bubble editing" : "chat-bubble"\}/);

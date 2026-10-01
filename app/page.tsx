@@ -14,6 +14,8 @@ import { SessionGate, SessionNotice } from "./auth-screens";
 import { readScoped, writeScoped } from "./client-runtime";
 import { useSession, type SessionMe } from "./session-client";
 import { useChatPoll, type ChatPoll } from "./chat-client";
+import { useChatNotifier } from "./chat-notify";
+import ChatToasts from "./chat-toasts";
 
 // R3(r3-shell, Design §5.1~§5.3): 셸은 useSession() 상태기계와 탭 레지스트리(app/access-tabs.ts)로 그린다.
 // SSR 과 첫 렌더는 AuthLoadingShell(data-auth-gate="loading")뿐이고 탭 DOM 이 없다. 권한 없는 탭은 버튼도 패널도 없다.
@@ -75,6 +77,20 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
     writeScoped(ACTIVE_TAB_KEY, tab);
   }
 
+  // messenger-enhancement ME-FR-02·03: 어느 탭에 있어도 셸이 새 메시지 알림(소리·토스트·파비콘)을 낸다(ME-DD9).
+  // 토스트를 누르면 메신저 탭으로 옮기고, 채팅 화면이 openRequest 를 받아 그 메시지로 이동한다(ME-FR-01).
+  function openChatMessage(channelId: string, messageId: number) {
+    select("chat");
+    chatPoll.requestOpen(channelId, messageId);
+  }
+  const notifier = useChatNotifier({
+    poll: chatPoll, enabled: me.tabs.chat !== "none", accountId: me.user.accountId, chatActive: active === "chat", onOpen: openChatMessage,
+  });
+  const toasts = (
+    <ChatToasts toasts={notifier.toasts} onDismiss={notifier.dismiss}
+      onOpen={(toast) => { notifier.dismiss(toast.key); openChatMessage(toast.channelId, toast.messageId); }} />
+  );
+
   const navigation = (
     <ShellTopNav tabs={me.tabs} active={active} onSelect={select} userName={me.user.name} userEmail={me.user.email}
       onChangePassword={onChangePassword} onLogout={onLogout} badges={{ chat: chatPoll.unread?.total ?? 0 }} />
@@ -96,6 +112,7 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
     <div className={definition.shellClass}>
       {navigation}
       {TAB_PANELS[active]({ me, tabs: me.tabs, hrNavigation, compensationAssistantModule, setCompensationAssistantModule, chatPoll })}
+      {toasts}
     </div>
   );
 }

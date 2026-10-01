@@ -5,18 +5,29 @@
 // 실시간 갱신은 셸의 useChatPoll 이벤트를 구독한다. 권한 판정은 서버가 다시 한다(여기서 숨기는 것은 편의일 뿐이다).
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
-import { applyMention, highlightMentions, mentionQueryAt, mentionSuggestions } from "./chat-mentions";
+import { applyMention, mentionQueryAt, mentionSuggestions } from "./chat-mentions";
+import { MessageItem, PresenceDot, fileSize, when } from "./chat-message";
+import {
+  ActivityPanel, ChatNotifySettings, EMPTY_SEARCH_FILTERS, FilesPanel, PinsPanel, SavedPanel, SearchFilters, searchFilterCount, searchQuery,
+  type ChatSearchFilters,
+} from "./chat-panels";
 import { useErpDialog } from "./erp-dialog";
 import { randomId, readScoped, writeScoped } from "./client-runtime";
 import {
   CHAT_ATTACHMENT_MAX_BYTES, CHAT_ATTACHMENTS_PER_MESSAGE, CHAT_GROUP_DM_MAX_OTHERS, CHAT_MESSAGE_MAX_LENGTH, CHAT_SEARCH_MAX, CHAT_SEARCH_MIN,
-  chatRequest, fileExtensionAllowed, pastedImageFile, uploadChatAttachment,
-  type ChatAttachmentDto, type ChatChannelDto, type ChatChannelsResponse, type ChatMessageDto, type ChatPerson, type ChatPoll, type ChatPollEvent,
-  type UnreadSummary,
+  chatRequest, fileExtensionAllowed, pastedImageFile, presenceLabel, unreadCountFor, uploadChatAttachment,
+  type ChatActivityItem, type ChatAttachmentDto, type ChatBookmarkItem, type ChatChannelDto, type ChatFileItem, type ChatPinItem, type ChatChannelsResponse, type ChatMessageDto, type ChatNotifyLevel, type ChatPerson,
+  type ChatPoll, type ChatPollEvent, type UnreadSummary,
 } from "./chat-client";
 
 type Props = { accountId: string; poll: ChatPoll };
-type History = { messages: ChatMessageDto[]; hasMore: boolean; loading: boolean };
+/** hasNewer: 이동(around)으로 옛 구간을 보는 중이라 최신 글과 이어져 있지 않다(ME-DD15). 이때는 poll 의 새 글을 붙이지 않는다. */
+type History = { messages: ChatMessageDto[]; hasMore: boolean; hasNewer: boolean; loading: boolean };
+type HistoryResponse = { messages: ChatMessageDto[]; hasMore?: boolean; hasNewer?: boolean; focusId?: number; focusReplyId?: number };
+/** ME-FR-10·12 오른쪽 패널(스레드 자리를 함께 쓴다). */
+type Side = null | { kind: "pins"; pins: ChatPinItem[] | "loading" } | { kind: "files"; files: ChatFileItem[]; nextBefore: string | null; loading: boolean };
+/** 이동 대상. replyId 가 있으면 스레드 패널의 그 답글이다. */
+type Focus = { id: number; replyId?: number };
 type Thread = { root: ChatMessageDto; replies: ChatMessageDto[] };
 type SearchResult = { message: ChatMessageDto; channel: { id: string; kind: string; name: string } | null };
 type Modal = null | { kind: "channel" } | { kind: "dm" } | { kind: "members" };
@@ -25,111 +36,9 @@ const VIEW_ONLY = "보기 권한만 있습니다.";
 /** 마지막으로 연 대화(계정 범위 키, 화면 설정이라 로그아웃해도 남긴다). 새로고침·탭 이동 뒤 같은 대화로 돌아온다. */
 export const ACTIVE_CHANNEL_KEY = "xdnode-chat-active-channel";
 const ARCHIVED = "보관된 대화에는 새 글을 쓰거나 바꿀 수 없습니다.";
-const EMPTY_HISTORY: History = { messages: [], hasMore: false, loading: false };
-
-const timeFormat = new Intl.DateTimeFormat("ko-KR", { hour: "2-digit", minute: "2-digit" });
-const dateTimeFormat = new Intl.DateTimeFormat("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
-function when(ms: number) {
-  const date = new Date(ms);
-  return date.toDateString() === new Date().toDateString() ? timeFormat.format(date) : dateTimeFormat.format(date);
-}
-function fileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes}B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)}KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
-}
-
-/** http:·https: 링크만 a 로 바꾼다. 나머지는 텍스트 노드. */
-function Linkified({ text }: { text: string }) {
-  const parts = text.split(/(https?:\/\/[^\s<>"']+)/g);
-  return <>{parts.map((part, index) => {
-    if (index % 2 === 1) {
-      try {
-        const url = new URL(part);
-        if (url.protocol === "http:" || url.protocol === "https:") {
-          return <a key={index} href={url.href} target="_blank" rel="noopener noreferrer">{part}</a>;
-        }
-      } catch { /* 링크가 아니면 텍스트로 둔다 */ }
-    }
-    return <span key={index}>{part}</span>;
-  })}</>;
-}
-
-function MessageBody({ body, people }: { body: string; people: ChatPerson[] }) {
-  const pieces = useMemo(() => highlightMentions(body, people), [body, people]);
-  return <>{pieces.map((piece, index) => piece.mention
-    ? <mark key={index} className="chat-mention">{piece.text}</mark>
-    : <Linkified key={index} text={piece.text} />)}</>;
-}
-
-function Attachments({ attachments }: { attachments: ChatAttachmentDto[] }) {
-  if (!attachments.length) return null;
-  return (
-    <div className="chat-attachments">
-      {attachments.map((attachment) => attachment.isImage
-        ? (
-          <a key={attachment.id} className="chat-attachment-image" href={attachment.url} target="_blank" rel="noopener noreferrer" title={attachment.fileName}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- 인증 쿠키가 필요한 첨부. 이미지 최적화 경로를 타지 않는다. */}
-            <img src={attachment.url} alt={attachment.fileName} loading="lazy" />
-          </a>
-        )
-        : (
-          <a key={attachment.id} className="chat-attachment-file" href={attachment.url} rel="noopener noreferrer" download={attachment.fileName}>
-            <span aria-hidden="true">▤</span>
-            <span className="chat-attachment-name">{attachment.fileName}</span>
-            <small>{fileSize(attachment.size)}</small>
-          </a>
-        ))}
-    </div>
-  );
-}
-
-function MessageItem({ message, people, mine, canWrite, archived, onReply, onEdit, onDelete }: {
-  message: ChatMessageDto; people: ChatPerson[]; mine: boolean; canWrite: boolean; archived: boolean;
-  onReply?: () => void; onEdit: (body: string) => Promise<boolean>; onDelete: () => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
-  const editable = mine && canWrite && !archived && !message.deleted;
-  return (
-    <article className={["chat-message", mine ? "mine" : "theirs", message.deleted ? "deleted" : ""].filter(Boolean).join(" ")} data-message-id={message.id}>
-      <header>
-        {!mine && <strong>{message.author.name}</strong>}
-        <time dateTime={new Date(message.createdAt).toISOString()}>{when(message.createdAt)}</time>
-        {message.editedAt && !message.deleted && <em>(수정됨)</em>}
-      </header>
-      <div className={editing ? "chat-bubble editing" : "chat-bubble"}>
-      {message.deleted
-        ? <p className="chat-message-body muted">삭제된 메시지입니다.</p>
-        : editing
-          ? (
-            <div className="chat-edit">
-              <textarea value={draft} maxLength={CHAT_MESSAGE_MAX_LENGTH} rows={3} onChange={(event) => setDraft(event.target.value)} aria-label="메시지 수정" />
-              <div>
-                <button type="button" className="primary-button" disabled={!draft.trim() && !message.attachments.length}
-                  onClick={async () => { if (await onEdit(draft)) setEditing(false); }}>저장</button>
-                <button type="button" onClick={() => setEditing(false)}>취소</button>
-              </div>
-            </div>
-          )
-          : message.body ? <p className="chat-message-body"><MessageBody body={message.body} people={people} /></p> : null}
-      {!message.deleted && <Attachments attachments={message.attachments} />}
-      </div>
-      <footer>
-        {onReply && message.threadRootId === null && !message.deleted && (
-          <button type="button" className="chat-link-button" onClick={onReply}>{message.replyCount > 0 ? `답글 ${message.replyCount}개` : "답글"}</button>
-        )}
-        {onReply && message.threadRootId === null && message.deleted && message.replyCount > 0 && (
-          <button type="button" className="chat-link-button" onClick={onReply}>답글 {message.replyCount}개</button>
-        )}
-        {editable && !editing && <>
-          <button type="button" className="chat-link-button" onClick={() => { setDraft(message.body ?? ""); setEditing(true); }}>수정</button>
-          <button type="button" className="chat-link-button danger" onClick={onDelete}>삭제</button>
-        </>}
-      </footer>
-    </article>
-  );
-}
+const EMPTY_HISTORY: History = { messages: [], hasMore: false, hasNewer: false, loading: false };
+const FOCUS_MS = 2500;
+const NOTIFY_LABELS: Record<ChatNotifyLevel, string> = { all: "모든 새 글", mentions: "멘션만", mute: "음소거" };
 
 type Pending = { key: string; name: string; size: number; attachment?: ChatAttachmentDto; error?: string };
 
@@ -340,8 +249,17 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [history, setHistory] = useState<History>(EMPTY_HISTORY);
   const [thread, setThread] = useState<Thread | null>(null);
+  const [focus, setFocus] = useState<Focus | null>(null);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<SearchResult[] | null>(null);
+  /** ME-FR-05 활동함(가운데 영역, 검색 결과와 같은 자리). */
+  const [activity, setActivity] = useState<ChatActivityItem[] | "loading" | null>(null);
+  /** ME-FR-11 저장됨(가운데 영역)과 내가 저장한 메시지 id(☆/★ 표시). */
+  const [savedItems, setSavedItems] = useState<ChatBookmarkItem[] | "loading" | null>(null);
+  const [bookmarkIds, setBookmarkIds] = useState<ReadonlySet<number>>(() => new Set());
+  const [side, setSide] = useState<Side>(null);
+  const [filters, setFilters] = useState<ChatSearchFilters>(EMPTY_SEARCH_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
   const [notice, setNotice] = useState("");
   const [modal, setModal] = useState<Modal>(null);
   const [formName, setFormName] = useState("");
@@ -355,6 +273,8 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   const historyRef = useRef<History>(EMPTY_HISTORY);
   const threadRef = useRef<Thread | null>(null);
   const joinedRef = useRef(false);
+  /** openTarget 이 남기고 loadHistory 가 한 번 쓰고 비운다. */
+  const targetRef = useRef<{ channelId: string; messageId: number } | null>(null);
   useEffect(() => { activeRef.current = activeId; historyRef.current = history; threadRef.current = thread; });
 
   const people = useMemo(() => data?.people ?? [], [data]);
@@ -389,6 +309,14 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   const archived = joined?.archived ?? false;
   useEffect(() => { joinedRef.current = Boolean(joined); });
 
+  /** ME-DD13 스레드를 열었거나 열린 스레드에 답글이 오면 스레드 읽음 위치를 올린다(참여자가 된다). */
+  const markThreadRead = useCallback(async (rootId: number, replies: ChatMessageDto[]) => {
+    const last = replies.reduce((max, reply) => Math.max(max, reply.id), 0);
+    if (document.visibilityState !== "visible") return;
+    const result = await chatRequest<{ unread: UnreadSummary }>("/api/chat/me", { method: "PUT", body: { action: "THREAD_READ", threadRootId: rootId, lastReadReplyId: last } });
+    if (result.ok && result.body.unread) poll.setUnread(result.body.unread);
+  }, [poll]);
+
   const markRead = useCallback(async (channelId: string, messages: ChatMessageDto[]) => {
     const last = messages.reduce((max, message) => Math.max(max, message.id), 0);
     if (!last || document.visibilityState !== "visible") return;
@@ -396,29 +324,117 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     if (result.ok && result.body.unread) poll.setUnread(result.body.unread);
   }, [poll]);
 
+  const openThreadOf = useCallback(async (root: ChatMessageDto) => {
+    const result = await chatRequest<{ root: ChatMessageDto; replies: ChatMessageDto[] }>(`/api/chat/messages?threadRootId=${root.id}`);
+    if (!result.ok) { flash(result.body.error ?? "스레드를 불러오지 못했습니다."); return false; }
+    setSide(null);
+    setThread({ root: result.body.root, replies: result.body.replies });
+    void markThreadRead(root.id, result.body.replies);
+    return true;
+  }, [flash, markThreadRead]);
+
+  /** 최신 구간을 읽는다. targetRef 가 이 채널을 가리키면 대신 그 메시지 주변(around)을 읽고 강조한다(ME-FR-01). */
   const loadHistory = useCallback(async (channelId: string, member: boolean) => {
-    const result = await chatRequest<{ messages: ChatMessageDto[]; hasMore: boolean }>(`/api/chat/messages?channelId=${encodeURIComponent(channelId)}`);
+    let target = targetRef.current?.channelId === channelId ? targetRef.current : null;
+    // 다른 채널을 읽는 중에 남긴 이동 요청은 지우지 않는다(그 채널을 열 때 쓴다).
+    if (target) targetRef.current = null;
+    const base = `/api/chat/messages?channelId=${encodeURIComponent(channelId)}`;
+    let result = await chatRequest<HistoryResponse>(target ? `${base}&around=${target.messageId}` : base);
     if (activeRef.current !== channelId) return;
+    if (!result.ok && target) {
+      // 대상이 지워졌거나 볼 수 없으면 알리고 최신 구간을 연다.
+      flash(result.status === 404 ? "메시지를 찾을 수 없습니다." : result.body.error ?? "메시지를 불러오지 못했습니다.");
+      target = null;
+      result = await chatRequest<HistoryResponse>(base);
+      if (activeRef.current !== channelId) return;
+    }
     if (!result.ok) { setHistory(EMPTY_HISTORY); flash(result.body.error ?? "대화를 불러오지 못했습니다."); return; }
-    stickToBottom.current = true;
-    setHistory({ messages: result.body.messages, hasMore: result.body.hasMore, loading: false });
-    if (member) void markRead(channelId, result.body.messages);
-  }, [flash, markRead]);
+    const messages = result.body.messages;
+    stickToBottom.current = !target;
+    setHistory({ messages, hasMore: Boolean(result.body.hasMore), hasNewer: Boolean(result.body.hasNewer), loading: false });
+    if (member) void markRead(channelId, messages);
+    const focusId = result.body.focusId;
+    if (!target || !focusId) return;
+    const replyId = result.body.focusReplyId;
+    setFocus({ id: focusId, ...(replyId ? { replyId } : {}) });
+    window.requestAnimationFrame(() => listRef.current?.querySelector(`[data-message-id="${focusId}"]`)?.scrollIntoView({ block: "center" }));
+    const root = messages.find((message) => message.id === focusId);
+    if (replyId && root && await openThreadOf(root)) {
+      window.requestAnimationFrame(() => document.querySelector(`.chat-thread [data-message-id="${replyId}"]`)?.scrollIntoView({ block: "center" }));
+    }
+  }, [flash, markRead, openThreadOf]);
 
   /** 대화를 바꾼다. 스레드·검색 결과를 닫고 기록을 비운다(새 기록은 아래 효과가 읽는다). */
   const selectChannel = useCallback((id: string | null) => {
     setThread(null);
+    setFocus(null);
     setResults(null);
+    setActivity(null);
+    setSavedItems(null);
+    setSide(null);
     setHistory(id ? { ...EMPTY_HISTORY, loading: true } : EMPTY_HISTORY);
     setActiveId(id);
     if (id) writeScoped(ACTIVE_CHANNEL_KEY, id);
   }, []);
+
+  /** ME-FR-01 메시지로 이동. 검색과 다음 모듈의 활동함·고정·저장됨·파일·토스트가 쓴다. */
+  const openTarget = useCallback((channelId: string, messageId: number) => {
+    targetRef.current = { channelId, messageId };
+    setResults(null);
+    setActivity(null);
+    setSavedItems(null);
+    if (activeRef.current !== channelId) { selectChannel(channelId); return; }
+    setThread(null);
+    void loadHistory(channelId, joinedRef.current);
+  }, [selectChannel, loadHistory]);
+
+  useEffect(() => {
+    if (!focus) return;
+    const timer = window.setTimeout(() => setFocus(null), FOCUS_MS);
+    return () => window.clearTimeout(timer);
+  }, [focus]);
+
+  // ME-FR-02: 셸 알림은 지금 열어 둔 대화의 새 글에 소리·토스트를 내지 않는다.
+  useEffect(() => { poll.setViewing(activity || results || savedItems ? null : activeId); }, [poll, activeId, activity, results, savedItems]);
+  useEffect(() => () => poll.setViewing(null), [poll]);
+
+  // 셸 토스트에서 온 이동 요청. 목록을 읽은 뒤에 처리한다(처음 마운트 때는 저장해 둔 대화보다 우선한다).
+  const loaded = data !== null;
+  const openRequest = poll.openRequest;
+  useEffect(() => {
+    if (!loaded || !openRequest) return;
+    let current = true;
+    void (async () => {
+      await Promise.resolve();
+      if (!current) return;
+      poll.consumeOpen(openRequest.seq);
+      openTarget(openRequest.channelId, openRequest.messageId);
+    })();
+    return () => { current = false; };
+  }, [loaded, openRequest, poll, openTarget]);
+
+  // ME-FR-10 고정 패널: 열 때와 고정 수가 바뀔 때(channel.updated → 목록 다시 읽기) 다시 읽는다.
+  const sideKind = side?.kind ?? null;
+  const pinCount = data?.channels.find((channel) => channel.id === activeId)?.pinCount ?? 0;
+  useEffect(() => {
+    if (sideKind !== "pins" || !activeId) return;
+    let alive = true;
+    void (async () => {
+      const result = await chatRequest<{ pins: ChatPinItem[] }>(`/api/chat/pins?channelId=${encodeURIComponent(activeId)}`);
+      if (!alive) return;
+      if (!result.ok) { setSide(null); flash(result.body.error ?? "고정 목록을 불러오지 못했습니다."); return; }
+      setSide((current) => current?.kind === "pins" ? { kind: "pins", pins: result.body.pins } : current);
+    })();
+    return () => { alive = false; };
+  }, [sideKind, activeId, pinCount, flash]);
 
   // 처음: 목록을 읽고, 참여한 첫 대화(없으면 '일반' 미리보기)를 연다.
   useEffect(() => {
     void (async () => {
       const loaded = await loadChannels();
       if (!loaded) return;
+      const marks = await chatRequest<{ bookmarks: ChatBookmarkItem[] }>("/api/chat/me?view=bookmarks");
+      if (marks.ok && Array.isArray(marks.body.bookmarks)) setBookmarkIds(new Set(marks.body.bookmarks.map((item) => item.message.id)));
       // 저장해 둔 대화가 아직 보이면(내 채널·DM 이거나 참여 가능한 공개 채널) 그것을, 아니면 참여한 첫 대화를 연다.
       const saved = readScoped(ACTIVE_CHANNEL_KEY, []);
       const visible = saved && (loaded.channels.some((channel) => channel.id === saved) || loaded.joinable.some((channel) => channel.id === saved));
@@ -478,7 +494,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
       setHistory((current) => {
         const index = current.messages.findIndex((item) => item.id === message.id);
         if (index >= 0) return { ...current, messages: current.messages.map((item) => item.id === message.id ? message : item) };
-        if (mode === "replace") return current;
+        if (mode === "replace" || current.hasNewer) return current;
         return { ...current, messages: [...current.messages, message].sort((a, b) => a.id - b.id) };
       });
       setThread((current) => current && current.root.id === message.id ? { ...current, root: message } : current);
@@ -510,6 +526,10 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
         ? historyRef.current.messages.some((item) => item.id === event.message!.id)
         : threadRef.current?.replies.some((item) => item.id === event.message!.id) ?? false;
       applyMessage(event.message, event.kind === "message.created" && !exists ? "upsert" : "replace");
+      const openRoot = threadRef.current?.root.id;
+      if (event.kind === "message.created" && openRoot !== undefined && event.message.threadRootId === openRoot) {
+        void markThreadRead(openRoot, [...(threadRef.current?.replies ?? []), event.message]);
+      }
       if (event.kind === "message.created" && event.channelId === activeRef.current && event.message.threadRootId === null) newTopLevel = true;
     }
     if (reloadChannels) {
@@ -520,12 +540,12 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
         else if (meta.resync) void loadHistory(activeRef.current, loaded.channels.some((channel) => channel.id === activeRef.current));
       });
     }
-    if (newTopLevel && activeRef.current && joinedRef.current) {
+    if (newTopLevel && activeRef.current && joinedRef.current && !historyRef.current.hasNewer) {
       const channelId = activeRef.current;
       const messages = [...historyRef.current.messages, ...events.flatMap((event) => event.message && event.message.threadRootId === null ? [event.message] : [])];
       void markRead(channelId, messages);
     }
-  }), [poll, applyMessage, loadChannels, loadHistory, markRead, flash, selectChannel]);
+  }), [poll, applyMessage, loadChannels, loadHistory, markRead, markThreadRead, flash, selectChannel]);
 
   async function loadOlder() {
     if (!activeId || history.loading || !history.hasMore || !history.messages.length) return;
@@ -536,21 +556,41 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
       `/api/chat/messages?channelId=${encodeURIComponent(activeId)}&before=${history.messages[0].id}`);
     if (!result.ok) { setHistory((current) => ({ ...current, loading: false })); return; }
     stickToBottom.current = false;
-    setHistory((current) => ({ messages: [...result.body.messages, ...current.messages], hasMore: result.body.hasMore, loading: false }));
+    setHistory((current) => ({ ...current, messages: [...result.body.messages, ...current.messages], hasMore: result.body.hasMore, loading: false }));
     window.requestAnimationFrame(() => { if (list) list.scrollTop = list.scrollHeight - previousHeight; });
+  }
+
+  /** 이동 뒤 아래로 이어 읽는다. 최신까지 오면 hasNewer 가 풀리고 다시 바닥을 따라간다. */
+  async function loadNewer() {
+    if (!activeId || history.loading || !history.hasNewer || !history.messages.length) return;
+    setHistory((current) => ({ ...current, loading: true }));
+    const last = history.messages[history.messages.length - 1].id;
+    const result = await chatRequest<{ messages: ChatMessageDto[]; hasNewer: boolean }>(
+      `/api/chat/messages?channelId=${encodeURIComponent(activeId)}&after=${last}`);
+    if (!result.ok) { setHistory((current) => ({ ...current, loading: false })); return; }
+    setHistory((current) => ({
+      ...current, messages: [...current.messages, ...result.body.messages.filter((item) => item.id > last)], hasNewer: result.body.hasNewer, loading: false,
+    }));
+    if (joined) void markRead(activeId, result.body.messages);
+  }
+
+  function jumpToLatest() {
+    if (!activeId) return;
+    setFocus(null);
+    void loadHistory(activeId, activeMember);
   }
 
   function onScroll() {
     const list = listRef.current;
     if (!list) return;
-    stickToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+    const nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+    stickToBottom.current = nearBottom && !history.hasNewer;
     if (list.scrollTop < 40) void loadOlder();
+    if (nearBottom && history.hasNewer) void loadNewer();
   }
 
   async function openThread(root: ChatMessageDto) {
-    const result = await chatRequest<{ root: ChatMessageDto; replies: ChatMessageDto[] }>(`/api/chat/messages?threadRootId=${root.id}`);
-    if (!result.ok) { flash(result.body.error ?? "스레드를 불러오지 못했습니다."); return; }
-    setThread({ root: result.body.root, replies: result.body.replies });
+    await openThreadOf(root);
   }
 
   async function editMessage(message: ChatMessageDto, body: string) {
@@ -635,24 +675,130 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     }
   }
 
+  /** ME-FR-07 반응 토글. 낙관적으로 바꾸지 않고 서버 DTO 로 교체한다(LAN 이라 지연이 작다). */
+  async function reactTo(message: ChatMessageDto, emoji: string) {
+    const result = await chatRequest<{ message: ChatMessageDto }>("/api/chat/reactions", { method: "POST", body: { messageId: message.id, emoji } });
+    if (!result.ok || !result.body.message) { flash(result.body.error ?? "반응을 남기지 못했습니다."); return; }
+    applyMessage(result.body.message, "replace");
+  }
+
+  async function setNotifyLevel(level: ChatNotifyLevel) {
+    if (!joined) return;
+    const result = await chatRequest<{ unread: UnreadSummary }>("/api/chat/me", { method: "PUT", body: { action: "SET_NOTIFY", channelId: joined.id, level } });
+    if (!result.ok) { flash(result.body.error ?? "알림 설정을 바꾸지 못했습니다."); return; }
+    if (result.body.unread) poll.setUnread(result.body.unread);
+    await loadChannels();
+  }
+
+  async function openActivity() {
+    setResults(null);
+    setSavedItems(null);
+    setThread(null);
+    setActivity("loading");
+    const result = await chatRequest<{ items: ChatActivityItem[] }>("/api/chat/me?view=activity");
+    if (!result.ok) { setActivity(null); flash(result.body.error ?? "활동을 불러오지 못했습니다."); return; }
+    setActivity(result.body.items);
+  }
+
+  const activityPlace = (item: { channel: ChatActivityItem["channel"] }) => {
+    const known = data?.channels.find((channel) => channel.id === item.channel.id);
+    if (known) return known.kind === "public" || known.kind === "private" ? `# ${known.name}` : channelLabel(known);
+    return item.channel.kind === "public" || item.channel.kind === "private" ? `# ${item.channel.name}` : "1:1·그룹 대화";
+  };
+
+  /** ME-FR-11 저장·저장 해제. 저장됨 화면이 열려 있으면 거기서도 뺀다. */
+  async function toggleBookmark(message: ChatMessageDto, save: boolean) {
+    const result = await chatRequest<{ bookmarked: boolean }>("/api/chat/me", { method: "PUT", body: { action: save ? "BOOKMARK" : "UNBOOKMARK", messageId: message.id } });
+    if (!result.ok) { flash(result.body.error ?? "저장하지 못했습니다."); return; }
+    setBookmarkIds((current) => {
+      const next = new Set(current);
+      if (result.body.bookmarked) next.add(message.id); else next.delete(message.id);
+      return next;
+    });
+    if (!result.body.bookmarked) setSavedItems((current) => Array.isArray(current) ? current.filter((item) => item.message.id !== message.id) : current);
+  }
+
+  async function openSaved() {
+    setResults(null);
+    setActivity(null);
+    setThread(null);
+    setSavedItems("loading");
+    const result = await chatRequest<{ bookmarks: ChatBookmarkItem[] }>("/api/chat/me?view=bookmarks");
+    if (!result.ok) { setSavedItems(null); flash(result.body.error ?? "저장한 메시지를 불러오지 못했습니다."); return; }
+    setSavedItems(result.body.bookmarks);
+    setBookmarkIds(new Set(result.body.bookmarks.map((item) => item.message.id)));
+  }
+
+  /** ME-FR-10 고정·해제(소유자·관리자). 목록의 pinCount 는 channel.updated 로도 갱신된다. */
+  async function pinMessage(message: ChatMessageDto, pin: boolean) {
+    const result = await chatRequest<{ message: ChatMessageDto }>("/api/chat/pins", { method: "POST", body: { action: pin ? "PIN" : "UNPIN", messageId: message.id } });
+    if (!result.ok || !result.body.message) { flash(result.body.error ?? "고정하지 못했습니다."); return; }
+    applyMessage(result.body.message, "replace");
+    await loadChannels();
+  }
+
+  function openPins() {
+    setThread(null);
+    setSide({ kind: "pins", pins: "loading" });
+  }
+
+  /** ME-FR-12 파일 패널. more 면 다음 쪽을 붙인다. */
+  async function openFiles(more = false) {
+    if (!activeId) return;
+    const before = more && side?.kind === "files" ? side.nextBefore : null;
+    if (!more) setThread(null);
+    setSide((current) => more && current?.kind === "files" ? { ...current, loading: true } : { kind: "files", files: [], nextBefore: null, loading: true });
+    const query = new URLSearchParams({ channelId: activeId });
+    if (before) query.set("before", before);
+    const result = await chatRequest<{ files: ChatFileItem[]; nextBefore: string | null }>(`/api/chat/attachments?${query}`);
+    if (!result.ok) { setSide(null); flash(result.body.error ?? "파일 목록을 불러오지 못했습니다."); return; }
+    setSide((current) => current?.kind === "files"
+      ? { kind: "files", files: more ? [...current.files, ...result.body.files] : result.body.files, nextBefore: result.body.nextBefore, loading: false }
+      : current);
+  }
+
   async function runSearch() {
     const q = search.trim();
-    if (q.length < CHAT_SEARCH_MIN || q.length > CHAT_SEARCH_MAX) { flash(`검색어는 ${CHAT_SEARCH_MIN}~${CHAT_SEARCH_MAX}자로 입력해 주세요.`); return; }
-    const result = await chatRequest<{ results: SearchResult[] }>(`/api/chat/messages?q=${encodeURIComponent(q)}`);
+    const filtered = searchFilterCount(filters) > 0;
+    if ((!q && !filtered) || (q && (q.length < CHAT_SEARCH_MIN || q.length > CHAT_SEARCH_MAX))) {
+      flash(`검색어는 ${CHAT_SEARCH_MIN}~${CHAT_SEARCH_MAX}자로 입력하거나 필터를 골라 주세요.`);
+      return;
+    }
+    const result = await chatRequest<{ results: SearchResult[] }>(`/api/chat/messages?${searchQuery(q, filters)}`);
     if (!result.ok) { flash(result.body.error ?? "검색하지 못했습니다."); return; }
+    setActivity(null);
+    setSavedItems(null);
     setResults(result.body.results);
   }
 
   function onSent(message: ChatMessageDto) {
-    stickToBottom.current = true;
-    applyMessage(message, "upsert");
+    // 옛 구간을 보다가 새 최상위 글을 보내면 최신 구간으로 돌아간다.
+    if (historyRef.current.hasNewer && message.threadRootId === null && activeRef.current) void loadHistory(activeRef.current, true);
+    else { stickToBottom.current = true; applyMessage(message, "upsert"); }
     poll.pollNow();
   }
 
+  const activityCount = (poll.unread?.mentions ?? 0) + (poll.unread?.threads ?? 0);
+  const canReact = canWrite && Boolean(joined) && !archived;
+  const isRoom = joined?.kind === "public" || joined?.kind === "private";
+  const searchChannels = [
+    ...(data?.channels ?? []).filter((channel) => !channel.archived).map((channel) => ({
+      id: channel.id, label: channel.kind === "public" || channel.kind === "private" ? `# ${channel.name}` : channelLabel(channel),
+    })),
+    ...(data?.joinable ?? []).map((channel) => ({ id: channel.id, label: `# ${channel.name}` })),
+  ];
+  const filterCount = searchFilterCount(filters);
+  const reads = joined ? poll.reads : null;
+  /** 1:1 이면 상대, 그룹이면 나를 뺀 멤버(ME-FR-09). */
+  const othersOf = (channel: ChatChannelDto) => (channel.dmMemberIds ?? []).filter((id) => id !== accountId);
+  const onlineCount = (ids: string[]) => ids.filter((id) => presenceLabel(poll.presence[id]).online).length;
+  const dmPresence = joined?.kind === "dm" && othersOf(joined).length === 1 ? presenceLabel(poll.presence[othersOf(joined)[0]]).long : "";
   const unreadOf = (channelId: string) => poll.unread?.channels.find((row) => row.channelId === channelId) ?? null;
   const rooms = data?.channels.filter((channel) => channel.kind === "public" || channel.kind === "private") ?? [];
   const dms = data?.channels.filter((channel) => channel.kind === "dm" || channel.kind === "group_dm") ?? [];
   const managing = joined && (joined.kind === "public" || joined.kind === "private") && (joined.myRole === "owner" || isAdmin) && !archived;
+  /** ME-FR-10 고정/해제: 채널 소유자 또는 관리자이고 쓰기 권한이 있을 때(ME-MD5). 서버가 다시 판정한다. */
+  const pinAllowed = Boolean(managing) && canWrite;
   const disabledReason = !canWrite ? VIEW_ONLY : archived ? ARCHIVED : null;
 
   const channelButton = (channel: ChatChannelDto) => {
@@ -660,10 +806,18 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     const label = channelLabel(channel);
     return (
       <li key={channel.id}>
-        <button type="button" className={["chat-channel", channel.id === activeId ? "active" : "", channel.archived ? "archived" : "", counts?.unread ? "unread" : ""].filter(Boolean).join(" ")}
+        <button type="button" className={["chat-channel", channel.id === activeId ? "active" : "", channel.archived ? "archived" : "",
+          counts?.unread && channel.notifyLevel === "all" ? "unread" : "", channel.notifyLevel === "mute" ? "muted" : ""].filter(Boolean).join(" ")}
           onClick={() => selectChannel(channel.id)}>
           <span className="chat-channel-glyph" aria-hidden="true">{channel.kind === "private" ? "🔒" : channel.kind === "public" ? "#" : "●"}</span>
           <span className="chat-channel-name">{label}</span>
+          {channel.kind === "dm" && othersOf(channel).length === 1 && <PresenceDot lastSeen={poll.presence[othersOf(channel)[0]]} />}
+          {channel.kind === "group_dm" && onlineCount(othersOf(channel)) > 0 && (
+            <span className="chat-presence online" title={`${onlineCount(othersOf(channel))}명 온라인`}>
+              <span className="chat-presence-dot" aria-hidden="true" /><small>{onlineCount(othersOf(channel))}</small>
+            </span>
+          )}
+          {channel.notifyLevel === "mute" && <span className="chat-channel-bell" aria-label="음소거">🔕</span>}
           {counts && counts.mentions > 0 && <span className="chat-badge mention" aria-label={`멘션 ${counts.mentions}개`}>@{counts.mentions}</span>}
           {counts && counts.unread > 0 && <span className="chat-badge" aria-label={`안 읽은 글 ${counts.unread}개`}>{counts.unread}</span>}
         </button>
@@ -679,9 +833,34 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
     <main className="chat-page">
       <aside className="chat-sidebar" aria-label="대화 목록">
         <form className="chat-search" onSubmit={(event) => { event.preventDefault(); void runSearch(); }}>
-          <input type="search" value={search} maxLength={CHAT_SEARCH_MAX} placeholder="메시지 검색" aria-label="메시지 검색"
-            onChange={(event) => { setSearch(event.target.value); if (!event.target.value) setResults(null); }} />
+          <div className="chat-search-row">
+            <input type="search" value={search} maxLength={CHAT_SEARCH_MAX} placeholder="메시지·파일 검색" aria-label="메시지 검색"
+              onChange={(event) => { setSearch(event.target.value); if (!event.target.value && !filterCount) setResults(null); }} />
+            <button type="button" className={filterCount ? "chat-filter-toggle on" : "chat-filter-toggle"} aria-expanded={showFilters}
+              aria-label={`검색 필터${filterCount ? ` ${filterCount}개 적용` : ""}`} onClick={() => setShowFilters((open) => !open)}>
+              ▾{filterCount ? ` ${filterCount}` : ""}
+            </button>
+          </div>
+          {showFilters && <>
+            <SearchFilters filters={filters} channels={searchChannels} people={people} onChange={setFilters} />
+            <button type="submit" className="chat-search-submit">검색</button>
+          </>}
         </form>
+        <ul className="chat-shortcuts">
+          <li>
+            <button type="button" className={activity ? "chat-channel active" : "chat-channel"} onClick={() => void openActivity()}>
+              <span className="chat-channel-glyph" aria-hidden="true">◎</span>
+              <span className="chat-channel-name">활동</span>
+              {activityCount > 0 && <span className="chat-badge mention" aria-label={`새 활동 ${activityCount}개`}>{activityCount}</span>}
+            </button>
+          </li>
+          <li>
+            <button type="button" className={savedItems ? "chat-channel active" : "chat-channel"} onClick={() => void openSaved()}>
+              <span className="chat-channel-glyph" aria-hidden="true">☆</span>
+              <span className="chat-channel-name">저장됨</span>
+            </button>
+          </li>
+        </ul>
         <section>
           <header><span>채널</span>{canWrite && <button type="button" onClick={() => openModal({ kind: "channel" })}>+ 채널</button>}</header>
           <ul>{rooms.map(channelButton)}</ul>
@@ -703,10 +882,17 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
           <header><span>대화</span>{canWrite && <button type="button" onClick={() => openModal({ kind: "dm" })}>+ DM</button>}</header>
           {dms.length ? <ul>{dms.map(channelButton)}</ul> : <p className="chat-muted">1:1·그룹 대화가 없습니다.</p>}
         </section>
+        <ChatNotifySettings onNotice={flash} />
       </aside>
 
       <section className="chat-main" aria-label="대화">
-        {results ? (
+        {activity ? (
+          <ActivityPanel items={activity} placeOf={activityPlace} onClose={() => setActivity(null)}
+            onOpen={(item) => openTarget(item.channel.id, item.message.id)} />
+        ) : savedItems ? (
+          <SavedPanel items={savedItems} placeOf={activityPlace} onClose={() => setSavedItems(null)}
+            onOpen={(item) => openTarget(item.channel.id, item.message.id)} onRemove={(item) => void toggleBookmark(item.message, false)} />
+        ) : results ? (
           <div className="chat-results">
             <header className="chat-header">
               <div><strong>검색 결과</strong><span>{results.length}건 · 최근 50건까지</span></div>
@@ -715,7 +901,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
             <div className="chat-list">
               {results.length === 0 && <p className="chat-muted">일치하는 메시지가 없습니다.</p>}
               {results.map((result) => (
-                <button type="button" key={result.message.id} className="chat-result" onClick={() => { if (result.channel) selectChannel(result.channel.id); else setResults(null); }}>
+                <button type="button" key={result.message.id} className="chat-result" onClick={() => { if (result.channel) openTarget(result.channel.id, result.message.id); else setResults(null); }}>
                   <small>{result.channel ? (result.channel.kind === "public" || result.channel.kind === "private" ? `# ${result.channel.name}` : "1:1·그룹 대화") : ""}</small>
                   <strong>{result.message.author.name}</strong>
                   <time>{when(result.message.createdAt)}</time>
@@ -733,14 +919,30 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
                 <strong>{joined ? (joined.kind === "public" ? "# " : joined.kind === "private" ? "🔒 " : "") + channelLabel(joined) : preview ? `# ${preview.name}` : ""}</strong>
                 <span>
                   {(joined?.topic || preview?.topic) && <>{joined?.topic || preview?.topic} · </>}
-                  멤버 {joined?.memberCount ?? preview?.memberCount ?? 0}명{archived ? " · 보관됨" : ""}
+                  {dmPresence ? <>{dmPresence} · </> : null}멤버 {joined?.memberCount ?? preview?.memberCount ?? 0}명{archived ? " · 보관됨" : ""}
                 </span>
               </div>
               <div className="chat-header-actions">
+                {joined && !archived && (
+                  <label className="chat-notify-select">
+                    <span aria-hidden="true">{joined.notifyLevel === "mute" ? "🔕" : "🔔"}</span>
+                    <select value={joined.notifyLevel} aria-label="이 대화의 알림" onChange={(event) => void setNotifyLevel(event.target.value as ChatNotifyLevel)}>
+                      {(Object.keys(NOTIFY_LABELS) as ChatNotifyLevel[]).map((level) => <option key={level} value={level}>{NOTIFY_LABELS[level]}</option>)}
+                    </select>
+                  </label>
+                )}
                 {preview && <button type="button" className="primary-button" onClick={() => void join(preview.id)}>참여</button>}
                 {managing && <button type="button" onClick={() => void rename()}>이름 변경</button>}
                 {joined && (joined.kind === "public" || joined.kind === "private") && !archived && canWrite && (
                   <button type="button" onClick={() => openModal({ kind: "members" })}>멤버 관리</button>
+                )}
+                {isRoom && (
+                  <button type="button" className={sideKind === "pins" ? "active" : ""} aria-pressed={sideKind === "pins"} aria-label={`고정된 메시지 ${joined?.pinCount ?? 0}개`}
+                    onClick={() => sideKind === "pins" ? setSide(null) : openPins()}>📌{joined?.pinCount ? ` ${joined.pinCount}` : ""}</button>
+                )}
+                {joined && (
+                  <button type="button" className={sideKind === "files" ? "active" : ""} aria-pressed={sideKind === "files"}
+                    onClick={() => sideKind === "files" ? setSide(null) : void openFiles()}>📎 파일</button>
                 )}
                 {joined?.kind === "public" && <button type="button" onClick={() => void leave()}>나가기</button>}
                 {isAdmin && joined && !archived && <button type="button" className="danger" onClick={() => void archive()}>보관</button>}
@@ -752,18 +954,37 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
                 {!history.loading && history.messages.length === 0 && <p className="chat-muted">아직 메시지가 없습니다. 첫 글을 남겨 보세요.</p>}
                 {history.messages.map((message) => (
                   <MessageItem key={message.id} message={message} people={people} mine={message.author.accountId === accountId} canWrite={canWrite}
-                    archived={archived} onReply={() => void openThread(message)} onEdit={(body) => editMessage(message, body)} onDelete={() => void deleteMessage(message)} />
+                    archived={archived} focused={focus?.id === message.id && !focus.replyId} accountId={accountId} canReact={canReact}
+                    unreadCount={unreadCountFor(message, reads)} onReact={(emoji) => void reactTo(message, emoji)}
+                    canPin={pinAllowed} onPin={(pin) => void pinMessage(message, pin)}
+                    bookmarked={bookmarkIds.has(message.id)} onBookmark={(save) => void toggleBookmark(message, save)}
+                    onReply={() => void openThread(message)} onEdit={(body) => editMessage(message, body)} onDelete={() => void deleteMessage(message)} />
                 ))}
+                {history.hasNewer && (
+                  <button type="button" className="chat-latest" onClick={jumpToLatest} disabled={history.loading}>최신 메시지로 ↓</button>
+                )}
               </div>
+              {side?.kind === "pins" && (
+                <PinsPanel pins={side.pins} canUnpin={pinAllowed} onClose={() => setSide(null)}
+                  onOpen={(item) => openTarget(item.message.channelId, item.message.id)} onUnpin={(item) => void pinMessage(item.message, false)} />
+              )}
+              {side?.kind === "files" && activeId && (
+                <FilesPanel files={side.files} hasMore={side.nextBefore !== null} loading={side.loading} onClose={() => setSide(null)}
+                  onMore={() => void openFiles(true)} onOpen={(item) => openTarget(activeId, item.messageId)} />
+              )}
               {thread && (
                 <aside className="chat-thread" aria-label="스레드">
                   <header><strong>스레드</strong><button type="button" aria-label="스레드 닫기" onClick={() => setThread(null)}>×</button></header>
                   <div className="chat-thread-list">
                     <MessageItem message={thread.root} people={people} mine={thread.root.author.accountId === accountId} canWrite={canWrite} archived={archived}
+                      accountId={accountId} canReact={canReact} onReact={(emoji) => void reactTo(thread.root, emoji)}
+                      bookmarked={bookmarkIds.has(thread.root.id)} onBookmark={(save) => void toggleBookmark(thread.root, save)}
                       onEdit={(body) => editMessage(thread.root, body)} onDelete={() => void deleteMessage(thread.root)} />
                     <p className="chat-thread-count">답글 {thread.replies.length}개</p>
                     {thread.replies.map((reply) => (
                       <MessageItem key={reply.id} message={reply} people={people} mine={reply.author.accountId === accountId} canWrite={canWrite} archived={archived}
+                        focused={focus?.replyId === reply.id} accountId={accountId} canReact={canReact} onReact={(emoji) => void reactTo(reply, emoji)}
+                        bookmarked={bookmarkIds.has(reply.id)} onBookmark={(save) => void toggleBookmark(reply, save)}
                         onEdit={(body) => editMessage(reply, body)} onDelete={() => void deleteMessage(reply)} />
                     ))}
                   </div>
@@ -793,7 +1014,7 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
               <span className="chat-modal-label">대화할 사람 (1~{CHAT_GROUP_DM_MAX_OTHERS}명)</span>
               <PeoplePicker people={people} exclude={new Set([accountId])} selected={formPeople} onChange={setFormPeople} max={CHAT_GROUP_DM_MAX_OTHERS} />
             </>}
-            {modal.kind === "members" && joined && <MembersPanel channel={joined} accountId={accountId} people={people} nameOf={nameOf}
+            {modal.kind === "members" && joined && <MembersPanel channel={joined} accountId={accountId} people={people} nameOf={nameOf} presence={poll.presence}
               canRemove={Boolean(managing)} onRemove={(id) => void removeMember(id)} selected={formPeople} onSelect={setFormPeople} />}
             {formError && <p className="chat-form-error" role="alert">{formError}</p>}
           </div>
@@ -811,8 +1032,8 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
 }
 
 /** 멤버 관리: 현재 멤버(owner·관리자는 내보내기)와 추가할 사람. 멤버 목록은 모달을 열 때 서버에서 읽는다. */
-function MembersPanel({ channel, accountId, people, nameOf, canRemove, onRemove, selected, onSelect }: {
-  channel: ChatChannelDto; accountId: string; people: ChatPerson[]; nameOf: (id: string) => string; canRemove: boolean;
+function MembersPanel({ channel, accountId, people, nameOf, presence, canRemove, onRemove, selected, onSelect }: {
+  channel: ChatChannelDto; accountId: string; people: ChatPerson[]; nameOf: (id: string) => string; presence: Record<string, number>; canRemove: boolean;
   onRemove: (id: string) => void; selected: string[]; onSelect: (ids: string[]) => void;
 }) {
   const [members, setMembers] = useState<string[] | null>(null);
@@ -830,7 +1051,7 @@ function MembersPanel({ channel, accountId, people, nameOf, canRemove, onRemove,
       <ul className="chat-member-list">
         {members.map((id) => (
           <li key={id}>
-            <span>{nameOf(id)}{id === accountId ? " (나)" : ""}</span>
+            <span>{nameOf(id)}{id === accountId ? " (나)" : ""} <PresenceDot lastSeen={presence[id]} self={id === accountId} /></span>
             {canRemove && id !== accountId && <button type="button" className="chat-link-button danger" onClick={() => onRemove(id)}>내보내기</button>}
           </li>
         ))}
