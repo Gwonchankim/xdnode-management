@@ -5,6 +5,12 @@ export type CompensationMonthlyPay = {
   // 그 달만 직접 적은 식대. 없으면 기준액을 근무일로 일할 계산한다. 중도 입사·휴직 달의 실비 정산처럼
   // 자동 계산과 다른 금액을 줘야 할 때 쓴다.
   meal?: number;
+  // 그 달만 직접 적은 기본급·자가운전·육아. 식대처럼 있으면 계산하지 않고 이 값을 그대로 쓴다. 지급이 끝난 달을
+  // 급여 시스템의 급여대장과 맞출 때 쓴다(2026-10-01, 8월 급여대장). basic 은 수기 기본급의 월 기준액(일할 대상)이라
+  // 기본급은 이름을 따로 둔다.
+  basicOverride?: number;
+  car?: number;
+  child?: number;
   incentive?: number;
   bonus?: number;
   extra?: number;
@@ -143,6 +149,7 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
       basic = segments.reduce((sum, segment) => sum + Math.max(0, roundPay((employee.annualSalary * segment.rate - allowanceMonthly * 12) / 365 * segment.days, rounding)), 0);
     }
   }
+  if (monthly.basicOverride !== undefined) basic = monthly.basicOverride;
   const allowance = (value: number) => !value || !days ? 0 : days === totalDays ? value : Math.floor(value * 12 / 365 * days);
   const incentive = monthly.incentive ?? 0;
   const bonus = monthly.bonus ?? 0;
@@ -154,8 +161,8 @@ export function calculateCompensation(employee: CompensationEmployee, year: numb
   const personalExpense = columns.personalExpense ? monthly.personalExpense ?? 0 : 0;
   // 식대는 기본이 일할 계산이지만, 그 달에 직접 적은 값이 있으면 그 값을 그대로 쓴다.
   const meal = monthly.meal !== undefined ? monthly.meal : allowance(employee.meal);
-  const car = allowance(employee.car);
-  const child = allowance(employee.child);
+  const car = monthly.car !== undefined ? monthly.car : allowance(employee.car);
+  const child = monthly.child !== undefined ? monthly.child : allowance(employee.child);
   return {
     employee, days, daysInMonth: totalDays, basic, meal, car, child, incentive, bonus, extra, research, severance, annualLeave,
     personalExpense,

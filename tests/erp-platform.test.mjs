@@ -1113,17 +1113,23 @@ test("wage calculator can append new hires from HR records without rebuilding th
 test("wage table lets the meal allowance be typed for a month and reverted to automatic", async () => {
   const calculator = await read("app/compensation-calculator.tsx");
   // 자동 금액은 버튼이라 누르면 그 달 식대가 수기 입력으로 바뀐다. 시작값은 자동 계산값이다.
-  assert.match(calculator, /className="allowance-value" title="[^"]*" onClick=\{\(\) => \{ setMealEditingId\(employee\.id\); updateMonthly\(employee\.id, "meal", row\.meal\)/);
-  assert.match(calculator, /focusOnEdit=\{mealEditingId === employee\.id\}/);
+  assert.match(calculator, /className="allowance-value" title=\{`[^`]*`\} onClick=\{\(\) => \{ setEditingCell\(`\$\{employee\.id}:\$\{field}`\); updateMonthly\(employee\.id, field, row\[field\]\)/);
+  assert.match(calculator, /focusOnEdit=\{editingCell === `\$\{employee\.id}:\$\{field}`\}/);
   const wonInput = await read("app/won-input.tsx");
   assert.match(wonInput, /if \(focusOnEdit\) inputRef\.current\?\.focus\(\)/);
   const calculatorCss = await read("app/compensation-calculator.css");
   assert.match(calculatorCss, /\.allowance-cell input\.money-input \{ width: 92px/);
   // 되돌리기는 0을 넣는 게 아니라 월별 값을 지운다.
   assert.match(calculator, /function clearMonthly/);
-  assert.match(calculator, /className="allowance-auto"[^>]*onClick=\{\(\) => clearMonthly\(employee\.id, "meal"\)/);
+  assert.match(calculator, /className="allowance-auto"[^>]*onClick=\{\(\) => clearMonthly\(employee\.id, field\)/);
+  // 기본급도 같은 방식으로 그 달 금액을 그대로 적는다(급여대장과 맞출 때). 수기 기본급(월 기준액)과는 다른 칸이다.
+  assert.match(calculator, /updateMonthly\(employee\.id, "basicOverride", row\.basic\)/);
+  assert.match(calculator, /clearMonthly\(employee\.id, "basicOverride"\)/);
+  // 그 달 지급액 값은 다음 달로 이어받지 않는다.
+  assert.match(calculator, /const MONTH_ONLY_FIELDS = new Set\(\["basicOverride", "car", "child"\]\)/);
   const engine = await read("app/compensation-calculation.ts");
   assert.match(engine, /monthly\.meal !== undefined \? monthly\.meal : allowance\(employee\.meal\)/);
+  assert.match(engine, /if \(monthly\.basicOverride !== undefined\) basic = monthly\.basicOverride;/);
 });
 
 test("연차관리 라우트는 권한·감사 가드를 거치고, 발생은 저장하지 않고 엔진이 계산하며 차감 제외 종류를 구분한다", async () => {
