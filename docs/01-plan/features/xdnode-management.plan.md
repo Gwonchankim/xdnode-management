@@ -143,7 +143,7 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
 - [x] (2026-09-23 완료, 3110 프로세스도 종료) 쓰지 않는 Codex 브리지(3110)는 시작 스크립트에서 뺀다. 파일은 남긴다. 어시스턴트 브리지가 이 파일에서 `buildPrompt`를 읽어 오기 때문이다
 - [x] (2026-09-23 완료) 같은 커밋에서 `tests/local-codex-assistant.test.mjs:96-97`의 `$AssistantPort = 3110`·`assistant:bridge` 기동 단언을 '시작 스크립트가 3110을 띄우지 않는다'는 단언으로 바꾼다. 그대로 두면 `npm test`가 실패한다. `:59`의 `DISABLED_TOOLS` 단언은 `Read`·`Grep`·`Glob`·`PowerShell`을 목록 뒤에 덧붙이면 그대로 통과한다
 - [x] (2026-09-23 완료: `tests/lan-exposure-guards.test.mjs`, `package.json` test 목록 등록. dev 바인딩·explorer·fs.deny·`GOOGLE_*` 미전달도 함께 지킨다) 소스 가드 테스트: 어시스턴트 브리지 spawn에 저장소 경로 cwd가 없고, spawn 인자에 `--tools`와 빈 문자열이 있으며, `Read`·`Grep`·`Glob`·`PowerShell`이 차단 목록에 있다. 이력서 브리지도 같은 단언을 둔다
-- [ ] **사용자 작업: 비밀값 폐기·교체**
+- [x] **사용자 작업: 비밀값 폐기·교체** (2026-10-02 사용자 확인: 폐기 완료)
   - Google Cloud에서 서비스 계정 개인키를 폐기한다. 이 키는 어시스턴트 브리지로 읽을 수 있었고, 분석 세션 로그에도 출력됐다. 제거 대상인 영업 시트 연동용 키다
   - 영업 시트용 OAuth refresh token을 철회한다
   - `.env.local`과 `vite.config.ts` `localRuntimeVars`에서 `GOOGLE_*`와 영업 전용 변수(`GOOGLE_SALES_SHEET_ID`)를 지운다. 영업 시트 동기화는 이때 멈춘다(`googleSheetsConfigured`가 거짓이 되어 오류 없이 멈춘다). 코드는 R1에서 지운다. **`vite.config.ts` 쪽은 2026-09-23 완료**, `.env.local` 줄 삭제와 Google 콘솔 작업은 남았다
