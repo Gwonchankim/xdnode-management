@@ -416,9 +416,11 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 
 #### R6 = M7. 폴더·저장소 리네임 (D11 마무리, 맨 마지막, 수동)
 
-- [ ] 앱과 브리지를 정지하고 이 PC의 작업 세션을 모두 닫은 뒤 진행한다. 개발 폴더 `XDNODE`와 원격 저장소 이름을 바꾼다
-- [ ] D18로 운영 경로(작업 스케줄러, 운영 바로가기, 운영 폴더 기준 `XD_NODE_PROJECT_PATH`)는 개발 폴더 이름과 무관해졌다. 새 경로로 옮길 참조는 개발 폴더를 가리키는 것만 남는다: 개발용 바로가기, 개발 폴더의 `XD_NODE_PROJECT_PATH`, Claude Code 프로젝트 메모리, 운영 폴더의 git remote(개발 폴더나 원격 저장소를 가리키는 경우)
-- [ ] 이 단계는 사용자와 함께 진행하는 체크리스트로 남기고, 자동화하지 않는다
+- [x] 앱과 브리지를 정지하고 이 PC의 작업 세션을 모두 닫은 뒤 진행한다. 개발 폴더 `XDNODE`와 원격 저장소 이름을 바꾼다
+  - 2026-10-01 사용자가 저장소 밖 `C:\xdm\Rename-DevFolder.ps1`로 개발 폴더를 `xdnode-management`로 바꿨다(`-Rollback` 지원). 2026-10-02 확인: `git worktree list`에서 Codex `c7ec`·Orca `메신저-기능` 워크트리가 정상 연결, 운영 폴더 `origin`이 새 경로, 운영 `/api/me` 401(정상 기동)
+  - GitHub 원격 저장소(`Gwonchankim/xdnode-erp`) 이름은 바꾸지 않았다. 바꿀지는 사용자가 GitHub에서 정한다
+- [x] D18로 운영 경로(작업 스케줄러, 운영 바로가기, 운영 폴더 기준 `XD_NODE_PROJECT_PATH`)는 개발 폴더 이름과 무관해졌다. 새 경로로 옮길 참조는 개발 폴더를 가리키는 것만 남는다: 개발용 바로가기, 개발 폴더의 `XD_NODE_PROJECT_PATH`, Claude Code 프로젝트 메모리, 운영 폴더의 git remote(개발 폴더나 원격 저장소를 가리키는 경우)
+- [x] 이 단계는 사용자와 함께 진행하는 체크리스트로 남기고, 자동화하지 않는다
 - 롤백: 폴더 이름을 원래대로 되돌리고, 바로가기와 remote 경로를 원복한다
 
 ### 2.2 Out of Scope
@@ -463,7 +465,7 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 | FR-15 | 본인 메시지 수정·soft-delete(감사에 본문 없음), 접근 범위 안 단순 검색 | R5 | Medium | 채팅 동작 테스트 | Pending |
 | FR-16 | 새 탭(견적 등)을 한 정의 파일과 새 라우트만으로 추가할 수 있다 | R3 | Medium | `tab-permissions.test.mjs`의 정의 파일 소스 가드 | Pending |
 | FR-17 | 운영 기동은 `vinext build` + `vite preview`(0.0.0.0:3000, explorer 비활성)이고, 별도 운영 폴더에서 한다(D18). LAN 다른 PC 접속, 매일 자동 백업과 검증된 복구 절차, 재부팅 뒤 자동 기동(D19) | R3·R4 | High | SC-5, SC-7, SC-12, SC-13 | Pending |
-| FR-18 | 폴더·저장소 리네임 체크리스트를 실행한다 | R6 | Low | M7 체크리스트 | Pending |
+| FR-18 | 폴더·저장소 리네임 체크리스트를 실행한다 | R6 | Low | M7 체크리스트 | Done (2026-10-01, 원격 저장소 이름은 유지) |
 | FR-19 | 현재 노출을 차단한다: dev는 `127.0.0.1`만(D16, 완료), explorer 강제 off, fs.deny 확장, 방화벽 규칙 정리, 브리지 Origin·Host 검사 | R0 | High | R0 확인 항목, SC-9 | Pending |
 | FR-20 | 직원 개인정보·급여는 권한 검사를 거친 API로만 내려온다. `dist/client`에 실데이터 0건 | R1·R3 | High | `bundle-exposure.test.mjs`, `tab-permissions.test.mjs` | Pending |
 | FR-21 | 어시스턴트 브리지는 저장소 파일을 읽지 않는다(D17). 업무 맥락은 `/api/assistant`가 권한 검사 뒤 넘긴 JSON뿐이다 | R0 | High | 브리지 소스 가드 테스트, SC-11 | Pending |
