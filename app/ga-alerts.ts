@@ -227,6 +227,8 @@ export function depreciationAsOf(input: DepreciationInput, month: string) {
   if (!schedule.length) return null;
   const upTo = schedule.filter((row) => row.period <= month);
   const last = upTo[upTo.length - 1];
-  const monthly = schedule[0]?.depreciation ?? 0;
+  // 기초 상각누계가 있으면 첫 줄은 기초 누계 줄이므로, 월 상각액은 그다음 줄에서 읽는다.
+  const regular = input.openingAsOfMonth && schedule[0]?.period === input.openingAsOfMonth ? schedule[1] : schedule[0];
+  const monthly = regular?.depreciation ?? 0;
   return { monthly, accumulated: last?.accumulated ?? 0, bookValue: last?.bookValue ?? input.acquisitionCost, schedule };
 }

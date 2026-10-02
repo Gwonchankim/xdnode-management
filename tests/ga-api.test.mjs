@@ -102,6 +102,9 @@ test('GA #5: fixed assets depreciate straight-line monthly; disposal stops it', 
   assert.deepEqual([asOf.accumulated, asOf.bookValue], [300_006, 899_994]);
   const opening = alerts.depreciationSchedule({ acquisitionCost: 1_200_000, residualValue: 0, usefulLifeMonths: 36, inServiceMonth: '2026-01', openingAccumulated: 200_000, openingAsOfMonth: '2026-06' });
   assert.deepEqual([opening[0].period, opening[0].accumulated], ['2026-06', 200_000]);
+  const openingAsOf = alerts.depreciationAsOf({ acquisitionCost: 1_200_000, residualValue: 0, usefulLifeMonths: 36, inServiceMonth: '2026-01', openingAccumulated: 200_000, openingAsOfMonth: '2026-06' }, '2026-09');
+  assert.equal(asOf.monthly, 33_334);
+  assert.equal(openingAsOf.monthly, 33_334, '월 상각액은 기초 누계 줄이 아니라 그다음 달 상각액');
   const disposed = alerts.depreciationSchedule({ acquisitionCost: 1_200_000, residualValue: 0, usefulLifeMonths: 36, inServiceMonth: '2026-01', disposedMonth: '2026-03' });
   assert.equal(disposed.length, 3);
   assert.equal(alerts.depreciationValid({ acquisitionCost: 100, residualValue: 100, usefulLifeMonths: 12, inServiceMonth: '2026-01' }), false);

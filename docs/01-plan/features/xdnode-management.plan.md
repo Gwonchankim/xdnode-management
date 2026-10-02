@@ -3,10 +3,10 @@
 > **Summary**: XD NODE ERP를 경영지원실 5~6명용 종합 툴 "XDnode management"로 재편한다. 지금 열려 있는 노출을 먼저 닫는다. 그다음 재무·영업·결재를 걷어내고, 계정별 탭 권한과 사내 메신저(Slack형)를 붙인다. 배포는 릴리스 R0~R6로 나눈다.
 >
 > **Project**: XDnode management (현 `site-creator-vinext-starter`)
-> **Version**: 0.2.0
+> **Version**: 0.3.0
 > **Author**: gc.kim (Claude Code 협업)
 > **Date**: 2026-09-23
-> **Status**: Draft
+> **Status**: Completed — R0~R6 운영 반영, 2026-10-02 상태 동기화([분석](../../03-analysis/xdnode-management.analysis.md), [보고서](../../04-report/xdnode-management.report.md))
 > **PRD**: [docs/00-pm/xdnode-management.prd.md](../../00-pm/xdnode-management.prd.md) — 결정 D1~D11은 PRD §6.1·§6.2
 > **Review**: v0.1을 코드와 대조한 검토 33건과 검토 질문 답변 D16~D19(2026-09-23)를 반영했다
 
@@ -143,12 +143,12 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
 - [x] (2026-09-23 완료, 3110 프로세스도 종료) 쓰지 않는 Codex 브리지(3110)는 시작 스크립트에서 뺀다. 파일은 남긴다. 어시스턴트 브리지가 이 파일에서 `buildPrompt`를 읽어 오기 때문이다
 - [x] (2026-09-23 완료) 같은 커밋에서 `tests/local-codex-assistant.test.mjs:96-97`의 `$AssistantPort = 3110`·`assistant:bridge` 기동 단언을 '시작 스크립트가 3110을 띄우지 않는다'는 단언으로 바꾼다. 그대로 두면 `npm test`가 실패한다. `:59`의 `DISABLED_TOOLS` 단언은 `Read`·`Grep`·`Glob`·`PowerShell`을 목록 뒤에 덧붙이면 그대로 통과한다
 - [x] (2026-09-23 완료: `tests/lan-exposure-guards.test.mjs`, `package.json` test 목록 등록. dev 바인딩·explorer·fs.deny·`GOOGLE_*` 미전달도 함께 지킨다) 소스 가드 테스트: 어시스턴트 브리지 spawn에 저장소 경로 cwd가 없고, spawn 인자에 `--tools`와 빈 문자열이 있으며, `Read`·`Grep`·`Glob`·`PowerShell`이 차단 목록에 있다. 이력서 브리지도 같은 단언을 둔다
-- [ ] **사용자 작업: 비밀값 폐기·교체**
+- [x] **사용자 작업: 비밀값 폐기·교체** (2026-10-02 사용자 확인: 폐기 완료)
   - Google Cloud에서 서비스 계정 개인키를 폐기한다. 이 키는 어시스턴트 브리지로 읽을 수 있었고, 분석 세션 로그에도 출력됐다. 제거 대상인 영업 시트 연동용 키다
   - 영업 시트용 OAuth refresh token을 철회한다
   - `.env.local`과 `vite.config.ts` `localRuntimeVars`에서 `GOOGLE_*`와 영업 전용 변수(`GOOGLE_SALES_SHEET_ID`)를 지운다. 영업 시트 동기화는 이때 멈춘다(`googleSheetsConfigured`가 거짓이 되어 오류 없이 멈춘다). 코드는 R1에서 지운다. **`vite.config.ts` 쪽은 2026-09-23 완료**, `.env.local` 줄 삭제와 Google 콘솔 작업은 남았다
   - `CLOUDFLARE_API_TOKEN` 교체를 검토한다. 어시스턴트가 읽을 수 있었다. 교체한다면 Workers AI 전용 권한의 새 토큰으로 한다
-- [ ] 확인(D16 기준)
+- [x] 확인(D16 기준) (확인: 위 explorer 404·fs.deny 403 기록(2026-09-23). LAN 쪽 점검은 R3 전환 7단계 스모크에서 했다 — Design §11.5.9 실행 결과)
   - 다른 PC에서 `http://<서버IP>:3000` 접속이 거부된다
   - 서버 PC에서 `curl.exe -H "Host: localhost" http://127.0.0.1:3000/cdn-cgi/explorer/api/d1/database`, `/.wrangler/state/v3/d1/`, `/xdnode-erp-v119.tar.gz`를 호출하면 모두 404 또는 403이다
   - LAN 쪽 같은 점검과 `/app/*.ts` 점검은 R3 운영 전환 스모크(SC-9)에서 한다. dev는 클라이언트 모듈을 소스 경로로 서빙하기 때문이다
@@ -165,17 +165,17 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
 - 기능 손실 명시: data-intake를 지우면 HR 직원·급여 엑셀 일괄 가져오기(단계 검증)가 사라진다. 조사 시점의 가져오기 기록은 0건이다. 임금 계산기 자체의 xlsx 업로드는 남는다. 이 손실은 D2(data-intake 삭제)에 따른 것이다
 
 **M1-0. 보관과 사전 조사** (PRD D4 '스냅샷'의 구체화)
-- [ ] ① 현재 작업 트리 변경을 커밋한다. 비소스 산출물(tar.gz, council-*, deliverables/, tmp*)은 커밋하지 않는다
-- [ ] ② 그 커밋에 태그 `erp-final-20260923`을 달고 `archive/erp-finance-sales-20260923` 브랜치를 만든다
-- [ ] ③ 앱과 브리지를 `taskkill /T`로 완전히 정지한다(workerd 포함). 그다음 `.wrangler/state/v3` 전체(D1 .sqlite·-wal·-shm, R2 blobs)를 **저장소 밖** 날짜 폴더에 복사한다
-- [ ] ④ 사본을 `node:sqlite`로 열어 `PRAGMA integrity_check`를 돌리고 테이블별 행 수를 기록한다
-- [ ] 사전 조회를 기록한다. M1-0에서 한 번 하고, R1 배포 직전에 다시 한다
+- [x] ① 현재 작업 트리 변경을 커밋한다. 비소스 산출물(tar.gz, council-*, deliverables/, tmp*)은 커밋하지 않는다 (확인: 커밋 `02f6ba5`)
+- [x] ② 그 커밋에 태그 `erp-final-20260923`을 달고 `archive/erp-finance-sales-20260923` 브랜치를 만든다 (확인: `git tag`·`git branch`에 `erp-final-20260923`·`archive/erp-finance-sales-20260923`이 있다)
+- [x] ③ 앱과 브리지를 `taskkill /T`로 완전히 정지한다(workerd 포함). 그다음 `.wrangler/state/v3` 전체(D1 .sqlite·-wal·-shm, R2 blobs)를 **저장소 밖** 날짜 폴더에 복사한다 (확인: `C:\xdm\snapshots\r1-pre-20260928-1109\`, Design §12.1 실행 결과)
+- [x] ④ 사본을 `node:sqlite`로 열어 `PRAGMA integrity_check`를 돌리고 테이블별 행 수를 기록한다 (확인: `verify-report.json` integrity ok·테이블 167·R2 본문 151, `scripts/verify-state-snapshot.mjs`)
+- [x] 사전 조회를 기록한다. M1-0에서 한 번 하고, R1 배포 직전에 다시 한다 (확인: M1-0과 R1 직전 재조회 모두 레거시 대기 0건·영업 링크 0건·재무 행 20건 미전기 — Design §12.1·§12.7)
   - 레거시 대기 행: HR 테이블을 직접 조회한다. `erp_approval_requests`만 보면 안 된다. 대상은 SUBMITTED(인사발령·퇴직·인력계획·채용요청), PENDING(휴가), FINALIZATION_SUBMITTED(성과)다
   - `sales_incentive_payroll_links` 건수: 조사 시점(2026-09-23)에는 0건이었다. 1건 이상이면 그 월의 CONFIRM 재확정을 409로 막고, 처리 방법을 사용자와 정한 뒤 진행한다
   - `payroll:%` 재무 행이 모두 미지급·미전기인지 확인한다. 조사 시점에는 20건 모두 UNPOSTED였다
 
 **M1-1. 결합 끊기** (파일 삭제 전)
-- [ ] 결재 의존(D2-a): HR 결재 흐름 **7개**를 '편집 권한자 즉시 반영'으로 바꾼다. 엔진이 하던 부수효과는 각 라우트의 같은 `db.batch` 안으로 옮긴다. 동시성은 `WHERE status IN (<원래 from>, <레거시 대기 상태>)`와 `meta.changes` 검사로 지킨다
+- [x] 결재 의존(D2-a): HR 결재 흐름 **7개**를 '편집 권한자 즉시 반영'으로 바꾼다. 엔진이 하던 부수효과는 각 라우트의 같은 `db.batch` 안으로 옮긴다. 동시성은 `WHERE status IN (<원래 from>, <레거시 대기 상태>)`와 `meta.changes` 검사로 지킨다 (확인: `app/hr-transitions.ts`, `tests/hr-api-integration.test.mjs` 'R1 flow 1'~'flow 7', 커밋 `3d3afad`)
   1. 인사발령(operations:277): APPROVED로 INSERT하고 `applyDuePersonnelActions`를 재사용한다
   2. 퇴직(operations:358): IN_PROGRESS로 INSERT하고, 같은 batch에서 정산 DRAFT와 직원 상태 '퇴직 예정'·retirement_json을 반영한다
   3. 휴가 신청(operations:400): APPROVED로 INSERT한다(결정자=행위자)
@@ -184,53 +184,53 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
   6. 인력계획 승인(workforce-plans:225-248): 이전 APPROVED 계획의 SUPERSEDED 전환과 대상의 APPROVED 전환을 한 batch로 처리한다
   7. 채용요청 모집 시작(recruitment-requisitions:179-199,257-285): 인원 검사를 유지하고 OPEN으로 전이한다. `willAutoApproveForSelf`는 지운다. 지금 관리자 1인 환경에서 실제로 보이는 동작(생성 즉시 OPEN)을 유지한다
   - 문장 생성기는 `app/hr-transitions.ts`에 모은다
-- [ ] 레거시 대기 상태 처리
+- [x] 레거시 대기 상태 처리 (확인: 'R1 legacy decisions' 테스트 2건, 'R1 flow 3'의 레거시 PENDING, `hr-workspace.tsx` 레거시 승인·반려)
   - 즉시 반영 동작은 레거시 상태도 from-state로 받는다
   - HR 화면에서 PENDING 휴가와 SUBMITTED 퇴직·인사발령에 '승인/반려' 버튼을 둔다. 휴가는 기존 `decide()`를 재사용한다
   - '상단 전자결재에서 처리' 문구(`hr-workspace.tsx:2415`)와 퇴직 읽기 전용 배너를 없앤다
   - 테스트: 레거시 상태 행을 넣은 뒤 전이가 성공한다
-- [ ] 결재 테이블 직접 SQL 5곳을 지운다: `hr/leave:222-224`, `hr/operations:546-548`, `hr/operations:554`, `hr/payroll:413-416`, `hr/recruitment-requisitions:321-340`. M1-2에서 테이블 생성을 멈추는 커밋과 **같거나 그보다 앞선 커밋**에서 한다
-- [ ] 급여 마감·재오픈의 재무 연결 3곳을 제거한다(D2-b)
+- [x] 결재 테이블 직접 SQL 5곳을 지운다: `hr/leave:222-224`, `hr/operations:546-548`, `hr/operations:554`, `hr/payroll:413-416`, `hr/recruitment-requisitions:321-340`. M1-2에서 테이블 생성을 멈추는 커밋과 **같거나 그보다 앞선 커밋**에서 한다 (확인: `app/`의 `erp_approval`·`erp_tasks`는 주석 1곳뿐, 'R1 fresh database' 테스트)
+- [x] 급여 마감·재오픈의 재무 연결 3곳을 제거한다(D2-b) (확인: 'R1 flow 4'(결재·재무 테이블 없는 DB), `removal-guards` 'HR payroll/compensation no longer touch finance or sales tables')
   - ensureSchema에서 `finance_expense_requests` CREATE·ALTER를 지운다(`:103-128`)
   - LOCKED 분기는 `hr_payroll_runs` UPDATE, changes 검사, PAYROLL_RUN_LOCKED 감사만 남긴다(`:432-465`)
   - 재오픈 분기는 사유 검사와 `UPDATE … SET status='DRAFT' … WHERE status IN ('APPROVED','LOCKED')`만 남긴다. 재무 조회·차단·취소와 재무 감사는 지운다(`:466-503`)
   - `hr-workspace.tsx`의 financeExpenseId 안내를 지운다
-- [ ] 임금 계산의 영업 결합: `app/api/hr/compensation/route.ts:311-339`의 `sales_incentive_payroll_links` 조회와 합산을 지운다. 인센티브는 임금 계산 화면의 입력값만 쓴다
-- [ ] `app/api/documents/route.ts`
+- [x] 임금 계산의 영업 결합: `app/api/hr/compensation/route.ts:311-339`의 `sales_incentive_payroll_links` 조회와 합산을 지운다. 인센티브는 임금 계산 화면의 입력값만 쓴다 (확인: 'R1 compensation CONFIRM no longer adds sales incentive links'. 라우트는 R3에 `app/api/compensation`으로 옮겼다)
+- [x] `app/api/documents/route.ts` (확인: 'R1 documents' 404 테스트, 'R3 documents POST authorizes hr:write before reading the form', `tab-permissions` #24)
   - 재무·영업 import와 분기를 지운다(`:4-6`, `:17`)
   - 권한 검사를 `formData()`보다 앞으로 옮긴다(지금은 `:75`에서 formData를 읽고 `:84`에서 인가한다)
   - module 값이 탭 대응표에 없는 행(레거시 finance·sales)은 관리자라도 404로 거부한다(fail closed)
-- [ ] 마스터 영향 의존 제거: 서버 쪽 `app/api/hr/organizations/route.ts:4,93-95,113`, UI 쪽 `app/hr-workspace.tsx:13,1991`의 요청 본문, 관련 CSS
-- [ ] 어시스턴트: 모듈 `sales`는 제거하지 않고 **`incentive`로 이름을 바꾼다**(D1 유지)
+- [x] 마스터 영향 의존 제거: 서버 쪽 `app/api/hr/organizations/route.ts:4,93-95,113`, UI 쪽 `app/hr-workspace.tsx:13,1991`의 요청 본문, 관련 CSS (확인: `app/`에 `master-impact`·`MasterImpact` 0건)
+- [x] 어시스턴트: 모듈 `sales`는 제거하지 않고 **`incentive`로 이름을 바꾼다**(D1 유지) (확인: 브리지 `ALLOWED_MODULES = hr·compensation·incentive`, `access-policy` 'ASSISTANT_MODULES')
   - 지우는 것: `/api/sales` 조회(`local-codex-assistant.tsx:279-288`)
   - 이름만 바꾸는 것: `compensation-calculator.tsx:621-623`, `page.tsx`, `/api/assistant`의 모듈 목록, 두 브리지의 `ALLOWED_MODULES`
   - `tests/local-codex-assistant.test.mjs`는 같은 커밋에서 고친다
-- [ ] `ERPTopNavigation`에서 ApprovalCenter 마운트와 approval 작업 처리를 지운다(`app/page.tsx:26,437`). 이 내비를 쓰는 HR 셸도 회귀 대상에 넣는다
-- [ ] `hr-workspace.tsx` 설정에서 '전자결재 규칙' 섹션과 `ApprovalSettings`를 지운다(`:4588-4747`). "결재 대기"·결재 ID를 보여 주는 UI와, 뷰 3개의 결재 상태 라벨도 지운다
-- [ ] 기존 버그 수정: 성과 이의제기 '수용' 버튼(`performance-management-view.tsx:62-66`)이 'ACCEPTED' 대신 'RESOLVED'를 보내도록 고친다. 서버는 'RESOLVED'와 'REJECTED'만 받는다(`performance/route.ts:413`). 동작 테스트를 추가한다
+- [x] `ERPTopNavigation`에서 ApprovalCenter 마운트와 approval 작업 처리를 지운다(`app/page.tsx:26,437`). 이 내비를 쓰는 HR 셸도 회귀 대상에 넣는다 (확인: `app/approval-center.tsx` 삭제, `removal-guards`)
+- [x] `hr-workspace.tsx` 설정에서 '전자결재 규칙' 섹션과 `ApprovalSettings`를 지운다(`:4588-4747`). "결재 대기"·결재 ID를 보여 주는 UI와, 뷰 3개의 결재 상태 라벨도 지운다 (확인: `hr-workspace.tsx`에 `ApprovalSettings` 0건. 남은 '전자결재' 문구는 레거시 행 안내 주석과 배너뿐이다)
+- [x] 기존 버그 수정: 성과 이의제기 '수용' 버튼(`performance-management-view.tsx:62-66`)이 'ACCEPTED' 대신 'RESOLVED'를 보내도록 고친다. 서버는 'RESOLVED'와 'REJECTED'만 받는다(`performance/route.ts:413`). 동작 테스트를 추가한다 (확인: `performance-management-view.tsx`가 `RESOLVED`를 보낸다, 'R1 performance appeal' 테스트)
 
 **M1-2. 플랫폼 정리**
-- [ ] `ensureErpPlatformSchema`에서 `erp_approval_*`, `erp_tasks`, `erp_sync_runs` 생성을 멈춘다. 각 라우트의 `ensureSchema`에서도 재무·영업·결재 테이블 생성만 멈춘다. 기존 테이블은 DROP하지 않는다(D4)
-- [ ] `app/erp-platform.ts`에서 재무 전용 헬퍼(`blockedFinancePeriods`, `isFinancePeriodLocked`)와 `FINANCE_ADMIN`·`SALES_ADMIN`을 제거한다
-- [ ] 검증: 결재·재무 테이블이 없는 새 DB 하니스에서 휴가 삭제·결정, 급여 승인, 채용요청 삭제가 500 없이 성공한다
+- [x] `ensureErpPlatformSchema`에서 `erp_approval_*`, `erp_tasks`, `erp_sync_runs` 생성을 멈춘다. 각 라우트의 `ensureSchema`에서도 재무·영업·결재 테이블 생성만 멈춘다. 기존 테이블은 DROP하지 않는다(D4) (확인: 'R1 platform: a fresh database no longer creates approval, task or sync tables', 커밋 `f99c5f0`)
+- [x] `app/erp-platform.ts`에서 재무 전용 헬퍼(`blockedFinancePeriods`, `isFinancePeriodLocked`)와 `FINANCE_ADMIN`·`SALES_ADMIN`을 제거한다 (확인: `removal-guards` 'finance and sales roles, modules and period helpers are gone'. 재무 헬퍼는 순서를 바꿔 `f203ede`에서 지웠다 — Design §12.4)
+- [x] 검증: 결재·재무 테이블이 없는 새 DB 하니스에서 휴가 삭제·결정, 급여 승인, 채용요청 삭제가 500 없이 성공한다 (확인: 'R1 fresh database: leave deletion and decision, payroll approval and requisition deletion never read approval tables')
 
 **M1-3. 셸 정리와 PII 분리**
-- [ ] `app/page.tsx`에서 재무·영업 모듈과 죽은 코드를 정리한다. `audit-log-workspace.tsx`를 다시 마운트한다. 유일한 import처인 data-governance-center가 삭제 대상이기 때문이다. R3 전에는 기존 역할 게이트를 쓰고, R3부터 관리자 전용 감사 탭이 된다(D2-c). `/api/audit-log`의 모듈 라벨은 과거 finance·sales 행을 읽을 수 있게 남긴다
-- [ ] `app/hr-company-data.ts`를 둘로 나눈다
+- [x] `app/page.tsx`에서 재무·영업 모듈과 죽은 코드를 정리한다. `audit-log-workspace.tsx`를 다시 마운트한다. 유일한 import처인 data-governance-center가 삭제 대상이기 때문이다. R3 전에는 기존 역할 게이트를 쓰고, R3부터 관리자 전용 감사 탭이 된다(D2-c). `/api/audit-log`의 모듈 라벨은 과거 finance·sales 행을 읽을 수 있게 남긴다 (확인: 커밋 `f6acb43`. R3부터 관리자 전용 감사 탭)
+- [x] `app/hr-company-data.ts`를 둘로 나눈다 (확인: `app/hr-company-catalogs.ts`, `app/hr-company-data.ts` 첫 줄 `import "server-only"`, 분리 전후 JSON 대조 — Design §12.5 실행 결과)
   - 조직·직급·직책 카탈로그: 클라이언트에서 써도 되는 모듈
   - 직원 명부·보상 시드: `import "server-only"`를 선언한 서버 전용 모듈. 서버 사용처는 `app/api/hr/analytics/route.ts:4`, `authorized-users/route.ts:2`다
   - 이 파일은 실제 회사 데이터라 분리할 때 값이 바뀌지 않았는지 대조한다
-- [ ] `hr-workspace.tsx`의 `initialEmployees`는 `[]`로 시작해 `/api/hr/employee-records`로 채운다. 로딩 상태를 넣는다
-- [ ] `incentive-calculator.tsx`는 정적 명부 대체값을 없애고, `response.ok`가 아니면 오류를 표시한다
-- [ ] 하니스에 `server-only` 스텁을 추가한다
+- [x] `hr-workspace.tsx`의 `initialEmployees`는 `[]`로 시작해 `/api/hr/employee-records`로 채운다. 로딩 상태를 넣는다 (확인: Design §12.5 실행 결과)
+- [x] `incentive-calculator.tsx`는 정적 명부 대체값을 없애고, `response.ok`가 아니면 오류를 표시한다 (확인: R3부터 `/api/compensation/roster`만 쓴다)
+- [x] 하니스에 `server-only` 스텁을 추가한다 (확인: `tests/helpers/hr-api-harness.mjs`의 `server-only` 가상 모듈 처리)
 
 **M1-4. 일괄 삭제와 정리**
-- [ ] 삭제 목록의 파일을 일괄 삭제한다. 삭제 전에 삭제 대상 경로를 import·fetch하는 남는 파일이 0개인지 grep으로 확인한다
-- [ ] 재무 실데이터(`app/finance-*-data.ts`와 파생 모듈)는 작업 트리 어디에도 두지 않는다. 보관은 두 곳뿐이다
+- [x] 삭제 목록의 파일을 일괄 삭제한다. 삭제 전에 삭제 대상 경로를 import·fetch하는 남는 파일이 0개인지 grep으로 확인한다 (확인: 커밋 `f203ede`(190파일, −41,888줄), `removal-guards` 'the 120 deleted files and 5 finance tests stay absent'·'no kept source imports a deleted module')
+- [ ] 재무 실데이터(`app/finance-*-data.ts`와 파생 모듈)는 작업 트리 어디에도 두지 않는다. 보관은 두 곳뿐이다 (부분: 작업 트리에는 없고 `C:\xdm\archive\finance-data-20260923\`에 4개 파일과 `SHA256SUMS.txt`가 있다. 다만 2026-10-02 `icacls` 기준 이 폴더는 상속 기본 ACL이라 '접근 제한'이 아니다 — R4 백업 ACL 항목과 같은 문제)
   - archive 태그·브랜치
   - 저장소 밖 접근 제한 폴더. 파일 해시를 기록한다
-- [ ] `.env.local`과 `localRuntimeVars`에서 재무 전용 `CLOUDFLARE_AI_MODEL`(재무 어시스턴트·일일 자금 라우트만 사용)을 재무 라우트와 함께 지운다(`GOOGLE_*`는 R0에서 지웠다)
-- [ ] 테스트 정리
+- [x] `.env.local`과 `localRuntimeVars`에서 재무 전용 `CLOUDFLARE_AI_MODEL`(재무 어시스턴트·일일 자금 라우트만 사용)을 재무 라우트와 함께 지운다(`GOOGLE_*`는 R0에서 지웠다) (확인: `removal-guards` 'the local runtime no longer forwards the unused Cloudflare AI model variable'. 운영 `.env.local`은 허용 목록 키 2개뿐이다(R3 기록). 개발 폴더 `.env.local`은 내용을 열지 않아 확인하지 않았다)
+- [x] 테스트 정리 (확인: `tests/finance-*` 없음, `removal-guards`·`bundle-exposure` 등록, 'every tests/*.test.mjs file is in the npm test list')
   - 삭제: `finance-*.test.mjs` 5개(`package.json` 목록에서도 뺀다)
   - `erp-platform.test.mjs`: HR·감사·브리지 가드만 남긴다. 라우트를 이름으로 열거하는 부분은 '변경 라우트는 모두 인가 헬퍼와 `writeErpAudit`를 호출한다'는 가드 하나로 바꾼다. `:1769`가 단언하는 문서 문구는 문서와 같은 커밋에서 바꾼다
   - `workflow-ledgers.test.mjs`: HR 원장만 남긴다. 삭제된 파일을 읽는 케이스는 지운다
@@ -238,27 +238,27 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
   - 추가: 7개 흐름별 즉시 반영 테스트, 레거시 from-state 테스트, 'APPROVED·LOCKED 전이 뒤 `erp_approval_*`·`finance_expense_requests` 행 0건' 테스트
   - 추가: `tests/removal-guards.test.mjs`. 삭제된 경로 import 0건, `FINANCE_ADMIN`·`SALES_ADMIN` 0건, `tests/*.test.mjs` 전부가 test 목록에 있는지 확인한다
   - `hr-api-integration`, `rendered-html`, `incentive-calculation` 테스트를 조정한다. RECRUITER 분기와 `hr-dashboard-model` 테스트는 M4에서 정리한다
-- [ ] 문서 정리
+- [x] 문서 정리 (확인: `docs/archive/` 47개, HR 계획 문서 5개에 '즉시 반영', `erp-platform-plan.md`에 '대체됨' 표시)
   - `finance-*-plan.md`, `sales-*-plan.md`, master-impact·데이터 거버넌스·워크벤치 계획 문서는 `docs/archive/`로 옮긴다
   - HR 계획 문서 5개(workforce-planning, recruitment-requisition, leave-management, performance-management, retirement-compensation)는 보관하지 않는다. 결재 흐름 서술을 '즉시 반영' 기준으로 고친다
   - `erp-platform-plan.md`의 재무·영업·결재 절은 '대체됨'으로 표시한다
-- [ ] CSS는 규칙 단위로 정리한다. `:root` 토큰은 유지한다
+- [x] CSS는 규칙 단위로 정리한다. `:root` 토큰은 유지한다 (확인: `app/globals.css` 629줄, `:root` 토큰 유지)
 
 **M1-5. 검증**
-- [ ] SC-4 회귀 시나리오를 서버 PC에서 실행한다. 기존 D1 사본(별도 폴더)과 새 DB 양쪽에서 확인한다. 다른 PC 실행은 R3 운영 전환 때 점검용 인스턴스에서 한다(D16)
-- [ ] `bundle-exposure.test.mjs`와 `removal-guards.test.mjs`가 통과한다
+- [x] SC-4 회귀 시나리오를 서버 PC에서 실행한다. 기존 D1 사본(별도 폴더)과 새 DB 양쪽에서 확인한다. 다른 PC 실행은 R3 운영 전환 때 점검용 인스턴스에서 한다(D16) (확인: Design §12.7 — 점검 인스턴스에서 기존 사본·새 DB 모두 48+4+13 PASS, 재무·영업·결재 행 변화 0. 새 DB의 조직명 수정 500을 이때 찾아 고쳤다)
+- [x] `bundle-exposure.test.mjs`와 `removal-guards.test.mjs`가 통과한다 (확인: 두 파일이 `npm test` 목록에 있고 R1·R2·msg1 릴리스 때 통과했다. 2026-10-02 점검에서는 build가 필요한 `bundle-exposure`를 돌리지 않았다)
 
 - 롤백: 정지 → archive 태그 checkout → 필요하면 M1-0 스냅샷을 복구한다. R1 이후 즉시 반영으로 바뀐 HR 상태는 스냅샷 복구로만 되돌아간다. 그래서 스냅샷 복구는 그 사이의 데이터 변경을 잃는 선택이다
 
 #### R2 = M2. 리네임: 표시명과 패키지명 (D11 앞부분)
 
-- [ ] `app/layout.tsx` 제목과 메타 정보를 바꾼다
-- [ ] "XD NODE" 문자열이 들어간 약 13개 파일(`app/page.tsx:403,613` 포함)을 바꾼다
-- [ ] 시작 스크립트의 표시 문구와 파일명을 바꾼다(예: `Start-XDNodeERP.ps1` → `Start-XDNodeManagement.ps1`). 바탕화면 바로가기도 함께 갱신한다. 이 앱의 작업 스케줄러 작업은 아직 없고 R4에서 새 이름으로 만든다. 기존 `XDNODE 견적서 서버` 작업은 견적 툴(8765)이므로 건드리지 않는다(2026-09-23 `Get-ScheduledTask`로 확인). `Package-XDNodeDemo.ps1`은 R3에서 폐기하므로 이름을 바꾸지 않는다
-- [ ] 스크립트 파일명을 바꿀 때 참조 테스트(`erp-platform.test.mjs:985·2543·2554`, `local-codex-assistant.test.mjs:42`)를 같은 커밋에서 고친다
-- [ ] `package.json`의 `name`을 `xdnode-management`로 바꾸고 `package-lock.json`을 재생성한다. `engines.node`를 `>=22.15.0`으로 올린다(하니스가 `module.registerHooks`를 쓴다)
-- [ ] **변경 금지**: `database_id`(00000000-0000-4000-8000-000000000000)와 `bucket_name`(`site-creator-r2`). 로컬 D1 파일명과 R2 경로가 이 값에서 나오므로, 바꾸면 앱이 빈 DB·빈 버킷으로 조용히 기동된다. 두 값이 그대로인지 확인하는 소스 가드 테스트를 둔다. `XD_NODE_*` 환경변수 이름도 유지한다
-- [ ] `README.md`와 `CLAUDE.md`를 갱신한다
+- [x] `app/layout.tsx` 제목과 메타 정보를 바꾼다 (확인: Design §12.8 R2 실행 결과, 커밋 `c938ae9`)
+- [x] "XD NODE" 문자열이 들어간 약 13개 파일(`app/page.tsx:403,613` 포함)을 바꾼다 (확인: 커밋 `c938ae9`. 회사명 용도의 "XD NODE"는 남겼다)
+- [x] 시작 스크립트의 표시 문구와 파일명을 바꾼다(예: `Start-XDNodeERP.ps1` → `Start-XDNodeManagement.ps1`). 바탕화면 바로가기도 함께 갱신한다. 이 앱의 작업 스케줄러 작업은 아직 없고 R4에서 새 이름으로 만든다. 기존 `XDNODE 견적서 서버` 작업은 견적 툴(8765)이므로 건드리지 않는다(2026-09-23 `Get-ScheduledTask`로 확인). `Package-XDNodeDemo.ps1`은 R3에서 폐기하므로 이름을 바꾸지 않는다 (확인: `scripts/Start-XDNodeManagement.ps1`, 바로가기 `XDnode management.lnk`)
+- [x] 스크립트 파일명을 바꿀 때 참조 테스트(`erp-platform.test.mjs:985·2543·2554`, `local-codex-assistant.test.mjs:42`)를 같은 커밋에서 고친다 (확인: 커밋 `c938ae9`)
+- [x] `package.json`의 `name`을 `xdnode-management`로 바꾸고 `package-lock.json`을 재생성한다. `engines.node`를 `>=22.15.0`으로 올린다(하니스가 `module.registerHooks`를 쓴다) (확인: name `xdnode-management`, engines `>=22.15.0`. lockfile은 재생성하지 않고 루트 name·engines만 고쳤다(의존성 변화 없음) — Design §12.8)
+- [x] **변경 금지**: `database_id`(00000000-0000-4000-8000-000000000000)와 `bucket_name`(`site-creator-r2`). 로컬 D1 파일명과 R2 경로가 이 값에서 나오므로, 바꾸면 앱이 빈 DB·빈 버킷으로 조용히 기동된다. 두 값이 그대로인지 확인하는 소스 가드 테스트를 둔다. `XD_NODE_*` 환경변수 이름도 유지한다 (확인: `removal-guards` 'R2: renaming the product keeps the local D1/R2 identifiers')
+- [x] `README.md`와 `CLAUDE.md`를 갱신한다 (확인: 커밋 `c938ae9`)
 - 롤백: 커밋을 되돌린다. 데이터 영향은 없다
 
 #### R3 = M3 + M4 + M5a (한 번에 배포)
@@ -270,72 +270,72 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
   - 탭 권한만 있고 PII 분리(R1)가 없으면 권한을 우회할 수 있다
 
 **M3. 계정·세션** (D7, D14, D15)
-- [ ] 계정 테이블: 이메일, 이름, 비밀번호 해시, 인사기록 직원 ID(선택), 관리자 여부, 활성 여부, 첫 로그인 변경 필요 여부, 실패 횟수·잠금 시각
-- [ ] 비밀번호 해시는 PBKDF2-SHA256, **반복 100,000회**(workerd 상한), 16바이트 salt로 한다. workerd는 이 상한을 넘기면 실패하지만 Node 하니스에는 상한이 없어서, 테스트는 통과하고 운영에서만 깨질 수 있다
+- [x] 계정 테이블: 이메일, 이름, 비밀번호 해시, 인사기록 직원 ID(선택), 관리자 여부, 활성 여부, 첫 로그인 변경 필요 여부, 실패 횟수·잠금 시각 (확인: `auth_accounts`, 커밋 `4311563`)
+- [x] 비밀번호 해시는 PBKDF2-SHA256, **반복 100,000회**(workerd 상한), 16바이트 salt로 한다. workerd는 이 상한을 넘기면 실패하지만 Node 하니스에는 상한이 없어서, 테스트는 통과하고 운영에서만 깨질 수 있다 (확인: `app/auth-password.ts` `PBKDF2_ITERATIONS = 100_000`, 상수 시간 비교, 가짜 해시. `access-policy`·`auth-session` #15)
   - 저장 형식: `pbkdf2_sha256$<iter>$<salt>$<hash>`
   - 비교는 상수 시간으로 한다
   - 없는 이메일에도 가짜 해시를 계산해 같은 오류를 돌려준다
   - 반복 횟수가 100,000 이하인지 단언하는 테스트를 둔다
-- [ ] 잠금은 원자적으로 처리한다(D15). 검증 전에 `UPDATE … SET failed_attempts=failed_attempts+1, locked_until=CASE WHEN failed_attempts+1>=5 THEN :now+300000 ELSE locked_until END WHERE id=:id AND (locked_until IS NULL OR locked_until<=:now)`로 시도 한 번을 예약하고, `changes=1`일 때만 검증한다. 성공하면 카운터를 0으로 되돌린다
+- [x] 잠금은 원자적으로 처리한다(D15). 검증 전에 `UPDATE … SET failed_attempts=failed_attempts+1, locked_until=CASE WHEN failed_attempts+1>=5 THEN :now+300000 ELSE locked_until END WHERE id=:id AND (locked_until IS NULL OR locked_until<=:now)`로 시도 한 번을 예약하고, `changes=1`일 때만 검증한다. 성공하면 카운터를 0으로 되돌린다 (확인: `auth-session` #6(동시 오답 20건 → 검증 5회 이하)·#7·#8. 아래 '서버 PC(루프백) 로그인에도 잠금' 문구는 D21로 대체됐다: 로그인만 잠금을 건너뛰고 실패는 기록한다)
   - 테스트: 오답 20건을 동시에 보내도 검증은 5회 이하이고, 잠금 중에는 정답도 거부한다
   - 서버 PC(루프백) 로그인에도 잠금을 적용한다. 검토가 권고한 루프백 예외는 D15와 충돌해 넣지 않는다(§1.2)
-- [ ] 관리자 복구
+- [x] 관리자 복구 (확인: 계정 관리 `UNLOCK`, `scripts/reset-admin-password.mjs`와 테스트, `auth-session` #19)
   - 계정 관리에 '잠금 해제'를 둔다
   - 앱을 멈춘 상태에서 실행하는 `scripts/reset-admin-password.mjs`를 둔다. 잠금을 풀고 임시 비밀번호를 발급하며, 첫 로그인 변경을 요구한다(D15). 운영 문서에 적는다
   - 마지막 활성 관리자는 비활성화하거나 강등할 수 없다
-- [ ] 세션
+- [x] 세션 (확인: `auth-session` #5·#13·#14, 쿠키 `HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000`)
   - 쿠키 `xdm_session`: `HttpOnly; SameSite=Lax; Path=/; Max-Age=2592000`. **Secure는 붙이지 않는다**. http LAN에서는 브라우저가 Secure 쿠키를 버린다
   - 로그인할 때마다 새 세션 토큰을 발급한다. 쿠키에는 256비트 토큰을, DB에는 SHA-256 해시만 둔다. 유효기간은 30일이다
   - 비밀번호를 바꾸면 다른 세션을 모두 폐기한다. 계정을 비활성화하거나 비밀번호를 초기화하면 해당 계정의 세션을 즉시 폐기한다
-- [ ] `mustChangePassword`는 서버가 강제한다. 이 값이 참이면 `/api/me`, 비밀번호 변경, 로그아웃 말고는 모든 API가 403이다
-- [ ] CSRF와 보안 헤더
+- [x] `mustChangePassword`는 서버가 강제한다. 이 값이 참이면 `/api/me`, 비밀번호 변경, 로그아웃 말고는 모든 API가 403이다 (확인: `auth-session` #11)
+- [x] CSRF와 보안 헤더 (확인: `auth-session` #10, `access-policy` request-guard 표, `worker/index.ts`의 세 헤더. 부수효과 GET은 POST로 옮기지 않고 GET에 둔 채 한계를 runbook §8에 적었다 — Design 부록 C #19로 대체)
   - 권한 가드와 인증 라우트(로그인, 첫 관리자 만들기, 로그아웃)에서, GET이 아닌 요청은 `Origin`의 host:port가 `Host`와 같아야 통과한다. Origin이 없으면 `Sec-Fetch-Site: same-origin`을 요구하고, 둘 다 없으면 거부한다. vinext의 Origin 검사는 dev에서만 동작한다. 이 검사로 포트만 다른 같은 호스트의 견적 툴(8765) 페이지도 차단된다
   - 부수효과가 있는 GET(예: employee-records GET의 `applyDue*`)은 같은 검사를 적용하거나 POST로 옮긴다
   - `worker/index.ts`에서 모든 응답에 `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`을 붙인다
-- [ ] 로그인 게이트는 클라이언트에 둔다. SSR은 중립 셸만 렌더하고, SPA가 `/api/me`를 호출해 401이면 로그인 화면을 보여 준다. 레이아웃과 페이지에서는 D1을 읽지 않는다(`rendered-html.test.mjs`가 DB 없이 worker를 import하기 때문). 로그인·로그아웃·비밀번호 변경 화면을 만든다
-- [ ] 첫 관리자 생성은 계정이 0개이고 **Node 쪽에서 확인한 소켓 주소가 루프백일 때만** 허용한다. vite-plugin은 클라이언트의 rawHeaders를 그대로 복사하고, Miniflare는 이미 있는 `CF-Connecting-IP`를 덮어쓰지 않으며, Host도 클라이언트가 정한다. 그래서 Worker 안에서는 판정할 수 없다
+- [x] 로그인 게이트는 클라이언트에 둔다. SSR은 중립 셸만 렌더하고, SPA가 `/api/me`를 호출해 401이면 로그인 화면을 보여 준다. 레이아웃과 페이지에서는 D1을 읽지 않는다(`rendered-html.test.mjs`가 DB 없이 worker를 import하기 때문). 로그인·로그아웃·비밀번호 변경 화면을 만든다 (확인: `app/session-client.ts`·`app/auth-screens.tsx`, `shell-tabs` 'session state machine', 커밋 `3144549`)
+- [x] 첫 관리자 생성은 계정이 0개이고 **Node 쪽에서 확인한 소켓 주소가 루프백일 때만** 허용한다. vite-plugin은 클라이언트의 rawHeaders를 그대로 복사하고, Miniflare는 이미 있는 `CF-Connecting-IP`를 덮어쓰지 않으며, Host도 클라이언트가 정한다. 그래서 Worker 안에서는 판정할 수 없다 (확인: `auth-session` #1~#4, `tests/local-peer-plugin.test.mjs`)
   - 로컬 플러그인은 M5a에 둔다
   - 계정 생성은 `INSERT … SELECT … WHERE NOT EXISTS (SELECT 1 FROM auth_accounts)`로 하고 `changes === 1`을 확인해 원자적으로 처리한다
   - 테스트: LAN 주소에서 `Host: localhost`, `x-xdm-peer: 127.0.0.1`, `CF-Connecting-IP: 127.0.0.1`을 위조하면 403이다. 동시에 두 번 요청하면 하나만 성공한다
-- [ ] `app/chatgpt-auth.ts`의 헤더 신원과 `LOCAL_ERP_USER_EMAIL` 대체 경로를 제거하고 세션 신원으로 교체한다. 기존 호출부 인터페이스(`ErpPrincipal`)를 유지할지는 Design 안 선택에 따른다(A·C는 유지, B는 교체)
-- [ ] 권한 가드는 세션으로 신원을 정하고, 인사기록 연결이 없어도 통과한다(D14)
-- [ ] 관리자 전용 **계정 관리** 탭: 계정 생성(인사기록에서 고르거나 직접 입력), 탭별 권한 지정, 비밀번호 초기화, 잠금 해제, 비활성화·재활성화. "HR 탭에는 급여관리가 포함됩니다"라고 안내한다
-- [ ] 감사: actor는 실제 로그인 계정이다. 로그인 성공·실패·잠금, 첫 관리자 생성, 계정·탭 권한 변경, 비밀번호 초기화, 세션 폐기, 403 거부를 기록한다. 비밀번호·토큰은 기록하지 않고, Node가 확인한 접속 주소를 남긴다
+- [x] `app/chatgpt-auth.ts`의 헤더 신원과 `LOCAL_ERP_USER_EMAIL` 대체 경로를 제거하고 세션 신원으로 교체한다. 기존 호출부 인터페이스(`ErpPrincipal`)를 유지할지는 Design 안 선택에 따른다(A·C는 유지, B는 교체) (확인: 파일 없음, `auth-session` 'chatgpt-auth is gone'. `ErpPrincipal` 인터페이스는 C안대로 유지)
+- [x] 권한 가드는 세션으로 신원을 정하고, 인사기록 연결이 없어도 통과한다(D14) (확인: `auth-session` 'unlinked accounts pass the guard without an HR record (D14)')
+- [x] 관리자 전용 **계정 관리** 탭: 계정 생성(인사기록에서 고르거나 직접 입력), 탭별 권한 지정, 비밀번호 초기화, 잠금 해제, 비활성화·재활성화. "HR 탭에는 급여관리가 포함됩니다"라고 안내한다 (확인: `app/admin-accounts-workspace.tsx`, `/api/admin/accounts`, `auth-session` #18)
+- [x] 감사: actor는 실제 로그인 계정이다. 로그인 성공·실패·잠금, 첫 관리자 생성, 계정·탭 권한 변경, 비밀번호 초기화, 세션 폐기, 403 거부를 기록한다. 비밀번호·토큰은 기록하지 않고, Node가 확인한 접속 주소를 남긴다 (확인: `auth-session` #5·#9·#16·#16b. action `LOGIN_*`·`ACCOUNT_*`·`BOOTSTRAP_ADMIN_CREATED`·`SESSIONS_REVOKED`·`ACCESS_DENIED`)
 
 **M4. 탭 권한** (D12, D13)
-- [ ] 상위 탭은 `hr`(HR), `compensation`(임금 계산·인센티브), `chat`(메신저), `audit`(감사 로그), `admin`(계정 관리)이다. `audit`과 `admin`은 관리자 계정에만 존재한다(D2-c·D7, §1.2 D12·D13 행. Design 체크포인트에서 확인)
-- [ ] 계정별 권한 데이터는 `hr`·`compensation`·`chat`에 대한 `{ 탭: "none" | "view" | "edit" }` 형태다. 관리자는 모든 탭이 편집이다
-- [ ] `/api/me`가 `{ user, isAdmin, tabs, mustChangePassword }`를 반환한다. `app/page.tsx`는 `tabs`로 탭 목록과 기본 탭을 정하고, 허용되지 않은 탭 컴포넌트는 렌더하지 않는다. 저장된 탭(localStorage)이 권한 밖이면 첫 허용 탭으로 옮긴다
-- [ ] 서버 가드는 탭 권한을 기존 `module:action` 검사에 대응시킨다. 대응표는 Design에서 확정한다
+- [x] 상위 탭은 `hr`(HR), `compensation`(임금 계산·인센티브), `chat`(메신저), `audit`(감사 로그), `admin`(계정 관리)이다. `audit`과 `admin`은 관리자 계정에만 존재한다(D2-c·D7, §1.2 D12·D13 행. Design 체크포인트에서 확인) (확인: `app/access-tabs.ts` `TAB_REGISTRY`, `access-policy`. 다음 사이클에 `general`(총무) 탭이 더해졌다)
+- [x] 계정별 권한 데이터는 `hr`·`compensation`·`chat`에 대한 `{ 탭: "none" | "view" | "edit" }` 형태다. 관리자는 모든 탭이 편집이다 (확인: `auth_accounts.tabs_json`, `access-policy` resolveTabs)
+- [x] `/api/me`가 `{ user, isAdmin, tabs, mustChangePassword }`를 반환한다. `app/page.tsx`는 `tabs`로 탭 목록과 기본 탭을 정하고, 허용되지 않은 탭 컴포넌트는 렌더하지 않는다. 저장된 탭(localStorage)이 권한 밖이면 첫 허용 탭으로 옮긴다 (확인: `tab-permissions` #25, `shell-tabs` #1~#3)
+- [x] 서버 가드는 탭 권한을 기존 `module:action` 검사에 대응시킨다. 대응표는 Design에서 확정한다 (확인: `access-policy` 'canAccess fails closed', `tab-permissions` 'authorizeErpRequest fails closed…'·isHrManager 테스트·#20 'applies on the next request')
   - `hr:approve`, `recruitment:*`, `privileged()`는 모두 `hr` 탭 편집으로 매핑한다. `isHrManager = isAdmin || hr=edit` 함수 하나로 통일한다
   - 대응표에 없는 모듈 값은 관리자라도 거부한다(fail closed)
   - 탭 권한과 활성 여부는 요청마다 DB에서 읽는다. 세션에 캐시하지 않는다
-- [ ] 임금 계산 전용 명부 조회를 만든다. 지금 `incentive-calculator.tsx:332`는 `hr:read`로 보호되는 `/api/hr/employee-records`에서 전화·주소·생년월일이 든 전체 레코드를 받는다
+- [x] 임금 계산 전용 명부 조회를 만든다. 지금 `incentive-calculator.tsx:332`는 `hr:read`로 보호되는 `/api/hr/employee-records`에서 전화·주소·생년월일이 든 전체 레코드를 받는다 (확인: `/api/compensation/roster`, `tab-permissions` #28·#29. `/incentive`는 `RequireTab tab="compensation"`)
   - 응답은 `{employeeId, name, department, status}`뿐이다
   - `/api/hr/compensation`, 전용 명부, `/api/assistant`의 incentive·compensation 모드는 `compensation` 탭으로 인가한다
   - include=hr 응답에서 birthDate처럼 계산에 필요 없는 필드를 뺀다
   - `/incentive` 단독 페이지는 유지하되(D1), 세션과 compensation 보기 권한이 없으면 열리지 않게 한다
-- [ ] 교차 조합 'compensation=edit, hr=none'과 'hr=edit, compensation=none'을 명부, compensation, employee-records, assistant에 대해 매트릭스로 고정한다
-- [ ] 연결 없는 계정의 `employeeId`에는 계정 ID에 `acct_` 접두사를 붙여 쓴다. `PUT /api/hr/employee-records`는 `acct_`로 시작하는 id를 400으로 거부한다
-- [ ] 기존 역할 6종(`ErpRole`, `rolePermissions`)은 탭 권한으로 대체한다. 기존 `erp_user_access`와 `hr_authorized_users` 행은 새 계정 체계로 옮기지 않는다. 계정은 관리자가 새로 만든다. RECRUITER 분기와 `hr-dashboard-model` 테스트를 정리한다
-- [ ] 새 모듈을 붙이기 쉬운 구조로 만든다. 탭 목록·라벨·대응 API 모듈을 한 파일에 정의해서, 견적 탭을 추가할 때 그 파일과 새 라우트만 건드리면 되게 한다(FR-16)
+- [x] 교차 조합 'compensation=edit, hr=none'과 'hr=edit, compensation=none'을 명부, compensation, employee-records, assistant에 대해 매트릭스로 고정한다 (확인: `tab-permissions` #22)
+- [x] 연결 없는 계정의 `employeeId`에는 계정 ID에 `acct_` 접두사를 붙여 쓴다. `PUT /api/hr/employee-records`는 `acct_`로 시작하는 id를 400으로 거부한다 (확인: `tab-permissions` #26)
+- [x] 기존 역할 6종(`ErpRole`, `rolePermissions`)은 탭 권한으로 대체한다. 기존 `erp_user_access`와 `hr_authorized_users` 행은 새 계정 체계로 옮기지 않는다. 계정은 관리자가 새로 만든다. RECRUITER 분기와 `hr-dashboard-model` 테스트를 정리한다 (확인: `app/`에 `ErpRole`·`rolePermissions` 0건, `removal-guards` 'R3 r3-tabs', `hr-dashboard-model` R3 테스트)
+- [x] 새 모듈을 붙이기 쉬운 구조로 만든다. 탭 목록·라벨·대응 API 모듈을 한 파일에 정의해서, 견적 탭을 추가할 때 그 파일과 새 라우트만 건드리면 되게 한다(FR-16) (확인: `access-tabs.ts` 한 곳, CLAUDE.md 'How to add a tab'. 2026-09-30 총무 탭이 이 방식으로 붙었다)
 
 **M5a. 운영 런타임 전환** (D10, D16, D18)
-- [ ] 운영 기동은 `vinext build` → `npx vite preview --host 0.0.0.0 --port 3000 --strictPort`로 한다(`npm run serve:lan` 추가). `X_LOCAL_EXPLORER=false`를 강제한다
-- [ ] 시작 스크립트를 preview용으로 바꾼다(R3). 순서는 build → `.dev.vars` 작성 → preview(0.0.0.0:3000, explorer off) → 브리지 3120·3130 기동이다. 무인 운영 기능은 R4에서 더한다
+- [x] 운영 기동은 `vinext build` → `npx vite preview --host 0.0.0.0 --port 3000 --strictPort`로 한다(`npm run serve:lan` 추가). `X_LOCAL_EXPLORER=false`를 강제한다 (확인: `package.json` `serve:lan`, `lan-exposure-guards` R3)
+- [x] 시작 스크립트를 preview용으로 바꾼다(R3). 순서는 build → `.dev.vars` 작성 → preview(0.0.0.0:3000, explorer off) → 브리지 3120·3130 기동이다. 무인 운영 기능은 R4에서 더한다 (확인: `lan-exposure-guards` 'the launcher builds, writes .dev.vars, forces the explorer off and starts preview')
   - `vinext start`는 쓰지 않는다. plain Node에서 `fetch(request, undefined, ctx)`를 호출해 D1·R2 바인딩이 없고, 서버 청크 68개가 import하는 `cloudflare:workers`를 Node가 해석하지 못해 모든 API가 500이다
   - `wrangler dev`도 운영 런타임으로 쓰지 않는다. 루프백 판정 플러그인이 실리지 않기 때문이다
-- [ ] 개발 서버(`vinext dev`)는 앞으로 `--hostname 127.0.0.1`로만 띄운다(D16). LAN 운영에서도, 비상 대체 경로에서도 `vinext dev 0.0.0.0`은 금지한다
-- [ ] 시작 스크립트가 빌드할 때마다 `.env.local`에서 허용 목록 키만 골라 `dist/server/.dev.vars`를 쓴다. preview는 빌드 산출물의 `vars:{}`를 쓰고, `vinext build`는 매번 dist를 지우기 때문이다. 허용 목록은 `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_TRANSCRIPTION_MODEL`, `CLAUDE_BRIDGE_URL`, `CLAUDE_ASSISTANT_BRIDGE_URL`이다. 기동 뒤 HR 전사 1건으로 확인한다
-- [ ] 루프백 판정 플러그인: `vite.config.ts`에서 `cloudflare()`보다 앞에 로컬 플러그인을 둔다
+- [x] 개발 서버(`vinext dev`)는 앞으로 `--hostname 127.0.0.1`로만 띄운다(D16). LAN 운영에서도, 비상 대체 경로에서도 `vinext dev 0.0.0.0`은 금지한다 (확인: `"dev": "vinext dev --hostname 127.0.0.1 --port 3100 --strictPort"`)
+- [x] 시작 스크립트가 빌드할 때마다 `.env.local`에서 허용 목록 키만 골라 `dist/server/.dev.vars`를 쓴다. preview는 빌드 산출물의 `vars:{}`를 쓰고, `vinext build`는 매번 dist를 지우기 때문이다. 허용 목록은 `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_TRANSCRIPTION_MODEL`, `CLAUDE_BRIDGE_URL`, `CLAUDE_ASSISTANT_BRIDGE_URL`이다. 기동 뒤 HR 전사 1건으로 확인한다 (확인: `scripts/write-dev-vars.mjs`, `lan-exposure-guards` 'only the five allow-listed keys'. 'HR 전사 1건' 확인은 R3 기록에 따로 없다)
+- [x] 루프백 판정 플러그인: `vite.config.ts`에서 `cloudflare()`보다 앞에 로컬 플러그인을 둔다 (확인: `build/local-peer-vite-plugin.ts`, `tests/local-peer-plugin.test.mjs`. 비루프백 `/__debug*` 404와 부트스트랩 403도 더했다)
   - `configureServer`와 `configurePreviewServer` 양쪽에서 클라이언트가 보낸 `x-xdm-peer`를 `req.headers`와 `req.rawHeaders` 모두에서 지우고, `req.socket.remoteAddress`로 다시 설정한다
   - 비루프백에서 들어온 `/cdn-cgi/*`는 404로 돌려보낸다(explorer가 다시 켜질 때의 이중 방어)
   - Vite HMR이 아닌 `upgrade` 요청은 끊는다
-- [ ] 방화벽 최종화: 서버 PC에 고정 LAN IP를 준다. R0에서 만들어 둔 3000 규칙을 운영 전환 순서대로 켠다. 브리지 포트 3120·3130은 localhost 전용을 유지한다. 절차는 운영 문서에 적는다
-- [ ] 어시스턴트: `/api/assistant`가 서버에서 브리지를 대신 부르므로 다른 PC에서도 동작한다. 브리지 허용 목록은 넓히지 않는다. R0의 브리지 Origin·Host 검사가 LAN에서도 유지되는지 운영 전환 스모크에서 확인한다
-- [ ] http LAN 호환(NFR Compatibility): 클라이언트의 `crypto.randomUUID` 호출부 전부(`compensation-calculator.tsx:61,100,371-373`, `incentive-calculator.tsx:56,171,505`, `local-codex-assistant.tsx:413,539,554`)는 `getRandomValues` 기반 `randomId()`로, clipboard(`hr-workspace.tsx:3346`, `hr-leave-view.tsx:88,214`, `local-codex-assistant.tsx:443`)는 대체 경로가 있는 `copyText()`로 바꾼다. 면접 녹음(`getUserMedia`, `hr-workspace.tsx:2144,2156,2213`)은 서버 PC에서만 지원한다고 안내한다
-- [ ] 하니스 개편(§4.2)을 R3와 같은 PR에 넣는다
-- [ ] 스크립트 정리
+- [x] 방화벽 최종화: 서버 PC에 고정 LAN IP를 준다. R0에서 만들어 둔 3000 규칙을 운영 전환 순서대로 켠다. 브리지 포트 3120·3130은 localhost 전용을 유지한다. 절차는 운영 문서에 적는다 (확인 2026-10-02: 규칙 켜짐·Private·LocalSubnet·포트 3000, 이더넷 DHCP 꺼짐(고정 IP). R3 때 `node.exe` 프로그램 조건을 붙였다 — Design §11.5.9)
+- [x] 어시스턴트: `/api/assistant`가 서버에서 브리지를 대신 부르므로 다른 PC에서도 동작한다. 브리지 허용 목록은 넓히지 않는다. R0의 브리지 Origin·Host 검사가 LAN에서도 유지되는지 운영 전환 스모크에서 확인한다 (확인: R3 7단계 스모크, SC-12 리허설에서 점검 PC 어시스턴트 답변)
+- [x] http LAN 호환(NFR Compatibility): 클라이언트의 `crypto.randomUUID` 호출부 전부(`compensation-calculator.tsx:61,100,371-373`, `incentive-calculator.tsx:56,171,505`, `local-codex-assistant.tsx:413,539,554`)는 `getRandomValues` 기반 `randomId()`로, clipboard(`hr-workspace.tsx:3346`, `hr-leave-view.tsx:88,214`, `local-codex-assistant.tsx:443`)는 대체 경로가 있는 `copyText()`로 바꾼다. 면접 녹음(`getUserMedia`, `hr-workspace.tsx:2144,2156,2213`)은 서버 PC에서만 지원한다고 안내한다 (확인: `app/client-runtime.ts`의 `randomId()`·`copyText()`, `removal-guards` 'R3 r3-shell', 면접 녹음 '서버 PC에서만 지원합니다' 안내)
+- [x] 하니스 개편(§4.2)을 R3와 같은 PR에 넣는다 (확인: 커밋 `4311563`·`ce18f23`, 하니스 `setAccess`·`setClock`·`setCookies`)
+- [x] 스크립트 정리 (확인: `Package-XDNodeDemo.ps1` 없음, `scripts/xdm-login.mjs`, `lan-exposure-guards` 'operations scripts log in through xdm-login')
   - `Package-XDNodeDemo.ps1`은 폐기한다. `.wrangler/state`(실제 HR 데이터, R3 뒤에는 인증 테이블까지)를 복사하고 `LOCAL_ERP_USER_EMAIL`에 의존한다
   - `restore-known-data.mjs`는 보관한다
   - `import-leave-ledger.mjs`는 `XDM_EMAIL`·`XDM_PASSWORD`로 로그인해 받은 쿠키로 호출하도록 바꾼다
@@ -366,13 +366,13 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
 
 R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게 잡는다. 모든 경로는 운영 폴더 기준이다.
 
-- [ ] R3(M5a)에서 preview용으로 바꾼 시작 스크립트에 무인 운영 기능을 더한다
+- [x] R3(M5a)에서 preview용으로 바꾼 시작 스크립트에 무인 운영 기능을 더한다 (확인: `lan-exposure-guards` R4 launcher·stop 테스트, `ops-scripts`. 다른 로그온 세션에서 끌 수 있게 감독자를 더했다(r4.2, runbook §9))
   - `-Headless`(Read-Host 없음, 브라우저 열지 않음)
   - pid 파일 기록
   - 헬스체크: `/api/me`가 401이면 정상
   - 로그를 날짜별 파일로 쓰고 14일 뒤 삭제한다
   - 짝이 되는 `Stop-XDNodeManagement.ps1`을 만든다(pid 기준 `taskkill /T`, workerd 포함)
-- [ ] 매일 백업: 03:00에 작업 스케줄러로 다음을 실행한다
+- [ ] 매일 백업: 03:00에 작업 스케줄러로 다음을 실행한다 (부분: ①~⑥은 `Backup-XDNodeManagement.ps1`과 2026-10-02 03:00 `result: OK`로 확인. ⑦ 2차 복사는 스크립트에 `-MirrorRoot`가 있지만 `XDnodeManagement-Backup` 작업 인자에 없어 설정되지 않았다)
   - ① Stop 스크립트로 정지
   - ② `d1`과 `r2` 메타데이터의 `*.sqlite`·`-wal`·`-shm`을 `<백업루트>\yyyy-MM-dd\`로 복사
   - ③ R2 blobs는 `robocopy /E`로 증분 미러
@@ -380,18 +380,18 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
   - ⑤ 사본의 `PRAGMA integrity_check` 결과와 주요 테이블 행 수를 `backup-report.json`에 기록
   - ⑥ 날짜 폴더는 14개만 보관
   - ⑦ 외장 드라이브나 NAS로 2차 복사
-- [ ] 백업 폴더는 **저장소 밖**, 경로 120자 이하에 둔다. ACL은 서버 사용자로 제한한다. `.env.local`은 넣지 않는다. 백업에는 급여와 비밀번호 해시가 들어간다
-- [ ] 백업이 실패하면 관리자 화면에 마지막 성공 시각과 경고를 표시한다
+- [ ] 백업 폴더는 **저장소 밖**, 경로 120자 이하에 둔다. ACL은 서버 사용자로 제한한다. `.env.local`은 넣지 않는다. 백업에는 급여와 비밀번호 해시가 들어간다 (부분: 저장소 밖 `C:\xdm\backup`, `.env.local` 제외는 확인. ACL은 2026-10-02 `icacls` 기준 상속 기본값(`Authenticated Users:(M)`, `Users:(RX)`)이라 서버 사용자로 제한되지 않았다. `C:\xdm` 전체가 같다)
+- [x] 백업이 실패하면 관리자 화면에 마지막 성공 시각과 경고를 표시한다 (확인: `GET /api/admin/backups`, `tests/admin-backups.test.mjs`)
 - [x] 복구 절차(정지 → 교체 → 기동)를 문서화하고, 새 폴더에 한 번 복구해 본다(SC-7, 2026-10-01 리허설 완료). 온라인 백업(`VACUUM INTO`)은 이번 사이클에서 쓰지 않는다
-- [ ] 자동 기동(D19)
+- [x] 자동 기동(D19) (확인: `XDnodeManagement-Autostart`(암호 저장), SC-12 리허설 통과(2026-09-29). D19 대체안은 쓰지 않는다. 2026-10-02 08:58 재부팅 뒤에도 08:59:58 자동 기동 → 09:00:20 ready)
   - 작업 스케줄러에 작업을 등록한다. 트리거는 '시스템 시작 시', 계정은 서버 사용자, '사용자의 로그온 여부에 관계없이 실행'(암호 저장), 동작은 운영 폴더의 `Start-XDNodeManagement.ps1 -Headless`다
   - 실패하면 5분 간격으로 3회 재시도한다
   - 서버를 올리는 경로는 하나로 통일한다. 03:00 백업의 ④ 재기동, `Deploy-XDNodeManagement.ps1`의 Start, 수동 재기동은 모두 `Start-ScheduledTask`로 자동 기동 작업을 실행한다. 스크립트를 직접 실행하지 않는다. 대화형 세션에서 직접 띄우면 로그오프할 때 서버가 같이 멈추고, 세션 종류가 달라 브리지 자격 증명 동작도 달라질 수 있다
   - 대체안으로 바꾸면 자동 기동 작업과 백업 작업 모두 '사용자가 로그온할 때만 실행'으로 다시 등록한다
   - **확인(재부팅 리허설, SC-12)**: 재부팅한 뒤 아무도 로그온하지 않은 상태를 유지한다. 다른 PC에서 로그인 화면이 보이는지, 헬스체크 로그에 `/api/me` 401이 남는지 확인한다. AI 어시스턴트 질문 1건과 이력서 분석 1건이 답해야 한다. 이렇게 해서 두 Claude CLI 브리지(3130·3120)가 로그온 없는 세션에서도 자격 증명을 읽는지 본다
   - 브리지가 자격 증명 오류로 실패하면 대체안으로 바꾼다. Windows 자동 로그온을 켜고 트리거를 '로그온 시'로 바꾼 뒤 같은 리허설을 다시 한다. 대체안을 쓰면 서버 PC 화면이 로그온된 채로 남는 물리 보안 부담이 생긴다. 그래서 전환할 때 사용자와 보완책을 정한다
-- [ ] 전원: `powercfg`로 절전과 최대 절전을 끈다. Windows Update 사용 시간을 08:00~20:00으로 둔다
-- [ ] 배포 절차 `Deploy-XDNodeManagement.ps1`(운영 폴더, 업무 시간 밖)
+- [ ] 전원: `powercfg`로 절전과 최대 절전을 끈다. Windows Update 사용 시간을 08:00~20:00으로 둔다 (부분, 2026-10-02 확인: AC 절전 0, Windows Update 사용 시간 07:00~01:00(08~20시를 포함). AC 최대 절전이 10,800초(3시간)로 남아 있다)
+- [x] 배포 절차 `Deploy-XDNodeManagement.ps1`(운영 폴더, 업무 시간 밖) (확인: `scripts/Deploy-XDNodeManagement.ps1`, `ops-scripts`. 중단 시간 r4.2 약 45초, msg1 40초)
   - 순서: 태그 확인 → Stop → 정지 후 스냅샷 → 태그 checkout → build → `.dev.vars` → Start → 헬스체크
   - 실패하면 직전 태그로 재빌드한다
   - 중단 시간을 한 번 재서 기록한다
@@ -399,26 +399,26 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 
 #### R5 = M6. 메신저 MVP (D5, D6)
 
-- [ ] 공개·비공개 채널: 생성, 참여·나가기, 멤버 관리. 비공개 채널은 멤버에게만 보인다
-- [ ] 1:1·그룹 DM
-- [ ] 스레드(1단계 답글)
-- [ ] 파일 첨부: R2에 저장, 25MB 제한, 채널·DM 멤버만 다운로드. 이미지는 미리보기
+- [x] 공개·비공개 채널: 생성, 참여·나가기, 멤버 관리. 비공개 채널은 멤버에게만 보인다 (확인: `tests/chat-api.test.mjs` 'R5 channels'·#39, 커밋 `f7bf9e9`)
+- [x] 1:1·그룹 DM (확인: `chat-api` #40)
+- [x] 스레드(1단계 답글) (확인: `chat-api` #41)
+- [x] 파일 첨부: R2에 저장, 25MB 제한, 채널·DM 멤버만 다운로드. 이미지는 미리보기 (확인: `chat-api` #50·#51)
   - 첨부는 raw body `PUT`으로 받는다. 권한·멤버 검사를 먼저 하고, `Content-Length ≤ 26,214,400`을 확인한 다음에 본문을 읽는다. 실제 바이트 수가 선언값과 다르면 거부한다
   - 다운로드 응답에는 `nosniff`, `Cache-Control: private, no-store`, `Content-Disposition: attachment`, `CSP: sandbox`를 붙인다. PNG·JPEG·GIF·WebP만 inline 미리보기를 허용하고, SVG·HTML은 금지한다
-- [ ] 비공개 채널과 DM은 목록·메시지·스레드·전송·검색·폴링·첨부의 모든 경로에서 멤버인지 검사한다. 비멤버에게는 404를 돌려준다
-- [ ] `@이름`·`@channel` 멘션, 채널별 안 읽은 수와 읽음 위치, 멘션 강조, 브라우저 탭 제목에 안 읽은 수 표시
-- [ ] 본인 메시지 수정·삭제. 삭제는 soft-delete로 "삭제된 메시지"를 표시하고 감사 기록을 남긴다. 수정·삭제 감사에는 본문을 넣지 않는다(메시지 id, 채널 id, 길이만)
-- [ ] 단순 검색: 접근 가능한 채널·DM 안에서 본문 LIKE 검색. `%`·`_`는 이스케이프한다
-- [ ] 실시간: 채팅 탭이 보이는 동안은 2초 주기로 폴링해 `since` 커서 이후 증분만 받는다(D6의 2~3초 범위 안. 3초 주기면 왕복·렌더 시간 때문에 SC-6의 3초 기준을 넘을 수 있다). 브라우저 탭이 숨겨지면 폴링 주기를 늘린다
-- [ ] 메신저 탭 권한: 보기는 읽기만, 편집은 쓰기·파일 첨부·채널 생성. 채널 삭제는 관리자만
-- [ ] 채팅 DDL은 별도 모듈에 둔다. 그래야 R5만 따로 되돌리거나 보류할 수 있다
+- [x] 비공개 채널과 DM은 목록·메시지·스레드·전송·검색·폴링·첨부의 모든 경로에서 멤버인지 검사한다. 비멤버에게는 404를 돌려준다 (확인: `chat-api` #39·#47·'channels?members=', messenger-enhancement E2E 7경로 404)
+- [x] `@이름`·`@channel` 멘션, 채널별 안 읽은 수와 읽음 위치, 멘션 강조, 브라우저 탭 제목에 안 읽은 수 표시 (확인: `chat-api` #43·#48·'title shows the unread count')
+- [x] 본인 메시지 수정·삭제. 삭제는 soft-delete로 "삭제된 메시지"를 표시하고 감사 기록을 남긴다. 수정·삭제 감사에는 본문을 넣지 않는다(메시지 id, 채널 id, 길이만) (확인: `chat-api` #44)
+- [x] 단순 검색: 접근 가능한 채널·DM 안에서 본문 LIKE 검색. `%`·`_`는 이스케이프한다 (확인: `chat-api` #45)
+- [x] 실시간: 채팅 탭이 보이는 동안은 2초 주기로 폴링해 `since` 커서 이후 증분만 받는다(D6의 2~3초 범위 안. 3초 주기면 왕복·렌더 시간 때문에 SC-6의 3초 기준을 넘을 수 있다). 브라우저 탭이 숨겨지면 폴링 주기를 늘린다 (확인: `app/chat-client.ts` `CHAT_POLL_VISIBLE_MS = 2000`·`CHAT_POLL_IDLE_MS = 15000`, `chat-api` #46)
+- [x] 메신저 탭 권한: 보기는 읽기만, 편집은 쓰기·파일 첨부·채널 생성. 채널 삭제는 관리자만 (확인: `chat-api` #49. 보기 계정의 공개 채널 참여·나가기 허용은 Design 부록 C #22의 해석이다)
+- [x] 채팅 DDL은 별도 모듈에 둔다. 그래야 R5만 따로 되돌리거나 보류할 수 있다 (확인: `app/chat-schema.ts`)
 - 롤백: 직전 태그로 돌아간다. 채팅 테이블은 남아 있어도 쓰이지 않는다
 
 #### R6 = M7. 폴더·저장소 리네임 (D11 마무리, 맨 마지막, 수동)
 
 - [x] 앱과 브리지를 정지하고 이 PC의 작업 세션을 모두 닫은 뒤 진행한다. 개발 폴더 `XDNODE`와 원격 저장소 이름을 바꾼다
   - 2026-10-01 사용자가 저장소 밖 `C:\xdm\Rename-DevFolder.ps1`로 개발 폴더를 `xdnode-management`로 바꿨다(`-Rollback` 지원). 2026-10-02 확인: `git worktree list`에서 Codex `c7ec`·Orca `메신저-기능` 워크트리가 정상 연결, 운영 폴더 `origin`이 새 경로, 운영 `/api/me` 401(정상 기동)
-  - GitHub 원격 저장소(`Gwonchankim/xdnode-erp`) 이름은 바꾸지 않았다. 바꿀지는 사용자가 GitHub에서 정한다
+  - GitHub 원격 저장소는 2026-10-02 사용자가 `Gwonchankim/xdnode-erp` → `Gwonchankim/xdnode-management`로 바꿨다. 개발 폴더 `origin`도 새 주소로 바꿨다
 - [x] D18로 운영 경로(작업 스케줄러, 운영 바로가기, 운영 폴더 기준 `XD_NODE_PROJECT_PATH`)는 개발 폴더 이름과 무관해졌다. 새 경로로 옮길 참조는 개발 폴더를 가리키는 것만 남는다: 개발용 바로가기, 개발 폴더의 `XD_NODE_PROJECT_PATH`, Claude Code 프로젝트 메모리, 운영 폴더의 git remote(개발 폴더나 원격 저장소를 가리키는 경우)
 - [x] 이 단계는 사용자와 함께 진행하는 체크리스트로 남기고, 자동화하지 않는다
 - 롤백: 폴더 이름을 원래대로 되돌리고, 바로가기와 remote 경로를 원복한다
@@ -448,27 +448,27 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 
 | ID | Requirement | Release | Priority | Verification | Status |
 |----|-------------|---------|----------|--------------|--------|
-| FR-01 | 재무·영업·결재·재무용 공용 기능의 라우트·컴포넌트·라이브러리·역할·테스트를 제거한다. `/api/finance/*`, `/api/sales/*`, `/api/approvals`를 호출하면 404. 예외: D1 보류 파일 `incentive-governance.tsx` | R1 | High | `removal-guards.test.mjs`, `rendered-html.test.mjs`(404) | Pending |
-| FR-02 | HR 결재 흐름 7개(인사발령, 퇴직, 휴가 신청, 급여월 승인, 성과 최종 확정, 인력계획 승인, 채용요청 모집 시작)를 편집 권한자가 즉시 반영한다. 엔진이 하던 부수효과도 같은 요청 안에서 처리하고 감사를 남긴다. 레거시 대기 상태도 전이할 수 있다. 보기 권한은 403 | R1 | High | `hr-api-integration.test.mjs`의 흐름별·레거시 from-state 케이스 | Pending |
-| FR-03 | 급여 마감·재오픈이 재무 테이블을 읽거나 쓰지 않는다. 조직 수정이 마스터 영향 평가 없이 동작한다. HR 라우트가 `erp_approval_*`·`erp_tasks`를 참조하지 않는다. 결재·재무 테이블이 없는 새 DB에서도 HR 전 동작이 500 없이 동작한다 | R1 | High | 새 DB 하니스 케이스, 'APPROVED·LOCKED 뒤 결재·재무 행 0건' 테스트 | Pending |
-| FR-04 | 임금 계산·인센티브 계산기가 영업 데이터(`sales_incentive_payroll_links` 포함) 없이 동작한다. 인센티브 AI 어시스턴트는 `incentive` 모듈로 동작한다 | R1 | High | `incentive-calculation.test.mjs`, `local-codex-assistant.test.mjs` | Pending |
-| FR-05 | 모든 사용자 화면·브라우저 제목·패키지명이 "XDnode management" 기준이다. `database_id`·`bucket_name`은 바뀌지 않는다 | R2 | Medium | `rendered-html.test.mjs`(제목), 소스 가드 테스트, grep | Pending |
-| FR-06 | 이메일·비밀번호 로그인, 로그아웃, 30일 세션, 첫 로그인 비밀번호 변경(서버 강제), 5회 실패 시 5분 잠금(원자적). PBKDF2-SHA256 100,000회 | R3 | High | `auth-session.test.mjs`, R3 스모크의 preview 로그인 | Pending |
-| FR-07 | 계정 0개일 때만, Node가 확인한 루프백 접속에서만 첫 관리자를 만든다. 헤더 위조로는 만들 수 없다 | R3 | High | `auth-session.test.mjs`(위조·동시 요청) | Pending |
-| FR-08 | 관리자 계정 관리: 생성(인사기록 연결 선택), 탭별(`hr`·`compensation`·`chat`) 숨김·보기·편집 지정(`audit`·`admin`은 관리자 전용, §1.2), 비밀번호 초기화, 잠금 해제, 비활성화. 비활성화·초기화하면 기존 세션을 즉시 폐기한다. 마지막 활성 관리자는 비활성화·강등할 수 없다 | R3 | High | `auth-session.test.mjs` | Pending |
-| FR-09 | `/api/me`의 탭 권한대로만 탭을 렌더한다. 권한 없는 탭은 DOM에 없다. 저장된 탭이 권한 밖이면 첫 허용 탭으로 이동한다 | R3 | High | `shell-tabs.test.mjs`, 수동 URL 조작 확인 | Pending |
-| FR-10 | 모든 API가 세션 사용자의 탭 권한으로 보기(read)·편집(write)을 검사한다. 탭 숨김과 서버 검사가 같은 정의에서 나온다. 권한·활성 여부는 요청마다 DB에서 읽는다. 대응표 밖 모듈은 거부한다. 임금 계산은 전용 최소 명부를 쓴다 | R3 | High | `tab-permissions.test.mjs`(교차 조합 포함) | Pending |
-| FR-11 | 감사 로그 actor는 실제 로그인 계정이다. 로그인 성공·실패·잠금, 첫 관리자 생성, 계정·탭 권한 변경, 비밀번호 초기화, 세션 폐기, 403 거부를 기록한다. 비밀번호·토큰은 기록하지 않고, Node가 확인한 접속 주소를 남긴다. 감사 탭은 관리자만 본다 | R3 | High | `auth-session.test.mjs`·`tab-permissions.test.mjs`의 감사 단언 | Pending |
-| FR-12 | 공개·비공개 채널, 1:1·그룹 DM, 1단계 스레드. 비공개·DM은 모든 경로에서 멤버를 검사한다 | R5 | High | 채팅 동작 테스트(파일명은 Design) | Pending |
-| FR-13 | 파일 첨부(25MB, 멤버만 다운로드, 이미지 미리보기). 크기 검사를 본문 읽기 전에 하고, 다운로드는 attachment·nosniff로 응답한다 | R5 | High | 채팅 동작 테스트 | Pending |
-| FR-14 | 멘션, 안 읽은 수·읽음 위치, 탭 제목 안 읽은 수 | R5 | High | 채팅 동작 테스트, SC-6 | Pending |
-| FR-15 | 본인 메시지 수정·soft-delete(감사에 본문 없음), 접근 범위 안 단순 검색 | R5 | Medium | 채팅 동작 테스트 | Pending |
-| FR-16 | 새 탭(견적 등)을 한 정의 파일과 새 라우트만으로 추가할 수 있다 | R3 | Medium | `tab-permissions.test.mjs`의 정의 파일 소스 가드 | Pending |
-| FR-17 | 운영 기동은 `vinext build` + `vite preview`(0.0.0.0:3000, explorer 비활성)이고, 별도 운영 폴더에서 한다(D18). LAN 다른 PC 접속, 매일 자동 백업과 검증된 복구 절차, 재부팅 뒤 자동 기동(D19) | R3·R4 | High | SC-5, SC-7, SC-12, SC-13 | Pending |
-| FR-18 | 폴더·저장소 리네임 체크리스트를 실행한다 | R6 | Low | M7 체크리스트 | Done (2026-10-01, 원격 저장소 이름은 유지) |
-| FR-19 | 현재 노출을 차단한다: dev는 `127.0.0.1`만(D16, 완료), explorer 강제 off, fs.deny 확장, 방화벽 규칙 정리, 브리지 Origin·Host 검사 | R0 | High | R0 확인 항목, SC-9 | Pending |
-| FR-20 | 직원 개인정보·급여는 권한 검사를 거친 API로만 내려온다. `dist/client`에 실데이터 0건 | R1·R3 | High | `bundle-exposure.test.mjs`, `tab-permissions.test.mjs` | Pending |
-| FR-21 | 어시스턴트 브리지는 저장소 파일을 읽지 않는다(D17). 업무 맥락은 `/api/assistant`가 권한 검사 뒤 넘긴 JSON뿐이다 | R0 | High | 브리지 소스 가드 테스트, SC-11 | Pending |
+| FR-01 | 재무·영업·결재·재무용 공용 기능의 라우트·컴포넌트·라이브러리·역할·테스트를 제거한다. `/api/finance/*`, `/api/sales/*`, `/api/approvals`를 호출하면 404. 예외: D1 보류 파일 `incentive-governance.tsx` | R1 | High | `removal-guards.test.mjs`, `rendered-html.test.mjs`(404) | Done (`removal-guards`, 커밋 `f203ede`) |
+| FR-02 | HR 결재 흐름 7개(인사발령, 퇴직, 휴가 신청, 급여월 승인, 성과 최종 확정, 인력계획 승인, 채용요청 모집 시작)를 편집 권한자가 즉시 반영한다. 엔진이 하던 부수효과도 같은 요청 안에서 처리하고 감사를 남긴다. 레거시 대기 상태도 전이할 수 있다. 보기 권한은 403 | R1 | High | `hr-api-integration.test.mjs`의 흐름별·레거시 from-state 케이스 | Done (`hr-api-integration` 'R1 flow 1~7'·레거시 결정) |
+| FR-03 | 급여 마감·재오픈이 재무 테이블을 읽거나 쓰지 않는다. 조직 수정이 마스터 영향 평가 없이 동작한다. HR 라우트가 `erp_approval_*`·`erp_tasks`를 참조하지 않는다. 결재·재무 테이블이 없는 새 DB에서도 HR 전 동작이 500 없이 동작한다 | R1 | High | 새 DB 하니스 케이스, 'APPROVED·LOCKED 뒤 결재·재무 행 0건' 테스트 | Done ('R1 fresh database', 'R1 flow 4', 'R1 platform') |
+| FR-04 | 임금 계산·인센티브 계산기가 영업 데이터(`sales_incentive_payroll_links` 포함) 없이 동작한다. 인센티브 AI 어시스턴트는 `incentive` 모듈로 동작한다 | R1 | High | `incentive-calculation.test.mjs`, `local-codex-assistant.test.mjs` | Done ('R1 compensation CONFIRM…', `incentive-calculation`, `access-policy`) |
+| FR-05 | 모든 사용자 화면·브라우저 제목·패키지명이 "XDnode management" 기준이다. `database_id`·`bucket_name`은 바뀌지 않는다 | R2 | Medium | `rendered-html.test.mjs`(제목), 소스 가드 테스트, grep | Done (R2 `c938ae9`, `removal-guards` R2 식별자 가드) |
+| FR-06 | 이메일·비밀번호 로그인, 로그아웃, 30일 세션, 첫 로그인 비밀번호 변경(서버 강제), 5회 실패 시 5분 잠금(원자적). PBKDF2-SHA256 100,000회 | R3 | High | `auth-session.test.mjs`, R3 스모크의 preview 로그인 | Done (`auth-session` #5~#15, R3 운영 preview 로그인) |
+| FR-07 | 계정 0개일 때만, Node가 확인한 루프백 접속에서만 첫 관리자를 만든다. 헤더 위조로는 만들 수 없다 | R3 | High | `auth-session.test.mjs`(위조·동시 요청) | Done (`auth-session` #1~#4, `local-peer-plugin`) |
+| FR-08 | 관리자 계정 관리: 생성(인사기록 연결 선택), 탭별(`hr`·`compensation`·`chat`) 숨김·보기·편집 지정(`audit`·`admin`은 관리자 전용, §1.2), 비밀번호 초기화, 잠금 해제, 비활성화. 비활성화·초기화하면 기존 세션을 즉시 폐기한다. 마지막 활성 관리자는 비활성화·강등할 수 없다 | R3 | High | `auth-session.test.mjs` | Done (`auth-session` #14·#18·#19, `tab-permissions` #20) |
+| FR-09 | `/api/me`의 탭 권한대로만 탭을 렌더한다. 권한 없는 탭은 DOM에 없다. 저장된 탭이 권한 밖이면 첫 허용 탭으로 이동한다 | R3 | High | `shell-tabs.test.mjs`, 수동 URL 조작 확인 | Done (`shell-tabs` #1~#4) |
+| FR-10 | 모든 API가 세션 사용자의 탭 권한으로 보기(read)·편집(write)을 검사한다. 탭 숨김과 서버 검사가 같은 정의에서 나온다. 권한·활성 여부는 요청마다 DB에서 읽는다. 대응표 밖 모듈은 거부한다. 임금 계산은 전용 최소 명부를 쓴다 | R3 | High | `tab-permissions.test.mjs`(교차 조합 포함) | Done (`tab-permissions` #22~#30·소스 가드, `access-policy`) |
+| FR-11 | 감사 로그 actor는 실제 로그인 계정이다. 로그인 성공·실패·잠금, 첫 관리자 생성, 계정·탭 권한 변경, 비밀번호 초기화, 세션 폐기, 403 거부를 기록한다. 비밀번호·토큰은 기록하지 않고, Node가 확인한 접속 주소를 남긴다. 감사 탭은 관리자만 본다 | R3 | High | `auth-session.test.mjs`·`tab-permissions.test.mjs`의 감사 단언 | Done (`auth-session` #5·#9·#16·#16b, `tab-permissions` #23) |
+| FR-12 | 공개·비공개 채널, 1:1·그룹 DM, 1단계 스레드. 비공개·DM은 모든 경로에서 멤버를 검사한다 | R5 | High | 채팅 동작 테스트(파일명은 Design) | Done (`chat-api` #39~#41·#47, R5 `f7bf9e9`) |
+| FR-13 | 파일 첨부(25MB, 멤버만 다운로드, 이미지 미리보기). 크기 검사를 본문 읽기 전에 하고, 다운로드는 attachment·nosniff로 응답한다 | R5 | High | 채팅 동작 테스트 | Done (`chat-api` #50·#51) |
+| FR-14 | 멘션, 안 읽은 수·읽음 위치, 탭 제목 안 읽은 수 | R5 | High | 채팅 동작 테스트, SC-6 | Done (`chat-api` #43·#48. SC-6 3초 측정은 미실시) |
+| FR-15 | 본인 메시지 수정·soft-delete(감사에 본문 없음), 접근 범위 안 단순 검색 | R5 | Medium | 채팅 동작 테스트 | Done (`chat-api` #44·#45) |
+| FR-16 | 새 탭(견적 등)을 한 정의 파일과 새 라우트만으로 추가할 수 있다 | R3 | Medium | `tab-permissions.test.mjs`의 정의 파일 소스 가드 | Done (`access-policy` 레지스트리 가드. 총무 탭이 이 방식으로 추가됨) |
+| FR-17 | 운영 기동은 `vinext build` + `vite preview`(0.0.0.0:3000, explorer 비활성)이고, 별도 운영 폴더에서 한다(D18). LAN 다른 PC 접속, 매일 자동 백업과 검증된 복구 절차, 재부팅 뒤 자동 기동(D19) | R3·R4 | High | SC-5, SC-7, SC-12, SC-13 | Done (R3·R4 운영 기록, SC-7·SC-13 통과, SC-12 핵심 통과. 백업 2차 복사·`C:\xdm` ACL·최대 절전은 남음) |
+| FR-18 | 폴더·저장소 리네임 체크리스트를 실행한다 | R6 | Low | M7 체크리스트 | Done (폴더 2026-10-01, 원격 저장소 2026-10-02) |
+| FR-19 | 현재 노출을 차단한다: dev는 `127.0.0.1`만(D16, 완료), explorer 강제 off, fs.deny 확장, 방화벽 규칙 정리, 브리지 Origin·Host 검사 | R0 | High | R0 확인 항목, SC-9 | Done (R0 조치, `lan-exposure-guards`, R3 7단계 스모크) |
+| FR-20 | 직원 개인정보·급여는 권한 검사를 거친 API로만 내려온다. `dist/client`에 실데이터 0건 | R1·R3 | High | `bundle-exposure.test.mjs`, `tab-permissions.test.mjs` | Done (`bundle-exposure`, `tab-permissions` #28·#29) |
+| FR-21 | 어시스턴트 브리지는 저장소 파일을 읽지 않는다(D17). 업무 맥락은 `/api/assistant`가 권한 검사 뒤 넘긴 JSON뿐이다 | R0 | High | 브리지 소스 가드 테스트, SC-11 | Done (`lan-exposure-guards` 브리지 가드. SC-11 5종 요청은 미실시) |
 
 ### 3.2 Non-Functional Requirements
 
@@ -492,13 +492,13 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 
 ### 4.1 Definition of Done
 
-- [ ] SC-1: FR마다 §3.1 표의 Verification 열에 검증 수단(테스트 파일명 또는 수동 체크리스트 항목)을 두고, 전부 통과한다
-- [ ] SC-2: 권한 매트릭스 시험 통과. 일반 계정의 3개 탭(`hr`·`compensation`·`chat`) × 숨김/보기/편집과, `audit`·`admin`의 관리자/일반 2가지에서 DOM 노출과 API 결과(200/403)가 기대와 일치한다. `chat` 열은 R5에서 추가 판정한다
+- [ ] SC-1: FR마다 §3.1 표의 Verification 열에 검증 수단(테스트 파일명 또는 수동 체크리스트 항목)을 두고, 전부 통과한다 (부분: FR 21개는 모두 검증 수단이 있고 테스트가 통과한다(§3.1). SC-4·SC-6·SC-11·SC-12의 수동 판정 일부가 남았다)
+- [x] SC-2: 권한 매트릭스 시험 통과. 일반 계정의 3개 탭(`hr`·`compensation`·`chat`) × 숨김/보기/편집과, `audit`·`admin`의 관리자/일반 2가지에서 DOM 노출과 API 결과(200/403)가 기대와 일치한다. `chat` 열은 R5에서 추가 판정한다 (확인: `tab-permissions` #22·#23, `shell-tabs` #1~#3·빈 셸, chat 열은 `chat-api` #49. URL 조작은 R3 7단계 스모크에서 봤다. 셸은 URL 경로가 아니라 상태로 탭을 바꾼다)
   - API 절반은 `tab-permissions.test.mjs`로 검증한다
   - DOM 절반은 react-dom/server로 셸을 렌더하는 `shell-tabs.test.mjs`와 `bundle-exposure.test.mjs`로 검증한다
   - URL 조작은 수동으로 확인한다
-- [ ] SC-3: 두 계정이 동시에 로그인해 각자 수정하면 감사 로그 actor가 둘로 구분된다
-- [ ] SC-4: HR 회귀 시나리오를 **다른 PC에서 LAN IP로** 통과한다. 기존 D1 사본과 새 DB 양쪽에서 확인한다. D16에 따라 R1에서는 서버 PC에서 실행한다. 최종 판정은 R3 운영 전환 때 점검용 인스턴스(운영과 같은 태그, 운영 데이터 사본과 새 DB)에서 다른 PC로 한다. 운영 DB에서는 실행하지 않는다
+- [x] SC-3: 두 계정이 동시에 로그인해 각자 수정하면 감사 로그 actor가 둘로 구분된다 (확인: `auth-session` #16 'audit rows name the real account that acted (SC-3)')
+- [ ] SC-4: HR 회귀 시나리오를 **다른 PC에서 LAN IP로** 통과한다. 기존 D1 사본과 새 DB 양쪽에서 확인한다. D16에 따라 R1에서는 서버 PC에서 실행한다. 최종 판정은 R3 운영 전환 때 점검용 인스턴스(운영과 같은 태그, 운영 데이터 사본과 새 DB)에서 다른 PC로 한다. 운영 DB에서는 실행하지 않는다 (부분: R1에서 서버 PC 점검 인스턴스로 기존 사본·새 DB 모두 통과했다(Design §12.7). R3 전환 때 다른 PC에서 점검 인스턴스로 하는 최종 판정과 '임금 계산 전용 계정' 단계는 기록이 없다)
   - 급여 REVIEW→APPROVED→LOCKED, 사유를 적은 재오픈. 재무 테이블 행 변화 없음
   - 퇴직 등록→IN_PROGRESS(정산 초안·'퇴직 예정')→EFFECTIVE→COMPLETED
   - 인사발령: 오늘 날짜는 즉시 반영, 미래 날짜는 도래일에 반영
@@ -507,31 +507,31 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
   - 성과 최종 확정, 이의제기 수용·기각
   - 조직 수정, 직원·지원자 문서 업로드·다운로드
   - 임금 계산 CONFIRM·REOPEN, 인센티브 계산(임금 계산 전용 계정 포함)
-- [ ] SC-5: 다른 PC에서 LAN 주소로 로그인, AI 어시스턴트, 이력서 분석이 동작한다(R3). 채팅은 R5
-- [ ] SC-6: 두 PC 모두 채팅 탭을 보이는 상태로 둔다. 서버 기록 시각과 수신 화면 표시 시각의 차이가 10회 모두 3초 이하다
+- [x] SC-5: 다른 PC에서 LAN 주소로 로그인, AI 어시스턴트, 이력서 분석이 동작한다(R3). 채팅은 R5 (확인: R3 7단계 점검 PC 192.168.0.98 스모크 전 항목 — Design §11.5.9. 다른 PC 채팅 확인은 따로 기록되지 않았다)
+- [ ] SC-6: 두 PC 모두 채팅 탭을 보이는 상태로 둔다. 서버 기록 시각과 수신 화면 표시 시각의 차이가 10회 모두 3초 이하다 (미측정: 두 PC 10회 측정 기록이 없다. 참고: R5 개발 서버에서 상대 poll 수신 78ms, messenger-enhancement 브라우저 QA(서버 PC, 두 계정)에서 반응·읽음 1~3초)
 - [x] SC-7: 백업을 새 폴더에 복구한다. 복구본의 `integrity_check=ok`이고, 행 수와 R2 객체 수가 백업 보고서와 일치하며, 로그인·HR 직원 조회·채팅 기록 조회가 성공한다 — 2026-10-01 `2026-10-01` 백업을 `C:\xdm\staging`(3001, 코드 `hr1.1-release-20261001`)에 복구: integrity ok, 테이블 185·행 10,206 차이 0, R2 객체 154·본문 누락 0. 사용자가 로그인·HR 직원·메신저 기록과 첨부·HR 첨부 열람을 확인했다. 총무는 백업 시점 0건이라 다음 리허설에서 본다. 끝난 뒤 staging을 지웠다(3001 규칙은 만들지 않았다)
-- [ ] SC-8: 보관 태그 `erp-final-20260923`과 `archive/erp-finance-sales-20260923` 브랜치가 있다. 저장소 밖 D1 스냅샷과 그 integrity_check·행 수 기록이 있다. 재무·영업·결재 테이블은 DB에 그대로 있다
-- [ ] SC-9: 다른 PC에서 `/.wrangler/…`, `/app/*.ts`, `/*.tar.gz`, `/cdn-cgi/explorer/…`(Host 위조 포함)가 모두 404 또는 403이다. `dist/client`에 실데이터 0건
-- [ ] SC-10: 첫 관리자 헤더 위조 차단, 교차 출처 POST 403, 동시 오답 20건에서 검증 5회 이하. 모두 동작 테스트로 확인한다
-- [ ] SC-11: 어시스턴트에게 `.env.local`, `app/hr-company-data.ts`, `.wrangler` sqlite, 서버 로그, 소스 파일 1개의 내용을 각각 요청한다. 5건 모두 응답에 해당 파일의 고유 문자열(토큰 앞 8자, 명부의 연봉 리터럴 등)이 0건이다
-- [ ] SC-12: 재부팅한 뒤 아무도 로그온하지 않은 상태에서, 다른 PC가 로그인 화면을 보고 AI 어시스턴트와 이력서 분석이 답한다(D19). 첫 03:00 백업 뒤와 첫 Deploy 뒤에도 AI 어시스턴트와 이력서 분석이 답한다. 대체안으로 바꿨다면 자동 로그온 상태에서 같은 결과가 나온다
-- [ ] SC-13: 운영 폴더로 옮긴 데이터의 `integrity_check=ok`이고, 테이블별 행 수와 R2 객체 수가 원본과 같다. 기존 HR 직원 조회와 R2 녹음 다운로드가 성공한다(D18)
+- [x] SC-8: 보관 태그 `erp-final-20260923`과 `archive/erp-finance-sales-20260923` 브랜치가 있다. 저장소 밖 D1 스냅샷과 그 integrity_check·행 수 기록이 있다. 재무·영업·결재 테이블은 DB에 그대로 있다 (확인: 태그·브랜치 존재, `r1-pre-20260928-1109` verify 보고서, R1 직전 재조회에서 재무·영업·결재 테이블 104개 잔존 — Design §12.7)
+- [x] SC-9: 다른 PC에서 `/.wrangler/…`, `/app/*.ts`, `/*.tar.gz`, `/cdn-cgi/explorer/…`(Host 위조 포함)가 모두 404 또는 403이다. `dist/client`에 실데이터 0건 (확인: R3 7단계 스모크(Design §11.5.9), msg1 배포 뒤 LAN 스모크(비밀값 파일 5종 404, explorer·`__debug` 404), `bundle-exposure`)
+- [x] SC-10: 첫 관리자 헤더 위조 차단, 교차 출처 POST 403, 동시 오답 20건에서 검증 5회 이하. 모두 동작 테스트로 확인한다 (확인: `auth-session` #2·#3·#6·#10)
+- [ ] SC-11: 어시스턴트에게 `.env.local`, `app/hr-company-data.ts`, `.wrangler` sqlite, 서버 로그, 소스 파일 1개의 내용을 각각 요청한다. 5건 모두 응답에 해당 파일의 고유 문자열(토큰 앞 8자, 명부의 연봉 리터럴 등)이 0건이다 (미실행: 5종 요청 기록이 없다. R0 때 실제 호출 1건이 'CONTEXT에 데이터가 없다'고 답했고, 브리지는 `--tools ""`와 빈 임시 cwd로 돌며 `lan-exposure-guards`가 이를 고정한다)
+- [ ] SC-12: 재부팅한 뒤 아무도 로그온하지 않은 상태에서, 다른 PC가 로그인 화면을 보고 AI 어시스턴트와 이력서 분석이 답한다(D19). 첫 03:00 백업 뒤와 첫 Deploy 뒤에도 AI 어시스턴트와 이력서 분석이 답한다. 대체안으로 바꿨다면 자동 로그온 상태에서 같은 결과가 나온다 (부분: 2026-09-29 재부팅 리허설에서 로그온 없이 기동했고 점검 PC 로그인·어시스턴트 답변을 확인했다. 이력서 분석 응답과 '첫 03:00 백업 뒤·첫 Deploy 뒤' AI 확인은 기록이 없다)
+- [x] SC-13: 운영 폴더로 옮긴 데이터의 `integrity_check=ok`이고, 테이블별 행 수와 R2 객체 수가 원본과 같다. 기존 HR 직원 조회와 R2 녹음 다운로드가 성공한다(D18) (확인: `r3-pre-20260929-0957` integrity ok·테이블 167·R2 153, 운영 사본 `--compare` same·`.sqlite` 해시 동일, HR 데이터 조회. R2 녹음 다운로드는 따로 기록되지 않았고, 2026-10-01 SC-7 복구본에서 첨부 열람을 확인했다)
 
 ### 4.2 Quality Criteria
 
-- [ ] `npm run lint` 0 오류
-- [ ] `npm run build` 성공, `npm test` 통과. 새 테스트 파일은 `package.json` test 목록에 등록한다
-- [ ] 계정·세션·탭 권한은 `tests/helpers/hr-api-harness.mjs` 방식(실제 라우트 + 메모리 SQLite)의 동작 테스트로 검증한다. 소스 문자열 검사만으로 끝내지 않는다
-- [ ] 하니스 개편(R3와 같은 PR). 지금 하니스는 `setIdentity`로 `oai-authenticated-user-*` 헤더를 주입하는데(`:87,90-93`), M3가 이 경로를 없앤다
+- [ ] `npm run lint` 0 오류 (미충족, 2026-10-02: `npm run lint`는 추적되지 않는 `tmp/radar-test-*` 폴더의 EPERM으로 멈춘다. 소스 폴더만 돌리면 8건이고 모두 이번 사이클 전부터 있던 줄이다: `incentive-calculator.tsx` 2, `claude-assistant-bridge.mjs` 1, `codex-assistant-bridge.mjs` 3, `erp-platform.test.mjs` 2)
+- [x] `npm run build` 성공, `npm test` 통과. 새 테스트 파일은 `package.json` test 목록에 등록한다 (확인: 릴리스마다 `npm test` 통과(R1 298, R2 299, msg1 병합 528/528). 2026-10-02 build가 필요 없는 25개 파일 514/514)
+- [x] 계정·세션·탭 권한은 `tests/helpers/hr-api-harness.mjs` 방식(실제 라우트 + 메모리 SQLite)의 동작 테스트로 검증한다. 소스 문자열 검사만으로 끝내지 않는다 (확인: `auth-session`·`tab-permissions`·`chat-api`가 하니스로 실제 라우트를 돌린다)
+- [x] 하니스 개편(R3와 같은 PR). 지금 하니스는 `setIdentity`로 `oai-authenticated-user-*` 헤더를 주입하는데(`:87,90-93`), M3가 이 경로를 없앤다 (확인: ①③④⑤⑥ 반영. ②의 `setIdentity` 호환 shim은 r3-tabs에서 지웠다(`removal-guards` 'R3 r3-tabs'))
   - ① `resetDatabase`가 기본 관리자 계정과 세션 행을 넣고, `cookie: xdm_session=<token>`을 설정한다
   - ② `setIdentity(roles)`는 탭 권한으로 바꿔 주는 호환 shim으로 남긴다. 새 테스트는 `setAccess(tabs,{isAdmin})`를 쓴다
   - ③ `callApi`는 요청별 헤더·Origin을 싣고 `{status, body, headers, setCookies}`를 돌려준다
   - ④ 세션은 `headers().get('cookie')`로 읽는다
   - ⑤ D1 bind에는 boolean 대신 1/0을 쓴다
   - ⑥ 잠금 5분과 세션 30일은 모의 시계로 검증한다
-- [ ] 기본 관리자 해시는 프로세스당 한 번만 계산한다. 실제 해시 경로는 `auth-session.test.mjs`에서 검증하고, R3 스모크에서 preview(workerd) 로그인 1회로 확인한다
-- [ ] `hr-local-permissions.test.mjs`는 `tab-permissions.test.mjs`로 대체한다: 탭 3개(`hr`·`compensation`·`chat`) × 숨김·보기·편집 + `audit`·`admin` × 관리자/일반 × 유지 라우트·메서드
-- [ ] 빌드 후 `tests/bundle-exposure.test.mjs`가 `dist/client/**/*.js` 전체에서 직원 실데이터 표지를 찾아 0건인지 확인한다. 표지는 `annualSalary:` 뒤의 숫자 리터럴, 명부의 전화·개인 이메일 패턴, `finance-current-data` 식별자다. 청크 이름에 의존하지 않는다. `dist/server`에서는 재무 실데이터 표지만 0건이면 된다(서버 번들의 HR 시드는 정상)
+- [x] 기본 관리자 해시는 프로세스당 한 번만 계산한다. 실제 해시 경로는 `auth-session.test.mjs`에서 검증하고, R3 스모크에서 preview(workerd) 로그인 1회로 확인한다 (확인: 하니스 `adminHash ??=`, `auth-session` #15)
+- [x] `hr-local-permissions.test.mjs`는 `tab-permissions.test.mjs`로 대체한다: 탭 3개(`hr`·`compensation`·`chat`) × 숨김·보기·편집 + `audit`·`admin` × 관리자/일반 × 유지 라우트·메서드 (확인: `hr-local-permissions.test.mjs` 없음, `tab-permissions.test.mjs`)
+- [x] 빌드 후 `tests/bundle-exposure.test.mjs`가 `dist/client/**/*.js` 전체에서 직원 실데이터 표지를 찾아 0건인지 확인한다. 표지는 `annualSalary:` 뒤의 숫자 리터럴, 명부의 전화·개인 이메일 패턴, `finance-current-data` 식별자다. 청크 이름에 의존하지 않는다. `dist/server`에서는 재무 실데이터 표지만 0건이면 된다(서버 번들의 HR 시드는 정상) (확인: `tests/bundle-exposure.test.mjs`, `npm test` 목록)
 
 ---
 
@@ -645,11 +645,11 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 
 ### 6.3 Verification
 
-- [ ] 삭제 전, 삭제 대상 경로를 import·fetch하는 남는 파일이 0개인지 grep으로 확인한다(D1 보류 파일 제외)
-- [ ] 권한 변경 뒤 HR·임금 계산의 모든 쓰기 동작이 편집 계정으로 성공하고, 보기 계정으로는 403이다
-- [ ] 기존 D1 데이터(HR·급여·채용)가 새 버전에서 그대로 읽힌다. 기존 D1 사본과 운영 폴더 이전본 모두에서 확인한다
-- [ ] 결재·재무 테이블이 없는 새 DB 하니스에서 HR 전 동작이 500 없이 동작한다
-- [ ] 권한 매트릭스 테스트에 '레거시 finance 문서 다운로드 → 관리자·일반 모두 404'를 넣는다
+- [x] 삭제 전, 삭제 대상 경로를 import·fetch하는 남는 파일이 0개인지 grep으로 확인한다(D1 보류 파일 제외) (확인: `removal-guards` 'no kept source imports a deleted module'·'no kept source fetches a removed API path')
+- [x] 권한 변경 뒤 HR·임금 계산의 모든 쓰기 동작이 편집 계정으로 성공하고, 보기 계정으로는 403이다 (확인: `tab-permissions` #27과 소스 가드, `hr-api-integration` 'R1 HR direct-apply flows stay behind the existing write/approve gates')
+- [x] 기존 D1 데이터(HR·급여·채용)가 새 버전에서 그대로 읽힌다. 기존 D1 사본과 운영 폴더 이전본 모두에서 확인한다 (확인: R1 SC-4 기존 사본 통과, R3 이전본 HR 조회·SC-13)
+- [x] 결재·재무 테이블이 없는 새 DB 하니스에서 HR 전 동작이 500 없이 동작한다 (확인: 'R1 fresh database')
+- [x] 권한 매트릭스 테스트에 '레거시 finance 문서 다운로드 → 관리자·일반 모두 404'를 넣는다 (확인: `tab-permissions` #24)
 
 ---
 
@@ -706,7 +706,7 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 ### 8.1 Existing Project Conventions
 
 - [x] `CLAUDE.md`에 아키텍처·라우트 패턴·테스트 관례 있음
-- [ ] `docs/01-plan/conventions.md` 없음. 이번 사이클에서는 만들지 않고 `CLAUDE.md` 관례를 따른다
+- [ ] `docs/01-plan/conventions.md` 없음. 이번 사이클에서는 만들지 않고 `CLAUDE.md` 관례를 따른다 (해당 없음: 의도대로 만들지 않았다)
 - [x] ESLint(`eslint.config.mjs`), TypeScript(`tsconfig.json`)
 
 ### 8.2 Conventions to Follow
@@ -743,17 +743,17 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 
 ## 9. Next Steps
 
-0. [ ] **R0 즉시 보안 조치**(Design을 기다리지 않는다). 바인딩은 완료했다(D16). 남은 것은 explorer off, fs.deny, 방화벽 정리, 브리지 격리(D17)와 Origin·Host 검사, 사용자 작업(Google 서비스 계정 키 폐기, refresh token 철회, `GOOGLE_*` 삭제, `CLOUDFLARE_API_TOKEN` 교체 검토)이다
+0. [x] **R0 즉시 보안 조치**(Design을 기다리지 않는다). 바인딩은 완료했다(D16). 남은 것은 explorer off, fs.deny, 방화벽 정리, 브리지 격리(D17)와 Origin·Host 검사, 사용자 작업(Google 서비스 계정 키 폐기, refresh token 철회, `GOOGLE_*` 삭제, `CLOUDFLARE_API_TOKEN` 교체 검토)이다 (완료: 2026-09-23 조치, 비밀값 폐기는 2026-10-02 사용자 확인)
 1. [x] 스파이크(2026-09-23 완료): preview에서 D1·R2 바인딩과 상태 경로를 실측했다. `127.0.0.1:3001`로, state 사본을 둔 별도 폴더(`C:\xdm\spike`, 끝난 뒤 삭제)에서 했다(D16·D18 예행연습). 결과는 다음과 같다
    - **동작함.** `dist/server/.dev.vars`를 읽는다(로그 'Using secrets defined in dist\server\.dev.vars'). 그래서 R3의 '빌드마다 `.dev.vars` 쓰기'가 유효하다. HR 인사기록 30건이 조회됐다. R2 문서(PDF 2,024,244바이트)는 dev와 같은 바이트로 내려왔다
    - **상태 경로는 실행 폴더 기준이다.** 같은 DB 파일 이름(`faaf2b…`)을 스파이크 폴더 쪽 사본에서 열고 거기에 기록했다. 따라서 D18 데이터 이전은 '서버 정지 → `.wrangler/state`를 운영 폴더로 복사'로 충분하다. 실제 DB는 `faaf2b…sqlite`(13.4MB)다. `c9177…sqlite`(4KB)는 빈 잔재지만 miniflare가 함께 연다. 백업은 폴더 전체를 복사한다
    - **정적 서빙은 `dist/client`만 한다.** `/app/page.tsx`, `/package.json`, `/vite.config.ts`, `/.wrangler/deploy/config.json`, `/dist/server/.dev.vars`는 모두 404였다. explorer API도 `Host: localhost`로 404였다
    - **새로 발견한 점.** `/__debug`는 200을 돌려주고 Cloudflare devtools로 넘긴다(`ws=localhost:9230`, workerd 인스펙터). 인스펙터는 지금 `127.0.0.1:9229`(dev)·`9230`(preview)에만 열려 있다. R3에서 `--host 0.0.0.0`으로 띄울 때 인스펙터가 계속 루프백에만 있는지 확인한다. 루프백 판정 플러그인은 비루프백의 `/__debug`를 `/cdn-cgi/*`처럼 404로 막는다. 가능하면 cloudflare 플러그인 설정으로 인스펙터를 끈다. 이 항목은 Design에 넣는다
    - **클라이언트 번들 PII는 그대로다**(`annualSalary`가 든 청크 2개). R1의 PII 서버 전용 분리가 필요하다는 점이 다시 확인됐다
-2. [ ] `/pdca design xdnode-management`: 3개 안 비교(C안 권고), 테이블 스키마, 탭 → API 대응표, 삭제·수정 파일 부록(수량 확정), 릴리스별 세션 계획
-3. [ ] Design 체크포인트: 안을 선택하고, §1.2 충돌 항목(`incentive-governance.tsx` 삭제 여부, 루프백 잠금 예외 또는 두 번째 관리자 계정, D10 허용 목록 수단 변경, `audit`·`admin` 관리자 전용 처리)을 사용자에게 확인한다
-4. [ ] PRD 문구 정정: T-01(루프백 0계정 부트스트랩), T-08의 '(origin 허용 후)' 삭제, Workstream R 표의 'ALLOWED_MODULES sales 제거' → incentive 이름 변경. D1의 `incentive-governance.tsx` 표기는 체크포인트 결과에 따른다
-5. [ ] 구현은 R1부터 릴리스 순서대로 한다. `/pdca do xdnode-management --scope r1` 형태로 나눠 진행한다. M3·M4·M5a는 같은 브랜치에서 개발해 R3로 한 번에 배포한다. 중간 커밋은 운영 PC에 반영하지 않는다
+2. [x] `/pdca design xdnode-management`: 3개 안 비교(C안 권고), 테이블 스키마, 탭 → API 대응표, 삭제·수정 파일 부록(수량 확정), 릴리스별 세션 계획 (완료: Design v0.1, 2026-09-23 / 검증 반영 2026-09-28)
+3. [x] Design 체크포인트: 안을 선택하고, §1.2 충돌 항목(`incentive-governance.tsx` 삭제 여부, 루프백 잠금 예외 또는 두 번째 관리자 계정, D10 허용 목록 수단 변경, `audit`·`admin` 관리자 전용 처리)을 사용자에게 확인한다 (완료: D20~D23)
+4. [x] PRD 문구 정정: T-01(루프백 0계정 부트스트랩), T-08의 '(origin 허용 후)' 삭제, Workstream R 표의 'ALLOWED_MODULES sales 제거' → incentive 이름 변경. D1의 `incentive-governance.tsx` 표기는 체크포인트 결과에 따른다 (확인: PRD T-01·T-08·Workstream R·D1 문구. PRD §2 표의 `incentive-governance.tsx` '유지' 한 줄은 남아 있다)
+5. [x] 구현은 R1부터 릴리스 순서대로 한다. `/pdca do xdnode-management --scope r1` 형태로 나눠 진행한다. M3·M4·M5a는 같은 브랜치에서 개발해 R3로 한 번에 배포한다. 중간 커밋은 운영 PC에 반영하지 않는다 (완료: R1~R6 — `docs/04-report/xdnode-management.report.md`)
 
 ---
 
@@ -763,3 +763,4 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
 |---------|------|---------|--------|
 | 0.1 | 2026-09-23 | 초안(PRD D1~D11 + Plan 체크포인트 D12~D15 반영) | gc.kim / Claude Code |
 | 0.2 | 2026-09-23 | 코드 대조 검토 33건 반영(`incentive-governance.tsx` 삭제 권고는 D1에 따라 충돌 기록만, 루프백 잠금 예외는 D15에 따라 보류). 범위를 릴리스 R0~R6로 재편: R0 즉시 보안, R3=M3+M4+M5a 단일 배포, 릴리스별 롤백. 검토 질문 답변 D16~D19 추가(R0 바인딩 완료 표시, 브리지 파일 읽기 제거, 운영 폴더 분리·데이터 이전 절차, 자동 기동과 확인 절차). 운영 런타임을 `vite preview`로 정정. 비밀값 폐기 사용자 작업, FR-19~FR-21, SC-9~SC-13, PRD·결정 충돌 표 추가. 7.3에 Design 비교 권고(C안, 22·19·17) 기록. 2차 검증 반영: SC-4는 운영 DB가 아닌 점검용 인스턴스에서 실행, R3 롤백의 대체 신원 복원, 서버 기동 경로를 자동 기동 작업 하나로 통일, 브리지 `--tools ""`, 방화벽 삭제 대상 규칙 이름 명시, `audit`·`admin` 관리자 전용 처리를 충돌 표에 기록, 코드 줄 번호 정정, 8.4 추가, 용어 한국어 통일 | gc.kim / Claude Code |
+| 0.3 | 2026-10-02 | 상태 동기화(PDCA Check). R0~R6가 모두 운영에 반영된 상태를 코드·테스트·커밋·Design 실행 기록·runbook·운영 점검(작업 스케줄러·방화벽·전원·`/api/me`)과 대조해 체크박스와 FR 상태를 맞췄다. 근거가 확인된 항목만 `[x]`로 바꾸고 근거를 괄호에 적었다. 결정으로 대체된 문구(D21 루프백 잠금 예외, 부록 C #19 부수효과 GET, r3-tabs의 `setIdentity` shim 삭제)는 대체됐다고 적었다. FR-01~FR-21 모두 Done. 남은 항목 11개: R4 백업 2차 복사·`C:\xdm` ACL·AC 최대 절전, 재무 보관 폴더 ACL, SC-1·SC-4·SC-6·SC-11·SC-12의 수동 판정, lint 0건, `conventions.md`(해당 없음). 결정·범위 문구는 바꾸지 않았다 | gc.kim / Claude Code |
