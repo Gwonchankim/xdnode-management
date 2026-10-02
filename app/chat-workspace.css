@@ -240,3 +240,7 @@
 .chat-message:hover > footer .chat-reaction-add > .chat-link-button, .chat-message:focus-within > footer .chat-reaction-add > .chat-link-button { opacity: 1; }
 /* 내 글: 숨은(투명) 링크가 자리를 차지해 "답글"이 말풍선보다 왼쪽에 뜨지 않게, 오른쪽부터 쌓는다(QA 2026-10-01). */
 .chat-message.mine > footer { flex-direction: row-reverse; }
+
+/* 보관된 채널 섹션(2026-10-02): 채널과 대화 사이, 접고 펼칠 수 있다. 다른 섹션 머리와 같은 글자 모양. */
+.chat-sidebar .chat-archived-section > header .chat-section-toggle { padding: 0; border: 0; background: none; color: #52525b; font-size: 12px; font-weight: 900; letter-spacing: .02em; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.chat-sidebar .chat-archived-section > header .chat-section-toggle small { padding: 0 6px; border-radius: 999px; background: #f4f4f5; color: #71717a; font-size: 11px; font-weight: 800; }

@@ -279,6 +279,8 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   const [side, setSide] = useState<Side>(null);
   const [filters, setFilters] = useState<ChatSearchFilters>(EMPTY_SEARCH_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
+  /** '보관된 채널' 섹션 펼침. 기본은 접고, 보관된 채널을 보고 있으면 펼친다. */
+  const [showArchived, setShowArchived] = useState(false);
   const [notice, setNotice] = useState("");
   const [modal, setModal] = useState<Modal>(null);
   const [formName, setFormName] = useState("");
@@ -843,7 +845,11 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
   const onlineCount = (ids: string[]) => ids.filter((id) => presenceLabel(poll.presence[id]).online).length;
   const dmPresence = joined?.kind === "dm" && othersOf(joined).length === 1 ? presenceLabel(poll.presence[othersOf(joined)[0]]).long : "";
   const unreadOf = (channelId: string) => poll.unread?.channels.find((row) => row.channelId === channelId) ?? null;
-  const rooms = data?.channels.filter((channel) => channel.kind === "public" || channel.kind === "private") ?? [];
+  const allRooms = data?.channels.filter((channel) => channel.kind === "public" || channel.kind === "private") ?? [];
+  // 보관된 채널은 '보관된 채널' 섹션에 따로 모은다(2026-10-02 요청). 1:1·그룹 대화는 채널이 아니므로 보관돼도 '대화'에 둔다.
+  const rooms = allRooms.filter((channel) => !channel.archived);
+  const archivedRooms = allRooms.filter((channel) => channel.archived);
+  const archivedOpen = showArchived || archivedRooms.some((channel) => channel.id === activeId);
   const dms = data?.channels.filter((channel) => channel.kind === "dm" || channel.kind === "group_dm") ?? [];
   const managing = joined && (joined.kind === "public" || joined.kind === "private") && (joined.myRole === "owner" || isAdmin) && !archived;
   /** ME-FR-10 고정/해제: 채널 소유자 또는 관리자이고 쓰기 권한이 있을 때(ME-MD5). 서버가 다시 판정한다. */
@@ -927,6 +933,16 @@ export default function ChatWorkspace({ accountId, poll }: Props) {
             </ul>
           )}
         </section>
+        {archivedRooms.length > 0 && (
+          <section className="chat-archived-section">
+            <header>
+              <button type="button" className="chat-section-toggle" aria-expanded={archivedOpen} onClick={() => setShowArchived(!archivedOpen)}>
+                <span aria-hidden="true">{archivedOpen ? "▾" : "▸"}</span> 보관된 채널 <small>{archivedRooms.length}</small>
+              </button>
+            </header>
+            {archivedOpen && <ul>{archivedRooms.map(channelButton)}</ul>}
+          </section>
+        )}
         <section>
           <header><span>대화</span>{canWrite && <button type="button" onClick={() => openModal({ kind: "dm" })}>+ DM</button>}</header>
           {dms.length ? <ul>{dms.map(channelButton)}</ul> : <p className="chat-muted">1:1·그룹 대화가 없습니다.</p>}

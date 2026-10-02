@@ -744,3 +744,14 @@ test('ME × 총무: a system:ga message works with the enhancement DTO, unread c
   assert.equal(unreadCountFor(message, reads), 2, 'both members still have to read the system message');
   assert.equal((await lee.call('reactions', 'POST', { messageId: message.id, emoji: '✅' })).status, 200, 'members can acknowledge a 총무 alert with a reaction');
 });
+
+test('ME 2026-10-02: archived channels move to a collapsible "보관된 채널" section between 채널 and 대화', () => {
+  const workspace = readFileSync(new URL('../app/chat-workspace.tsx', import.meta.url), 'utf8');
+  assert.match(workspace, /const rooms = allRooms\.filter\(\(channel\) => !channel\.archived\);/, 'the 채널 list shows only live channels');
+  assert.match(workspace, /const archivedRooms = allRooms\.filter\(\(channel\) => channel\.archived\);/);
+  const channels = workspace.indexOf('<header><span>채널</span>');
+  const archived = workspace.indexOf('보관된 채널 <small>');
+  const dms = workspace.indexOf('<header><span>대화</span>');
+  assert.ok(channels > 0 && channels < archived && archived < dms, 'the section sits between 채널 and 대화');
+  assert.match(workspace, /archivedRooms\.some\(\(channel\) => channel\.id === activeId\)/, 'it opens when an archived channel is on screen');
+});
