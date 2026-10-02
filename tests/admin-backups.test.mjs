@@ -186,6 +186,8 @@ test('verify + record-run: a good copy is recorded OK in the stopped live DB; a 
   const summary = JSON.parse(readFileSync(report, 'utf8')).snapshot;
   assert.equal(summary.integrityOk, true);
   assert.deepEqual(summary.r2Objects, { count: 2, missingBlobs: 0 });
+  // quote-tool Design §8: 키 첫 경로 조각별 수(ga·quote·other)만 싣는다. hr/ 는 other 다.
+  assert.deepEqual(summary.r2ObjectCountsByPrefix, { ga: 0, quote: 0, other: 2 });
   assert.equal(summary.rowCounts.auth_accounts, 2);
   assert.equal(summary.blobStore.files, 2);
   // 보고서에는 개수와 무결성만 있다(행 내용·키 없음).

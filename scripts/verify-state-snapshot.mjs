@@ -84,6 +84,8 @@ export function report(stateDir, { blobStore, liveStates = [] } = {}) {
     rowCounts,
     r2Blobs: r2BlobStats(stateDir),
     r2Objects: { count: objects.count, missingBlobs },
+    // quote-tool Design §8: R2 키 첫 경로 조각별 객체 수(ga·quote·other). 키 자체는 싣지 않는다.
+    r2ObjectCountsByPrefix: objects.byPrefix,
     ...(blobStore ? { blobStore: { dir: resolve(blobStore), files: store.count, bytes: store.bytes } } : {}),
   };
 }
@@ -93,8 +95,10 @@ function compare(a, b) {
   const differences = tables
     .filter((name) => a.rowCounts[name] !== b.rowCounts[name])
     .map((name) => ({ table: name, left: a.rowCounts[name] ?? null, right: b.rowCounts[name] ?? null }));
-  const same = differences.length === 0 && a.r2Blobs.count === b.r2Blobs.count && a.r2Objects.count === b.r2Objects.count;
-  return { same, differences, r2: { left: a.r2Blobs, right: b.r2Blobs }, r2Objects: { left: a.r2Objects.count, right: b.r2Objects.count } };
+  const prefixSame = JSON.stringify(a.r2ObjectCountsByPrefix ?? {}) === JSON.stringify(b.r2ObjectCountsByPrefix ?? {});
+  const same = differences.length === 0 && a.r2Blobs.count === b.r2Blobs.count && a.r2Objects.count === b.r2Objects.count && prefixSame;
+  return { same, differences, r2: { left: a.r2Blobs, right: b.r2Blobs }, r2Objects: { left: a.r2Objects.count, right: b.r2Objects.count },
+    r2ObjectCountsByPrefix: { left: a.r2ObjectCountsByPrefix, right: b.r2ObjectCountsByPrefix } };
 }
 
 // ── 기록 모드(R4) ────────────────────────────────────────────────────────────────
@@ -239,6 +243,7 @@ async function main(args) {
     tableCount: result.snapshot.tableCount,
     r2Blobs: result.snapshot.r2Blobs,
     r2Objects: result.snapshot.r2Objects,
+    r2ObjectCountsByPrefix: result.snapshot.r2ObjectCountsByPrefix,
     ...(result.comparison ? { comparisonSame: result.comparison.same, differences: result.comparison.differences.length } : {}),
     ...(out ? { report: out } : {}),
   }));

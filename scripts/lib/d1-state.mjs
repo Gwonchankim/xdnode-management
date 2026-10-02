@@ -68,20 +68,30 @@ export function r2BlobStats(stateDir) {
   return { count, bytes };
 }
 
+/** 객체 수를 나눠 세는 키 첫 경로 조각(quote-tool Design §8). 그 밖은 other 로 묶는다. */
+export const R2_PREFIX_BUCKETS = ["ga", "quote"];
+
 /**
  * R2 메타데이터(`r2/miniflare-R2BucketObject/*.sqlite`)의 객체 수와 본문 blob id(R4 백업 검증).
  * 키·메타데이터 같은 행 내용은 돌려주지 않는다. 멀티파트 객체는 완료된 조각의 blob 을 센다.
+ * byPrefix 는 키의 첫 경로 조각별 수(ga·quote·other)뿐이다(QT-SC-12 복원 대조).
  */
 export function r2ObjectStats(stateDir) {
   const dir = join(resolveV3(stateDir), "r2", "miniflare-R2BucketObject");
   let count = 0;
   const blobIds = new Set();
+  const byPrefix = Object.fromEntries([...R2_PREFIX_BUCKETS, "other"].map((name) => [name, 0]));
   for (const file of sqliteFiles(dir)) {
     const db = new DatabaseSync(file, { readOnly: true });
     try {
       const has = (table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
       if (has("_mf_objects")) {
         count += Number(db.prepare("SELECT COUNT(*) AS n FROM _mf_objects").get().n);
+        for (const row of db.prepare(`SELECT CASE WHEN instr(key, '/') > 0 THEN substr(key, 1, instr(key, '/') - 1) ELSE '' END AS prefix, COUNT(*) AS n
+          FROM _mf_objects GROUP BY prefix`).all()) {
+          const bucket = R2_PREFIX_BUCKETS.includes(String(row.prefix)) ? String(row.prefix) : "other";
+          byPrefix[bucket] += Number(row.n);
+        }
         for (const row of db.prepare("SELECT blob_id FROM _mf_objects WHERE blob_id IS NOT NULL").all()) blobIds.add(String(row.blob_id));
       }
       if (has("_mf_multipart_parts")) {
@@ -91,7 +101,7 @@ export function r2ObjectStats(stateDir) {
       db.close();
     }
   }
-  return { count, blobIds: [...blobIds].sort() };
+  return { count, byPrefix, blobIds: [...blobIds].sort() };
 }
 
 /**

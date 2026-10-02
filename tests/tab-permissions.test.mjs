@@ -154,22 +154,22 @@ test('#20 UPDATE_TABS merges grantable keys, rejects audit/admin/unknown keys, k
   const user = await createAccount({ email: 'tabs@example.test', tabs: { hr: 'view', chat: 'edit', audit: 'edit', admin: 'edit' } });
   const cookie = (await login(user.email, user.password)).cookie;
   const me = () => callApi('me', 'GET', undefined, '', { cookie });
-  assert.deepEqual(expectStatus(await me(), 200).tabs, { hr: 'view', compensation: 'none', chat: 'edit', general: 'none', audit: 'none', admin: 'none' });
-  for (const tabs of [{ audit: 'edit' }, { admin: 'view' }, { chat: 'owner' }, { quote: 'edit' }, { __proto__: null, constructor: 'edit' }, { hr: 'admin' }, { hr: true }, ['hr']]) {
+  assert.deepEqual(expectStatus(await me(), 200).tabs, { hr: 'view', compensation: 'none', chat: 'edit', general: 'none', quote: 'none', audit: 'none', admin: 'none' });
+  for (const tabs of [{ audit: 'edit' }, { admin: 'view' }, { chat: 'owner' }, { quotes: 'edit' }, { __proto__: null, constructor: 'edit' }, { hr: 'admin' }, { hr: true }, ['hr']]) {
     expectStatus(await admin({ action: 'UPDATE_TABS', id: user.id, tabs }), 400, 'VALIDATION');
   }
   const updated = expectStatus(await admin({ action: 'UPDATE_TABS', id: user.id, tabs: { hr: 'none', compensation: 'edit' } }), 200);
-  assert.deepEqual(updated.account.tabs, { hr: 'none', compensation: 'edit', chat: 'edit', general: 'none' });
+  assert.deepEqual(updated.account.tabs, { hr: 'none', compensation: 'edit', chat: 'edit', general: 'none', quote: 'none' });
   assert.deepEqual(JSON.parse(sql.prepare('SELECT tabs_json FROM auth_accounts WHERE id = ?').get(user.id).tabs_json),
     { chat: 'edit', audit: 'edit', admin: 'edit', compensation: 'edit' });
-  assert.deepEqual(expectStatus(await me(), 200).tabs, { hr: 'none', compensation: 'edit', chat: 'edit', general: 'none', audit: 'none', admin: 'none' });
+  assert.deepEqual(expectStatus(await me(), 200).tabs, { hr: 'none', compensation: 'edit', chat: 'edit', general: 'none', quote: 'none', audit: 'none', admin: 'none' });
   expectStatus(await callApi('compensation/roster', 'GET', undefined, '', { cookie }), 200);
   expectStatus(await callApi('hr/employee-records', 'GET', undefined, '', { cookie }), 403, 'FORBIDDEN');
   const [audit] = sql.prepare("SELECT * FROM erp_audit_logs WHERE action = 'ACCOUNT_TABS_UPDATED'").all();
   assert.equal(audit.module, 'admin');
-  assert.deepEqual(JSON.parse(audit.before_json).tabs, { hr: 'view', compensation: 'none', chat: 'edit', general: 'none' });
+  assert.deepEqual(JSON.parse(audit.before_json).tabs, { hr: 'view', compensation: 'none', chat: 'edit', general: 'none', quote: 'none' });
   const grantable = expectStatus(await callApi('admin/accounts'), 200).grantableTabs;
-  assert.deepEqual(grantable, [{ key: 'hr', label: '인사관리' }, { key: 'compensation', label: '임금 계산' }, { key: 'chat', label: '메신저' }, { key: 'general', label: '총무' }]);
+  assert.deepEqual(grantable, [{ key: 'hr', label: '인사관리' }, { key: 'compensation', label: '임금 계산' }, { key: 'chat', label: '메신저' }, { key: 'general', label: '총무' }, { key: 'quote', label: '견적' }]);
 });
 
 // §8.2 #24
@@ -199,12 +199,12 @@ test('#25 /api/me returns exactly user, isAdmin, tabs and mustChangePassword; no
   setAccess({ hr: 'view', audit: 'edit', admin: 'edit' });
   const body = expectStatus(await callApi('me'), 200);
   assert.deepEqual(Object.keys(body).sort(), ['isAdmin', 'mustChangePassword', 'tabs', 'user']);
-  assert.deepEqual(body.tabs, { hr: 'view', compensation: 'none', chat: 'none', general: 'none', audit: 'none', admin: 'none' });
+  assert.deepEqual(body.tabs, { hr: 'view', compensation: 'none', chat: 'none', general: 'none', quote: 'none', audit: 'none', admin: 'none' });
   assert.equal(body.isAdmin, false);
   assert.equal(body.mustChangePassword, false);
   assert.deepEqual(Object.keys(body.user).sort(), ['accountId', 'email', 'employeeId', 'linkedEmployee', 'name']);
   setAccess({}, { isAdmin: true });
-  assert.deepEqual(expectStatus(await callApi('me'), 200).tabs, { hr: 'edit', compensation: 'edit', chat: 'edit', general: 'edit', audit: 'edit', admin: 'edit' });
+  assert.deepEqual(expectStatus(await callApi('me'), 200).tabs, { hr: 'edit', compensation: 'edit', chat: 'edit', general: 'edit', quote: 'edit', audit: 'edit', admin: 'edit' });
 });
 
 // §8.2 #26, 부록 C #27
@@ -318,7 +318,7 @@ test('#30 assistant modules outside ASSISTANT_MODULES are 400 before authorizati
 test('authorizeErpRequest fails closed on modules outside the registry, even for administrators, and audits them under auth', async () => {
   const sql = await resetDatabase();
   setAccess({}, { isAdmin: true });
-  for (const moduleName of ['finance', 'sales', 'settings', 'quote', '__proto__', 'constructor']) {
+  for (const moduleName of ['finance', 'sales', 'settings', 'quotes', '__proto__', 'constructor']) {
     const { response, principal } = await authorizeErpRequest(db, moduleName, 'read');
     assert.equal(principal, undefined, moduleName);
     assert.equal(response.status, 403, moduleName);

@@ -1,0 +1,73 @@
+/* 견적 탭(quote-tool Design §10.1). layout.tsx 가 전역으로 import 한다. 모든 규칙은 .quote-module-shell 아래에 둔다(셸 여백은 globals.css). */
+
+.quote-module-shell .quote-page { min-height: calc(100vh - var(--erp-nav-height)); padding: 20px 24px 60px; background: #fafaf9; color: var(--ink); display: grid; align-content: start; gap: 14px; }
+.quote-module-shell .quote-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.quote-module-shell .quote-head h2 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+.quote-module-shell .quote-head p { margin: 4px 0 0; color: #71717a; font-size: 13px; }
+.quote-module-shell .quote-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.quote-module-shell .quote-pill { padding: 4px 10px; border: 1px solid #e4e4e7; border-radius: 999px; background: #fff; color: #3f3f46; font-size: 12px; font-weight: 800; white-space: nowrap; }
+.quote-module-shell .quote-pill.ok { border-color: transparent; background: var(--brand-green-tint); color: var(--brand-green-dark); }
+.quote-module-shell .quote-pill.off { background: #f4f4f5; color: #71717a; }
+.quote-module-shell .quote-pill.warn { border-color: #fed7aa; background: #fff7ed; color: #c2410c; }
+.quote-module-shell .quote-banner { margin: 0; padding: 10px 14px; border: 1px solid #fde68a; border-radius: 12px; background: #fffbeb; color: #92400e; font-size: 13px; font-weight: 800; }
+.quote-module-shell .quote-banner.info { border-color: #e4e4e7; background: #fff; color: #3f3f46; font-weight: 700; }
+.quote-module-shell .quote-muted { margin: 8px 0; color: #71717a; font-size: 13px; }
+.quote-module-shell .quote-error { margin: 8px 0; color: #b91c1c; font-size: 13px; font-weight: 800; }
+
+.quote-module-shell .quote-layout { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 14px; align-items: start; }
+.quote-module-shell .quote-card { padding: 14px 16px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; min-width: 0; }
+
+.quote-module-shell .quote-segment { display: flex; gap: 4px; padding: 4px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fafafa; }
+.quote-module-shell .quote-segment button { flex: 1; min-height: 32px; border: 0; border-radius: 9px; background: transparent; color: #3f3f46; font-size: 13px; font-weight: 800; cursor: pointer; }
+.quote-module-shell .quote-segment button.active { background: var(--brand-green-dark); color: #fff; }
+.quote-module-shell .quote-search { margin-top: 10px; display: flex; gap: 6px; }
+.quote-module-shell .quote-search input { flex: 1; min-width: 0; min-height: 36px; padding: 0 10px; border: 1px solid #d4d4d8; border-radius: 10px; font-size: 13px; }
+.quote-module-shell .quote-search button, .quote-module-shell .quote-more { min-height: 36px; padding: 0 14px; border: 1px solid #d4d4d8; border-radius: 10px; background: #fff; font-size: 13px; font-weight: 800; cursor: pointer; }
+.quote-module-shell .quote-more { width: 100%; margin-top: 8px; }
+.quote-module-shell .quote-list { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; max-height: calc(100vh - var(--erp-nav-height) - 260px); overflow-y: auto; }
+.quote-module-shell .quote-list button { width: 100%; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 1px solid #f4f4f5; border-radius: 10px; background: #fff; color: #18181b; text-align: left; cursor: pointer; }
+.quote-module-shell .quote-list button:hover { background: #fafafa; }
+.quote-module-shell .quote-list button.selected { border-color: var(--brand-green-dark); background: var(--brand-green-tint); }
+.quote-module-shell .quote-list-main, .quote-module-shell .quote-list-side { display: grid; gap: 2px; min-width: 0; }
+.quote-module-shell .quote-list-side { justify-items: end; flex-shrink: 0; }
+.quote-module-shell .quote-list strong { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quote-module-shell .quote-list small { color: #71717a; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.quote-module-shell .quote-chip { width: fit-content; padding: 2px 8px; border-radius: 999px; background: #f4f4f5; color: #3f3f46; font-size: 11px; font-weight: 900; white-space: nowrap; }
+.quote-module-shell .quote-chip.draft { background: #fef3c7; color: #a16207; }
+.quote-module-shell .quote-chip.confirmed { background: var(--brand-green-tint); color: var(--brand-green-dark); }
+.quote-module-shell .quote-chip.discarded { background: #f4f4f5; color: #a1a1aa; text-decoration: line-through; }
+
+.quote-module-shell .quote-preview-body { display: grid; gap: 12px; }
+.quote-module-shell .quote-preview-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; }
+.quote-module-shell .quote-preview-head h3 { margin: 0; font-size: 18px; }
+.quote-module-shell .quote-preview-head p { margin: 4px 0 0; color: #52525b; font-size: 13px; }
+.quote-module-shell .quote-preview-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: #71717a; font-size: 12px; }
+.quote-module-shell .quote-terms { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 14px; }
+.quote-module-shell .quote-terms div { display: grid; grid-template-columns: 96px 1fr; gap: 8px; font-size: 13px; }
+.quote-module-shell .quote-terms dt { color: #71717a; font-weight: 800; }
+.quote-module-shell .quote-terms dd { margin: 0; }
+.quote-module-shell .quote-table-wrap { overflow-x: auto; }
+.quote-module-shell .quote-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.quote-module-shell .quote-table th { padding: 8px; border-bottom: 1px solid #e4e4e7; background: #fafafa; color: #52525b; font-size: 12px; font-weight: 800; text-align: left; white-space: nowrap; }
+.quote-module-shell .quote-table td { padding: 6px 8px; border-bottom: 1px solid #f4f4f5; vertical-align: top; }
+.quote-module-shell .quote-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.quote-module-shell .quote-table .spec { white-space: pre-wrap; min-width: 220px; }
+.quote-module-shell .quote-table tr.quote-line td { background: #f8faf5; font-weight: 800; }
+.quote-module-shell .quote-table tr.quote-item small { color: #71717a; }
+.quote-module-shell .quote-table tr.quote-note-row td { color: #52525b; font-size: 12px; }
+.quote-module-shell .quote-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 14px; }
+.quote-module-shell .quote-remarks h4 { margin: 0 0 4px; font-size: 13px; }
+.quote-module-shell .quote-remarks ul { margin: 0; padding-left: 18px; font-size: 13px; white-space: pre-wrap; }
+.quote-module-shell .quote-sum { min-width: 240px; }
+.quote-module-shell .quote-sum dl { margin: 0; display: grid; gap: 4px; }
+.quote-module-shell .quote-sum dl div { display: flex; justify-content: space-between; gap: 16px; font-size: 13px; }
+.quote-module-shell .quote-sum dt { color: #71717a; font-weight: 800; }
+.quote-module-shell .quote-sum dd { margin: 0; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-sum .total { font-size: 15px; font-weight: 900; }
+.quote-module-shell .quote-sum p { margin: 6px 0 0; color: #52525b; font-size: 12px; text-align: right; }
+
+@media (max-width: 960px) {
+  .quote-module-shell .quote-layout { grid-template-columns: 1fr; }
+  .quote-module-shell .quote-list { max-height: none; }
+}

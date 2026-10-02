@@ -142,3 +142,33 @@ test("dist/client and dist/server carry no finance-current-data markers", async 
     }
   }
 });
+
+// quote-tool Design §11.7·QT-SC-10(QT1부터): 견적 서버 데이터(고객 연락처·과거 견적·담당자)는 D1 에만 있다.
+// dist/client 에 견적 표 이름과 서버 모듈 표지 상수가 0건이어야 한다. 실데이터 표본은 저장소에 넣을 수 없으므로(P-8)
+// 저장소 밖 표지 파일(QUOTE_PII_MARKERS, 기본 C:\xdm\secure\quote-markers.json)이 있을 때만 그 기관명·휴대폰도 본다. 값은 출력하지 않는다.
+const quoteStructuralMarkers = ["quote_customers", "quote_issued", "quote_corpus_", "quote_price_log", "quote_staff_profiles", "xdm-quote-server-only"];
+
+test("dist/client carries no quote server table names or the quote-server marker", async () => {
+  const assets = await readTextAssets(clientDir);
+  for (const marker of quoteStructuralMarkers) {
+    const hits = countFiles(assets, (text) => text.includes(marker));
+    assert.equal(hits.count, 0, `견적 서버 표지 ${marker}가 든 파일 ${hits.count}개: ${hits.files}`);
+  }
+});
+
+test("dist/client carries no quote PII markers from the off-repo marker file (skipped when the file is absent)", async (t) => {
+  const file = process.env.QUOTE_PII_MARKERS || "C:\\xdm\\secure\\quote-markers.json";
+  if (!existsSync(file)) { t.skip("견적 표지 파일이 없어 건너뜁니다(scripts/import-quote-data.mjs --markers-out 으로 만든다)."); return; }
+  let markers;
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8"));
+    markers = [...(Array.isArray(parsed.orgs) ? parsed.orgs : []), ...(Array.isArray(parsed.phones) ? parsed.phones : [])]
+      .filter((value) => typeof value === "string" && value.trim().length >= 2).map((value) => value.trim());
+  } catch {
+    assert.fail("견적 표지 파일을 읽지 못했습니다(내용은 출력하지 않습니다).");
+  }
+  assert.ok(markers.length > 0, "견적 표지 파일에 표지가 없습니다");
+  const assets = await readTextAssets(clientDir);
+  const hits = countFiles(assets, (text) => markers.some((marker) => text.includes(marker)));
+  assert.equal(hits.count, 0, `견적 PII 표지가 든 파일 ${hits.count}개: ${hits.files}`);
+});

@@ -7,6 +7,7 @@ import AuditLogWorkspace from "./audit-log-workspace";
 import AdminAccountsWorkspace from "./admin-accounts-workspace";
 import ChatWorkspace from "./chat-workspace";
 import GeneralWorkspace from "./general-workspace";
+import QuoteWorkspace from "./quote-workspace";
 import LocalCodexAssistant from "./local-codex-assistant";
 import { ErpDialogProvider, useErpDialog } from "./erp-dialog";
 import { TAB_REGISTRY, type ResolvedTabs, type TabKey } from "./access-tabs";
@@ -18,6 +19,7 @@ import { useChatPoll, type ChatPoll } from "./chat-client";
 import { useChatNotifier } from "./chat-notify";
 import ChatToasts from "./chat-toasts";
 import { GeneralAccessContext, OPEN_TAB_EVENT, useGeneralBadge } from "./general-client";
+import { useQuoteBadge } from "./quote-client";
 
 // R3(r3-shell, Design §5.1~§5.3): 셸은 useSession() 상태기계와 탭 레지스트리(app/access-tabs.ts)로 그린다.
 // SSR 과 첫 렌더는 AuthLoadingShell(data-auth-gate="loading")뿐이고 탭 DOM 이 없다. 권한 없는 탭은 버튼도 패널도 없다.
@@ -55,6 +57,9 @@ const TAB_PANELS: Record<TabKey, (ctx: PanelContext) => ReactNode> = {
   ),
   chat: (ctx) => <ChatWorkspace accountId={ctx.me.user.accountId} poll={ctx.chatPoll} />,
   general: (ctx) => <GeneralWorkspace canEdit={ctx.tabs.general === "edit"} />,
+  quote: (ctx) => (
+    <QuoteWorkspace canEdit={ctx.tabs.quote === "edit"} isAdmin={ctx.me.isAdmin} accountId={ctx.me.user.accountId} userName={ctx.me.user.name} />
+  ),
   audit: () => (
     <main className="admin-page">
       <AuditLogWorkspace />
@@ -78,6 +83,8 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
   const chatPoll = useChatPoll({ enabled: me.tabs.chat !== "none", chatActive: active === "chat" });
   // 총무 탭 배지(경과+당일+D-7, general-affairs Design §1). 10분마다·창에 돌아올 때·총무 데이터가 바뀔 때 다시 읽는다.
   const generalBadge = useGeneralBadge(me.tabs.general !== "none");
+  // 견적 탭 배지(미확정 견적 수, quote-tool Design §10.1). 10분마다·창에 돌아올 때·견적이 바뀔 때 다시 읽는다.
+  const quoteBadge = useQuoteBadge(me.tabs.quote !== "none");
   // 다른 화면이 탭을 바꿔 달라고 할 때(HR 퇴직 정산 → 총무 자산). 허용된 탭만 연다.
   useEffect(() => {
     const onOpen = (event: Event) => {
@@ -109,7 +116,7 @@ function ReadyShell({ me, onChangePassword, onLogout }: { me: SessionMe; onChang
 
   const navigation = (
     <ShellTopNav tabs={me.tabs} active={active} onSelect={select} userName={me.user.name} userEmail={me.user.email}
-      onChangePassword={onChangePassword} onLogout={onLogout} badges={{ chat: chatPoll.unread?.total ?? 0, general: generalBadge }} />
+      onChangePassword={onChangePassword} onLogout={onLogout} badges={{ chat: chatPoll.unread?.total ?? 0, general: generalBadge, quote: quoteBadge }} />
   );
 
   if (!active) {

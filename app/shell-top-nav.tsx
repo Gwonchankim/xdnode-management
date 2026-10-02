@@ -11,6 +11,17 @@ export function resolveActiveTab(tabs: ResolvedTabs, saved: string | null | unde
   return (match ?? allowed[0])?.key ?? null;
 }
 
+/** 탭별 배지 aria 문구(quote-tool Design §10.1). 모르는 탭은 메신저와 같은 문구. */
+const unreadLabel = (count: number) => `안 읽은 글 ${count}개`;
+const BADGE_LABEL: Partial<Record<TabKey, (count: number) => string>> = {
+  chat: unreadLabel,
+  general: (count) => `확인할 항목 ${count}개`,
+  quote: (count) => `미확정 견적 ${count}건`,
+};
+export function badgeLabel(tab: TabKey, count: number) {
+  return (BADGE_LABEL[tab] ?? unreadLabel)(count);
+}
+
 export type ShellTopNavProps = {
   tabs: ResolvedTabs;
   active: TabKey | null;
@@ -19,7 +30,7 @@ export type ShellTopNavProps = {
   userEmail?: string;
   onChangePassword: () => void;
   onLogout: () => void;
-  /** 탭별 숫자 배지(메신저 안 읽은 수). 0 이면 그리지 않는다. */
+  /** 탭별 숫자 배지(메신저 안 읽은 수·총무 확인 항목·미확정 견적). 0 이면 그리지 않는다. */
   badges?: Partial<Record<TabKey, number>>;
 };
 
@@ -52,7 +63,7 @@ export default function ShellTopNav({ tabs, active, onSelect, userName, userEmai
                 <strong>{tab.label}</strong>
               </span>
               {(badges?.[tab.key] ?? 0) > 0 && (
-                <span className="erp-tab-badge" aria-label={`안 읽은 글 ${badges?.[tab.key]}개`}>{Math.min(badges?.[tab.key] ?? 0, 99)}{(badges?.[tab.key] ?? 0) > 99 ? "+" : ""}</span>
+                <span className="erp-tab-badge" aria-label={badgeLabel(tab.key, badges?.[tab.key] ?? 0)}>{Math.min(badges?.[tab.key] ?? 0, 99)}{(badges?.[tab.key] ?? 0) > 99 ? "+" : ""}</span>
               )}
             </button>
           ))}

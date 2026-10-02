@@ -92,6 +92,8 @@ const { hashPassword } = await import('../../app/auth-password.ts');
 // messenger-enhancement ME-DD6: 접속 상태는 모듈 메모리다. 테스트마다 비운다.
 const { resetPresence } = await import('../../app/chat-presence.ts');
 const { resetGaSchemaGate } = await import('../../app/ga-schema.ts');
+// quote-tool Design §11.1: 견적 스키마 게이트도 새 메모리 DB 마다 비운다.
+const { resetQuoteSchemaGate } = await import('../../app/quote-schema.ts');
 const administrator = companyEmployees.find(employee => employee.id === 'gc.kim');
 
 export const TEST_ADMIN_ACCOUNT_ID = 'acct_test_admin';
@@ -118,6 +120,7 @@ export async function resetDatabase({ migrate = false } = {}) {
   resetPlatformSchemaGate();
   resetPresence();
   resetGaSchemaGate();
+  resetQuoteSchemaGate();
   sqlite = new DatabaseSync(':memory:');
   runtime.beforeBatch = null;
   runtime.forbiddenTables = null;
@@ -128,6 +131,9 @@ export async function resetDatabase({ migrate = false } = {}) {
   // call fails fast with the route's own 502. A test that needs a bridge stubs fetch or sets its own URL.
   runtime.env.CLAUDE_BRIDGE_URL = 'http://127.0.0.1:9';
   runtime.env.CLAUDE_ASSISTANT_BRIDGE_URL = 'http://127.0.0.1:9';
+  // 견적 AI 브리지(3140)·PDF 도우미(3150)도 같다(quote-tool QD-17). 라우트 기본값 대신 닫힌 포트로 즉시 실패시킨다.
+  runtime.env.CLAUDE_QUOTE_BRIDGE_URL = 'http://127.0.0.1:9';
+  runtime.env.QUOTE_PDF_HELPER_URL = 'http://127.0.0.1:9';
   if (migrate) {
     const directory = new URL('../../drizzle/', import.meta.url);
     for (const file of readdirSync(directory).filter(file => file.endsWith('.sql')).sort()) {
