@@ -307,14 +307,15 @@
 모든 릴리스는 같은 배포 경로를 쓴다: 개발 폴더에서 `npm run lint` + `npm test` → 태그 `qtN-release-yyyyMMdd` → 운영에서 `Deploy-XDNodeManagement.ps1 -Tag <태그>`(runbook §12, 업무 시간 밖) → 헬스체크 401 → 릴리스별 스모크. 공통 롤백은 직전 태그로 같은 Deploy를 다시 하는 것이다. `quote_*` 테이블과 R2 `quote/` 객체는 추가만 했으므로 남겨 둔다(D4).
 
 ### QT0 — 옛 툴 임시 보강 (툴 저장소, 이 저장소 코드 변경 없음)
-- [ ] `?file=`: `resolve()` 뒤 `CORPUS_DIR` 안인지 확인, 아니면 404(S3)
-- [ ] 추출: 이미지를 stream-json stdin으로, `--tools ""`, cwd를 빈 임시 폴더로, `shell=False`(S5·S7)
-- [ ] 상담: `--allowedTools WebSearch WebFetch`·`bypassPermissions` 제거(S6, QT-D3 선적용)
-- [ ] Host 허용 목록(서버 IP:8765·localhost:8765), POST는 Origin이 Host와 같을 때만(S9)
-- [ ] 읽기 전용 스위치(환경변수, 켜면 generate·record·status·staff POST 403)
-- [ ] 원본 코퍼스 폴더와 `data/`를 `C:\xdm\archive\quote-tool-<날짜>\`로 복사(R-QT10)
+- [x] `?file=`: `resolve()` 뒤 `CORPUS_DIR` 안인지 확인, 아니면 404(S3)
+- [x] 추출: 이미지를 stream-json stdin으로, `--tools ""`, cwd를 빈 임시 폴더로, `shell=False`(S5·S7)
+- [x] 상담: `--allowedTools WebSearch WebFetch`·`bypassPermissions` 제거(S6, QT-D3 선적용)
+- [x] Host 허용 목록(서버 IP:8765·localhost:8765), POST는 Origin이 Host와 같을 때만(S9)
+- [x] 읽기 전용 스위치(`QUOTE_READONLY=1`, 지금은 꺼 둠. 환경변수, 켜면 generate·record·status·staff POST 403)
+- [x] 원본 코퍼스 폴더와 `data/`를 `C:\xdm\archive\quote-tool-<날짜>\`로 복사(R-QT10) — `C:\xdm\archive\quote-tool-20261002\`(corpus 2,440개 602,681,157바이트, data 68개, `corpus.sqlite` 해시 일치). `C:\xdm` ACL 제한은 상위 계획의 남은 항목이다
 - 배포: 툴 저장소 커밋 → 예약 작업 `XDNODE 견적서 서버` 재시작 → 서버 PC와 LAN PC에서 추출 1건·생성 1건 확인
 - 롤백: 툴 저장소 `git revert` 후 재시작
+- **결과(2026-10-02)**: 툴 커밋 `8d47051`. 툴 테스트 3종 통과. DB 사본 인스턴스(127.0.0.1:8799)에서 위조 Host·PC 이름 403, 다른 Origin POST 403, 읽기 전용 staff·generate 403, 경로 탈출·절대 경로 404, 정상 코퍼스 파일 200, 실제 이미지 추출 1건 정상, 상담은 웹 조회 요청을 거절(`searched=0`). 16:05 예약 작업으로 운영 재기동(결과 0): LAN IP 200, 위조 Host 403, 경로 탈출 404. 오전 재부팅 뒤 꺼져 있던 것은 같은 날 다른 작업자가 자동 시작을 `launcher.pyw --no-browser`로 바꾸던 중이었기 때문이고(툴 `3de364e`), 그 작업이 끝난 뒤 정상 기동했다. LAN PC에서 추출·생성을 확인하는 일은 사용자에게 남긴다
 
 ### QT1 — 데이터 모델과 이전
 - [ ] 레지스트리 항목·`TAB_PANELS.quote`(이 단계 화면은 검색·최근·불러오기 읽기 전용 목록)
