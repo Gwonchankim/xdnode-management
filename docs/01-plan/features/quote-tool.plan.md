@@ -318,15 +318,16 @@
 - **결과(2026-10-02)**: 툴 커밋 `8d47051`. 툴 테스트 3종 통과. DB 사본 인스턴스(127.0.0.1:8799)에서 위조 Host·PC 이름 403, 다른 Origin POST 403, 읽기 전용 staff·generate 403, 경로 탈출·절대 경로 404, 정상 코퍼스 파일 200, 실제 이미지 추출 1건 정상, 상담은 웹 조회 요청을 거절(`searched=0`). 16:05 예약 작업으로 운영 재기동(결과 0): LAN IP 200, 위조 Host 403, 경로 탈출 404. 오전 재부팅 뒤 꺼져 있던 것은 같은 날 다른 작업자가 자동 시작을 `launcher.pyw --no-browser`로 바꾸던 중이었기 때문이고(툴 `3de364e`), 그 작업이 끝난 뒤 정상 기동했다. LAN PC에서 추출·생성을 확인하는 일은 사용자에게 남긴다
 
 ### QT1 — 데이터 모델과 이전
-- [ ] 레지스트리 항목·`TAB_PANELS.quote`(이 단계 화면은 검색·최근·불러오기 읽기 전용 목록)
-- [ ] `app/quote-schema.ts`·`ensureQuoteSchema`, 테이블(§10.2)
-- [ ] 툴 저장소의 일회용 내보내기(`reverse.py`로 파일별 Quote JSON, 카탈로그·담당자 원문) → 저장소 밖 임시 폴더
-- [ ] `POST /api/quote/import`(관리자, 청크 500행, 멱등), `scripts/import-quote-data.mjs`
-- [ ] 템플릿 R2 업로드와 해시 기록(QT-Q2)
-- [ ] `GET /api/quote/history`(검색·최근·불러오기)
-- [ ] tests: quote-api(스키마 멱등·권한·이전 멱등·검색 랭킹), package.json 목록
+- [x] 레지스트리 항목·`TAB_PANELS.quote`(이 단계 화면은 검색·최근·불러오기 읽기 전용 목록)
+- [x] `app/quote-schema.ts`·`ensureQuoteSchema`, 테이블(§10.2)
+- [x] 툴 저장소의 일회용 내보내기(`reverse.py`로 파일별 Quote JSON, 카탈로그·담당자 원문) → 저장소 밖 임시 폴더
+- [x] `POST /api/quote/import`(관리자, 청크 500행, 멱등), `scripts/import-quote-data.mjs`
+- [x] 템플릿 R2 업로드와 해시 기록(QT-Q2)
+- [x] `GET /api/quote/history`(검색·최근·불러오기)
+- [x] tests: quote-api(스키마 멱등·권한·이전 멱등·검색 랭킹), package.json 목록
 - 배포 뒤: 운영에서 이전 스크립트 실행(옛 툴은 그대로 운영) → 이전 보고서로 QT-SC-06 확인 → 다음 03:00 백업 보고서에 `quote_*` 행 수가 나오는지 확인
 - 롤백: 직전 태그로 Deploy. 이전 데이터는 남겨도 무해하다(탭이 사라질 뿐)
+- **결과(2026-10-06)**: 커밋 `d175424`, 툴 커밋 `ece8d6f`(`tools/export_xdm_import.py`, 내보내기 `C:mworkquote-export-20261002`, reverse 998/998). `npm test` 540 통과·1 건너뜀(표지 파일 없음). 태그 `qt1-release-20261006` 09:07 운영 반영(중단 48초, 배포 전 스냅샷 무결성 OK). 09:41 운영 이전 `status OK`, 불일치 0: 코퍼스 998·1,189·5,509·59, 카탈로그 268·480, 사양 87, 고객 326행/기관 199, 구성 314, 담당자 10, 발행 1, 단가 로그 2, 스냅샷 10건 해시 일치, 템플릿 R2 `quote/template/v1.xlsx` sha256 `9a2a76f6…45b8fc`(설계 실측값과 같음). 표지 파일(`C:msecurequote-markers.json`)로 bundle-exposure 6/6, 운영 `dist/client` 45파일에서 표지 30개 0건. 남은 확인: 다음 03:00 백업 보고서의 `quote_*` 행 수, 화면에서 검색·불러오기
 
 ### QT2 — xlsx·PDF 생성과 회귀
 - [ ] 첫날: Excel COM 세션 시험(QT-Q8). 결과에 따라 도우미 기동 경로를 정한다
