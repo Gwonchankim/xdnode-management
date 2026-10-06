@@ -1,0 +1,79 @@
+{
+  "customer": {
+    "org": "고객기관E",
+    "contact": "최지우 조교수님",
+    "tel": "010-0000-0000",
+    "email": "customer@example.com"
+  },
+  "terms": {
+    "valid_weeks": 1,
+    "delivery": "협의 후 결정",
+    "payment": "협의 후 결정",
+    "place": "귀사 지정 장소",
+    "stamp_omitted": true
+  },
+  "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+  },
+  "issue_date": "2026-09-17",
+  "lines": [
+    {
+      "label": "서버",
+      "name": "Gigabyte Server System G294-S41-AAP2",
+      "items": [
+        {
+          "category": "Chassis",
+          "spec": "Gigabyte Server System G294-S41-AAP2\n\n- Dual Intel® Xeon® 6700/6500-Series Processors\n  Dual processor, TDP up to 250W\n- System on Chip\n- 8-Channel DDR5 RDIMM / MRDIMM, 24 x DIMMs\n  Dual ROM Architecture\n- 2 x 10Gb/s LAN ports via Intel® X710-AT2\n  8 x 2.5\" Gen5 NVMe/SATA/SAS-4 hot-swap bays\n- 4 x FHFL PCIe Gen5 x16 or 8 x FHFL PCIe Gen5 x8 slots for GPUs\n- 2 x LP PCIe Gen5 x16 slots\n- Aspeed® AST2600 management controller\n- 1x MegaRaid 9500 series\n- Dual 3000W 80 PLUS Titanium redundant power supply",
+          "qty": 1.0,
+          "extra_categories": [
+            "Board"
+          ]
+        },
+        {
+          "category": "CPU ",
+          "spec": "Intel® Xeon® 6515P",
+          "qty": 2.0,
+          "extra_categories": []
+        },
+        {
+          "category": "RAM",
+          "spec": "삼성전자 DDR5-5600 ECC/REG 64GB",
+          "qty": 8.0,
+          "extra_categories": []
+        },
+        {
+          "category": "SSD",
+          "spec": "삼성전자 PM9A3 U.2 NVMe 1.92TB",
+          "qty": 1.0,
+          "extra_categories": []
+        },
+        {
+          "category": "GPU",
+          "spec": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+          "qty": 4.0,
+          "extra_categories": []
+        }
+      ],
+      "sets": 1.0,
+      "unit_price": 141356000.0,
+      "notes": [
+        "* ADVANTECH 정품공급확약서 및 기술지원확약서 필수 제출\n* XD00035590-01 GPU 파워케이블 필수 공급 (GPU Cable)"
+      ]
+    }
+  ],
+  "remarks": [
+    "- 3년 무상 보증"
+  ],
+  "sheet_name": "견적",
+  "margin": {
+    "rate": 0.12,
+    "buy_units": {
+      "0.0": 100000.0,
+      "0.1": 200000.0,
+      "0.3": 400000.0,
+      "0.4": 500000.0
+    }
+  }
+}

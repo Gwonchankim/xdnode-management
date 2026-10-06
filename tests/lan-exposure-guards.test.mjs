@@ -81,7 +81,7 @@ test("R3: the launcher builds, writes .dev.vars, forces the explorer off and sta
   const launcher = await read("scripts/Start-XDNodeManagement.ps1");
   const order = [
     "netsh.exe interface portproxy show all", '$env:X_LOCAL_EXPLORER = "false"', "npm.cmd run build", "scripts\\write-dev-vars.mjs",
-    "npm.cmd run serve:lan", "npm.cmd run resume:bridge", "npm.cmd run assistant:claude",
+    "npm.cmd run serve:lan", "npm.cmd run resume:bridge", "npm.cmd run assistant:claude", "npm.cmd run quote:pdf",
   ];
   let last = -1;
   for (const marker of order) {
@@ -224,7 +224,8 @@ test("R4: the stop script kills the preview tree and bridges by pid file, falls 
   assert.ok(stop.includes('Join-Path $RunDir "xdm-bridge-$bridgePort.pid"'));
   // 브리지는 운영 포트(3000)를 끌 때만 끈다. 점검·리허설 포트는 운영 브리지를 건드리지 않는다.
   assert.ok(stop.includes("if ($Port -eq 3000 -and -not $KeepBridges) {"));
-  assert.ok(stop.includes("[int[]]$BridgePorts = @(3120, 3130)"));
+  // quote-tool QT2: 견적 PDF 도우미 3150 을 더한다(견적 AI 브리지 3140 은 QT3 에서 더한다).
+  assert.ok(stop.includes("[int[]]$BridgePorts = @(3120, 3130, 3150)"));
   // 포트 대체 경로와 pid 재사용 방지.
   assert.ok(stop.includes("Get-NetTCPConnection -State Listen -LocalPort $ListenPort"));
   assert.ok(stop.includes("$startedAt -gt $NotStartedAfter"));
@@ -264,4 +265,25 @@ test("R4: the backup script stops, copies, verifies, records, restarts through t
   // 실패도 기록한다(--error). 기록은 서버 정지 중(재기동 finally 보다 앞).
   assert.ok(backup.includes('if ($failure) { $recordArgs += @("--error", $failure) }'));
   assert.ok(backup.indexOf('"--record-run"') < backup.indexOf("\nfinally {"), "record before the restart block");
+});
+
+// ── quote-tool QT2: 견적 PDF 도우미 3150(Design §6.1·§6.3·§11.7) ──────────────────────────────
+test("QT2: the quote PDF helper binds 127.0.0.1, refuses Origin and foreign Host, and is started by the launcher unless quote-pdf.external exists", async () => {
+  const [helper, launcher, stop] = await Promise.all([read("scripts/quote-pdf-helper.mjs"), read("scripts/Start-XDNodeManagement.ps1"), read("scripts/Stop-XDNodeManagement.ps1")]);
+  // 브라우저가 직접 부르면 /api/quote/* 의 권한 검사를 건너뛴다. 기존 브리지와 같은 문장 모양으로 막는다.
+  assert.match(helper, /const HOST = "127\.0\.0\.1"/);
+  assert.match(helper, /const PORT = Number\(process\.env\.XD_NODE_QUOTE_PDF_PORT \|\| 3150\);/);
+  assert.match(helper, /const ALLOWED_HOSTS = new Set\(\[`127\.0\.0\.1:\$\{PORT\}`, `localhost:\$\{PORT\}`\]\);/);
+  assert.match(helper, /request\.headers\.origin !== undefined \|\| !ALLOWED_HOSTS\.has\(String\(request\.headers\.host \?\? ""\)\)/);
+  assert.match(helper, /server\.listen\(PORT, HOST,/);
+  assert.doesNotMatch(helper, /Access-Control-Allow-Origin|0\.0\.0\.0/);
+  // 시작 스크립트: 3150 을 띄우되, 대안 경로(로그온 작업) 표지 파일이 있으면 띄우지 않는다. 경고 루프에 3150 을 넣는다.
+  const code = codeOf(launcher);
+  assert.ok(code.includes("$QuotePdfPort = 3150"));
+  assert.ok(code.includes('$QuotePdfExternal = Join-Path $RunDir "quote-pdf.external"'));
+  assert.match(code, /if \(Test-Path -LiteralPath \$QuotePdfExternal\) \{[\s\S]*?\}\s*else \{\s*Start-Bridge \$QuotePdfPort "npm\.cmd run quote:pdf" "quote-pdf"\s*\}/);
+  assert.ok(code.includes("foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort, $QuotePdfPort)) {"));
+  assert.ok(codeOf(stop).includes("[int[]]$BridgePorts = @(3120, 3130, 3150)"));
+  const { scripts } = JSON.parse(await read("package.json"));
+  assert.equal(scripts["quote:pdf"], "node scripts/quote-pdf-helper.mjs");
 });

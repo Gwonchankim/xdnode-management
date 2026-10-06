@@ -292,3 +292,11 @@ export function parseStoredQuote(json: string | null | undefined): Quote | null 
 export function withoutMargin(quote: Quote): Quote {
   return { ...quote, margin: null };
 }
+
+/**
+ * 저장용 JSON(quote_issued.quote_json). 옛 model_dump_json(exclude_none=True) 과 같은 모양: null 인 키를 빼고 키 순서는 모델 정의 순서다.
+ * (숫자 표기는 JS 다. 파이썬은 정수값 float 를 2.0 으로 쓰지만 같은 로더(parseStoredQuote)로 읽으므로 의미는 같다.)
+ */
+export function serializeQuote(quote: Quote): string {
+  return JSON.stringify(quote, (_key, value) => (value === null ? undefined : value));
+}

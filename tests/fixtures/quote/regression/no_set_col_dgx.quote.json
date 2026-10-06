@@ -1,0 +1,52 @@
+{
+  "customer": {
+    "org": "고객기관D",
+    "contact": "박민수 과장님",
+    "tel": "010-0000-0000",
+    "email": "customer@example.com"
+  },
+  "terms": {
+    "valid_weeks": 1,
+    "delivery": "협의 후 결정",
+    "payment": "현금결제",
+    "place": "귀사 지정 장소",
+    "project": "프로젝트명",
+    "stamp_omitted": true
+  },
+  "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+  },
+  "issue_date": "2026-09-17",
+  "lines": [
+    {
+      "label": "DGX B300 H/W",
+      "name": "DGX B300 8X 288GB Full with Business Std Support, 3 Years",
+      "items": [],
+      "qty": 1.0,
+      "unit_price": 936600000.0,
+      "notes": []
+    },
+    {
+      "label": "DGX B300 S/W",
+      "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+      "items": [],
+      "qty": 1.0,
+      "unit_price": 171150000.0,
+      "notes": []
+    },
+    {
+      "label": "ACC",
+      "name": "Essentials Licensing Run : AI, 8 GPU, 3 Years",
+      "items": [],
+      "qty": 1.0,
+      "unit_price": 126000000.0,
+      "notes": []
+    }
+  ],
+  "remarks": [
+    "- H/W 무상 보증 3년 / S/W 필수 구매 항목"
+  ],
+  "sheet_name": "견적"
+}

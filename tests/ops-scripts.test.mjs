@@ -51,7 +51,7 @@ test('R4: all restarts go through the autostart task; only the launcher starts p
     const code = codeOf(read(`scripts/${name}.ps1`));
     assert.ok(code.includes('Start-ScheduledTask -TaskName $TaskName'), `${name}: restart via the task`);
     assert.ok(code.includes('[string]$TaskName = "XDnodeManagement-Autostart"'), name);
-    assert.doesNotMatch(code, /Start-XDNodeManagement\.ps1|serve:lan|vite\.js preview|resume:bridge|assistant:claude/, `${name} starts the server directly`);
+    assert.doesNotMatch(code, /Start-XDNodeManagement\.ps1|serve:lan|vite\.js preview|resume:bridge|assistant:claude|quote:bridge|quote:pdf/, `${name} starts the server directly`);
   }
   const deploy = codeOf(read('scripts/Deploy-XDNodeManagement.ps1'));
   // Deploy 순서(Design §11.5.8): 태그 확인 → Stop → 스냅샷·검증 → checkout → npm ci → build → write-dev-vars·build-rev → Start-ScheduledTask → 헬스체크.

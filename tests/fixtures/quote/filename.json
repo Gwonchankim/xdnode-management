@@ -1,0 +1,508 @@
+[
+ {
+  "name": "korean_prefix_no_boundary",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "서버G494",
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "",
+  "filename": "견적서(엑스디노드)_261001_고객기관A_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "korean_prefix_no_boundary",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "서버G494",
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "",
+  "filename": "견적서(엑스디노드)_261001_고객기관A_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "dgx_korean_word",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "DGX",
+     "name": "DGX 서버 B300",
+     "items": [
+      {
+       "category": "GPU",
+       "spec": "NVIDIA B300"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "DGX 서버,B300",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(DGX 서버,B300)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "dgx_korean_word",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "DGX",
+     "name": "DGX 서버 B300",
+     "items": [
+      {
+       "category": "GPU",
+       "spec": "NVIDIA B300"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "DGX 서버,B300",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(DGX 서버,B300)_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "fullwidth_digits",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "Gigabyte G４９４-SB0",
+     "items": [
+      {
+       "category": "GPU",
+       "spec": "NVIDIA RTX PRO 6000 Blackwell"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "G４９４,PRO 6000",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(G４９４,PRO 6000)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "fullwidth_digits",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "Gigabyte G４９４-SB0",
+     "items": [
+      {
+       "category": "GPU",
+       "spec": "NVIDIA RTX PRO 6000 Blackwell"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "G４９４,PRO 6000",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(G４９４,PRO 6000)_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "nbsp_single",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "NVIDIA RTX A6000 48GB",
+     "qty": 2,
+     "unit_price": 100
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "RTX A6000 48GB",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(RTX A6000 48GB)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "nbsp_single",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "NVIDIA RTX A6000 48GB",
+     "qty": 2,
+     "unit_price": 100
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "RTX A6000 48GB",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(RTX A6000 48GB)_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "gpu_suffixes",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Workstation",
+     "name": "",
+     "items": [
+      {
+       "category": " gpu ",
+       "spec": "  NVIDIA RTX 6000 Ada Generation\n48GB"
+      },
+      {
+       "category": "GPU",
+       "spec": "NVIDIA L40S 48GB"
+      },
+      {
+       "category": "GPU",
+       "spec": "NVIDIA RTX 6000 Ada Generation"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "6000,L40S",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(6000,L40S)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "gpu_suffixes",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Workstation",
+     "name": "",
+     "items": [
+      {
+       "category": " gpu ",
+       "spec": "  NVIDIA RTX 6000 Ada Generation\n48GB"
+      },
+      {
+       "category": "GPU",
+       "spec": "NVIDIA L40S 48GB"
+      },
+      {
+       "category": "GPU",
+       "spec": "NVIDIA RTX 6000 Ada Generation"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "6000,L40S",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(6000,L40S)_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "long_single_name",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "NAS",
+     "name": "Synology DiskStation DS2422+ 12-bay",
+     "qty": 1,
+     "unit_price": 1
+    },
+    {
+     "label": "SW",
+     "name": "가나다라마바사아자차카타파하 소프트웨어 라이선스",
+     "qty": 1,
+     "unit_price": 1
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "DS2422+,가나다라마바사아자차카타파하 소프트웨어",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(DS2422+,가나다라마바사아자차카타파하 소프트웨어)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "long_single_name",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "NAS",
+     "name": "Synology DiskStation DS2422+ 12-bay",
+     "qty": 1,
+     "unit_price": 1
+    },
+    {
+     "label": "SW",
+     "name": "가나다라마바사아자차카타파하 소프트웨어 라이선스",
+     "qty": 1,
+     "unit_price": 1
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "DS2422+,가나다라마바사아자차카타파하 소프트웨어",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(DS2422+,가나다라마바사아자차카타파하 소프트웨어)_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "hpc_and_t",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "HPC7000 / T2000",
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x"
+      }
+     ]
+    },
+    {
+     "label": "Server",
+     "name": "S2600WF0R",
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "HPC7000,S2600WF0R",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(HPC7000,S2600WF0R)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "hpc_and_t",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "HPC7000 / T2000",
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x"
+      }
+     ]
+    },
+    {
+     "label": "Server",
+     "name": "S2600WF0R",
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x"
+      }
+     ]
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "HPC7000,S2600WF0R",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(HPC7000,S2600WF0R)_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "explicit_hint_empty",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "model_hint": "",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "G494",
+     "qty": 1
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "G494",
+  "filename": "견적서(엑스디노드)_261001_고객기관A_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "explicit_hint_empty",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "model_hint": "",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "G494",
+     "qty": 1
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "G494",
+  "filename": "견적서(엑스디노드)_261001_고객기관A_홍길동 님 귀하-옵션1.xlsx"
+ },
+ {
+  "name": "explicit_hint_bad_chars",
+  "quote": {
+   "customer": {
+    "org": "고객<기관>",
+    "contact": ""
+   },
+   "issue_date": "2026-10-01",
+   "model_hint": "A/B:C*D?",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "x",
+     "qty": 1
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "x",
+  "filename": "견적서(엑스디노드)_261001_고객기관(ABCD).xlsx"
+ },
+ {
+  "name": "explicit_hint_bad_chars",
+  "quote": {
+   "customer": {
+    "org": "고객<기관>",
+    "contact": ""
+   },
+   "issue_date": "2026-10-01",
+   "model_hint": "A/B:C*D?",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "x",
+     "qty": 1
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "x",
+  "filename": "견적서(엑스디노드)_261001_고객기관(ABCD)-옵션1.xlsx"
+ },
+ {
+  "name": "tab_and_vt",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "NVIDIA\tH100\u000b80GB",
+     "qty": 1
+    }
+   ]
+  },
+  "suffix": null,
+  "hint": "H100\u000b80GB",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(H100\u000b80GB)_홍길동 님 귀하.xlsx"
+ },
+ {
+  "name": "tab_and_vt",
+  "quote": {
+   "customer": {
+    "org": "  고객기관A ",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "GPU",
+     "name": "NVIDIA\tH100\u000b80GB",
+     "qty": 1
+    }
+   ]
+  },
+  "suffix": "옵션1",
+  "hint": "H100\u000b80GB",
+  "filename": "견적서(엑스디노드)_261001_고객기관A(H100\u000b80GB)_홍길동 님 귀하-옵션1.xlsx"
+ }
+]

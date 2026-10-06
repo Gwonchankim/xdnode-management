@@ -3,7 +3,7 @@ import "server-only";
 // 견적 서버 공용(quote-tool Design §1.2·§3.1, QD-3). 읽기 전용 조회·오류 헬퍼·본문 상한만 둔다. 쓰기 문 빌더는 quote-store.ts(QT2)·quote-import.ts 가 맡는다.
 // 고객 연락처·과거 견적은 서버에서만 다룬다. 이 파일을 클라이언트에서 import 하면 빌드가 실패한다(server-only).
 import { erpError, type ErpPrincipal } from "./erp-platform";
-import { inspectTemplate, sha256Hex, unzipTemplate } from "./quote-xlsx";
+import { XLSX_MIME, inspectTemplate, loadTemplate, sha256Hex, unzipTemplate, type TemplateModel } from "./quote-xlsx";
 
 /** dist/client 에 이 문자열이 있으면 서버 모듈이 번들에 새어 나간 것이다(tests/bundle-exposure). */
 export const QUOTE_SERVER_MARKER = "xdm-quote-server-only";
@@ -189,4 +189,74 @@ export async function helperAvailable(baseUrl: string, timeoutMs = 800) {
   } catch {
     return false;
   }
+}
+
+// ── 템플릿 모델 캐시(§3.3-3): 같은 sha 면 다시 풀지 않는다. R2 본문 해시는 생성마다 loadTemplateFromR2 가 확인한다. ──
+let templateCache: { sha256: string; model: TemplateModel } | null = null;
+export type TemplateModelLoad = { ok: true; model: TemplateModel } | { ok: false; code: "TEMPLATE_MISSING" | "TEMPLATE_INVALID" };
+
+export async function loadTemplateModel(db: D1Database, bucket: R2Bucket | undefined): Promise<TemplateModelLoad> {
+  const loaded = await loadTemplateFromR2(db, bucket);
+  if (!loaded.ok) return loaded;
+  if (templateCache?.sha256 === loaded.sha256) return { ok: true, model: templateCache.model };
+  try {
+    const model = await loadTemplate(loaded.bytes, loaded.sha256);
+    templateCache = { sha256: loaded.sha256, model };
+    return { ok: true, model };
+  } catch {
+    return { ok: false, code: "TEMPLATE_INVALID" };
+  }
+}
+
+/** 하니스 전용: 테스트마다 템플릿 캐시를 비운다. */
+export function resetQuoteTemplateCache() {
+  templateCache = null;
+}
+
+// ── PDF 도우미(§6.1, QT-FR-07). 실패해도 xlsx·기록은 남는다. 도우미 주소는 라우트 기본값(QD-17). ──
+export type PdfErrorCode = "PDF_BUSY" | "PDF_TIMEOUT" | "PDF_UNAVAILABLE" | "PDF_FAILED";
+export const PDF_ERRORS: Record<PdfErrorCode, { status: number; message: string }> = {
+  PDF_BUSY: { status: 429, message: "PDF 도우미가 바쁩니다. 잠시 후 다시 만들어 주세요." },
+  PDF_TIMEOUT: { status: 504, message: "PDF를 만드는 시간이 초과되었습니다." },
+  PDF_UNAVAILABLE: { status: 502, message: "PDF 도우미에 연결하지 못했습니다." },
+  PDF_FAILED: { status: 502, message: "PDF를 만들지 못했습니다." },
+};
+export const PDF_TIMEOUT_MS = 90_000;
+export type PdfResult = { ok: true; bytes: Uint8Array; pages: number | null; ms: number } | { ok: false; code: PdfErrorCode; ms: number };
+
+/** POST <helper>/pdf (본문 = xlsx, X-Quote-Sheet = 시트명). 429 → BUSY, 504·시간 초과 → TIMEOUT, 연결 실패 → UNAVAILABLE, 그 밖 → FAILED. */
+export async function requestPdf(baseUrl: string, xlsx: Uint8Array, sheetName: string, timeoutMs = PDF_TIMEOUT_MS): Promise<PdfResult> {
+  const started = Date.now();
+  const elapsed = () => Date.now() - started;
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl.replace(/\/+$/, "")}/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": XLSX_MIME, "X-Quote-Sheet": encodeURIComponent(sheetName) },
+      body: xlsx,
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+  } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    return { ok: false, code: name === "TimeoutError" || name === "AbortError" ? "PDF_TIMEOUT" : "PDF_UNAVAILABLE", ms: elapsed() };
+  }
+  if (response.status === 429) return { ok: false, code: "PDF_BUSY", ms: elapsed() };
+  if (response.status === 504) return { ok: false, code: "PDF_TIMEOUT", ms: elapsed() };
+  if (!response.ok) return { ok: false, code: "PDF_FAILED", ms: elapsed() };
+  try {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.length < 5 || String.fromCharCode(...bytes.subarray(0, 5)) !== "%PDF-") return { ok: false, code: "PDF_FAILED", ms: elapsed() };
+    const pages = Number(response.headers.get("x-pdf-pages"));
+    return { ok: true, bytes, pages: Number.isFinite(pages) && pages > 0 ? pages : null, ms: elapsed() };
+  } catch (error) {
+    const name = (error as { name?: string } | null)?.name;
+    return { ok: false, code: name === "TimeoutError" || name === "AbortError" ? "PDF_TIMEOUT" : "PDF_FAILED", ms: elapsed() };
+  }
+}
+
+/** 기록·저장 실패 때 응답에 싣는 xlsx(base64, Worker 에는 Buffer 가 없다). */
+export function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+  return btoa(binary);
 }

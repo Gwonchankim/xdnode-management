@@ -1,0 +1,790 @@
+[
+ {
+  "name": "qty_present_ints",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관A",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "G494",
+     "sets": 2,
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "Xeon 6515P",
+       "qty": 2,
+       "unit_price": 1000000
+      },
+      {
+       "category": "RAM",
+       "spec": "64GB DDR5\nECC",
+       "qty": 16,
+       "unit_price": 450000
+      }
+     ]
+    }
+   ]
+  },
+  "author": null,
+  "suffix": null,
+  "content_hash": "7b8f249480edb8f5",
+  "dedup_key": "2026 10 01 고객기관a 담당자 팀장#7b8f249480edb8f5",
+  "issued": {
+   "issue_date": "2026-10-01",
+   "subtotal": 18400000.0,
+   "total": 20240000.0,
+   "n_lines": 1,
+   "dedup_key": "2026 10 01 고객기관a 담당자 팀장#7b8f249480edb8f5",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "set",
+    "category": "Server",
+    "name": "G494",
+    "name_key": "g494",
+    "qty": 2.0,
+    "unit_price": 9200000.0,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "CPU",
+    "name": "Xeon 6515P",
+    "name_key": "xeon 6515p",
+    "qty": 2.0,
+    "unit_price": 1000000.0,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "RAM",
+    "name": "64GB DDR5",
+    "name_key": "64gb ddr5",
+    "qty": 16.0,
+    "unit_price": 450000.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "qty_present_ints",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관A",
+    "contact": "홍길동 님"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "G494",
+     "sets": 2,
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "Xeon 6515P",
+       "qty": 2,
+       "unit_price": 1000000
+      },
+      {
+       "category": "RAM",
+       "spec": "64GB DDR5\nECC",
+       "qty": 16,
+       "unit_price": 450000
+      }
+     ]
+    }
+   ]
+  },
+  "author": "담당자 팀장",
+  "suffix": "옵션A",
+  "content_hash": "7b8f249480edb8f5",
+  "dedup_key": "2026 10 01 고객기관a 담당자 팀장 옵션a#7b8f249480edb8f5",
+  "issued": {
+   "issue_date": "2026-10-01",
+   "subtotal": 18400000.0,
+   "total": 20240000.0,
+   "n_lines": 1,
+   "dedup_key": "2026 10 01 고객기관a 담당자 팀장 옵션a#7b8f249480edb8f5",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "set",
+    "category": "Server",
+    "name": "G494",
+    "name_key": "g494",
+    "qty": 2.0,
+    "unit_price": 9200000.0,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "CPU",
+    "name": "Xeon 6515P",
+    "name_key": "xeon 6515p",
+    "qty": 2.0,
+    "unit_price": 1000000.0,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "RAM",
+    "name": "64GB DDR5",
+    "name_key": "64gb ddr5",
+    "qty": 16.0,
+    "unit_price": 450000.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "qty_missing_default",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관B"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Workstation",
+     "name": "WS",
+     "unit_price": 5000000,
+     "items": [
+      {
+       "category": "GPU",
+       "spec": "RTX PRO 6000"
+      },
+      {
+       "category": "SSD",
+       "spec": "PM9A3 3.84TB",
+       "qty": null
+      }
+     ]
+    }
+   ]
+  },
+  "author": null,
+  "suffix": null,
+  "content_hash": "4244bd0be847d95e",
+  "dedup_key": "2026 10 01 고객기관b 담당자 팀장#4244bd0be847d95e",
+  "issued": {
+   "issue_date": "2026-10-01",
+   "subtotal": 5000000.0,
+   "total": 5500000.0,
+   "n_lines": 1,
+   "dedup_key": "2026 10 01 고객기관b 담당자 팀장#4244bd0be847d95e",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "set",
+    "category": "Workstation",
+    "name": "WS",
+    "name_key": "ws",
+    "qty": 1.0,
+    "unit_price": 5000000.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "qty_missing_default",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관B"
+   },
+   "issue_date": "2026-10-01",
+   "lines": [
+    {
+     "label": "Workstation",
+     "name": "WS",
+     "unit_price": 5000000,
+     "items": [
+      {
+       "category": "GPU",
+       "spec": "RTX PRO 6000"
+      },
+      {
+       "category": "SSD",
+       "spec": "PM9A3 3.84TB",
+       "qty": null
+      }
+     ]
+    }
+   ]
+  },
+  "author": "담당자 팀장",
+  "suffix": "옵션A",
+  "content_hash": "4244bd0be847d95e",
+  "dedup_key": "2026 10 01 고객기관b 담당자 팀장 옵션a#4244bd0be847d95e",
+  "issued": {
+   "issue_date": "2026-10-01",
+   "subtotal": 5000000.0,
+   "total": 5500000.0,
+   "n_lines": 1,
+   "dedup_key": "2026 10 01 고객기관b 담당자 팀장 옵션a#4244bd0be847d95e",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "set",
+    "category": "Workstation",
+    "name": "WS",
+    "name_key": "ws",
+    "qty": 1.0,
+    "unit_price": 5000000.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "decimals_and_none",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "Ａlpha® 연구소",
+    "contact": "김철수 연구원님"
+   },
+   "issue_date": "2026-09-30",
+   "model_hint": "G494,PRO 6000",
+   "terms": {
+    "valid_weeks": 2,
+    "delivery": "4주",
+    "payment": "후불"
+   },
+   "remarks": [
+    "- 1년 무상 보증",
+    "- 부가세 별도"
+   ],
+   "lines": [
+    {
+     "label": "GPU",
+     "name": " NVIDIA H100 ",
+     "qty": 0.5,
+     "unit_price": 1234.5
+    },
+    {
+     "label": "할인",
+     "name": "특별 할인",
+     "qty": 1,
+     "unit_price": -100000.25
+    },
+    {
+     "label": "Parts",
+     "name": "부품",
+     "items": [
+      {
+       "category": "FAN",
+       "spec": "Noctua",
+       "qty": 3,
+       "unit_price": 0.1
+      },
+      {
+       "category": "CABLE",
+       "spec": "케이블",
+       "qty": 0,
+       "unit_price": null
+      }
+     ]
+    }
+   ]
+  },
+  "author": null,
+  "suffix": null,
+  "content_hash": "538313d68c934157",
+  "dedup_key": "2026 09 30 lpha 연구소 g494 pro 6000 담당자 팀장#538313d68c934157",
+  "issued": {
+   "issue_date": "2026-09-30",
+   "subtotal": -99382.7,
+   "total": -109321.0,
+   "n_lines": 3,
+   "dedup_key": "2026 09 30 lpha 연구소 g494 pro 6000 담당자 팀장#538313d68c934157",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "single",
+    "category": "GPU",
+    "name": "NVIDIA H100",
+    "name_key": "nvidia h100",
+    "qty": 0.5,
+    "unit_price": 1234.5,
+    "status": "draft"
+   },
+   {
+    "kind": "single",
+    "category": "할인",
+    "name": "특별 할인",
+    "name_key": "특별 할인",
+    "qty": 1.0,
+    "unit_price": -100000.25,
+    "status": "draft"
+   },
+   {
+    "kind": "set",
+    "category": "Parts",
+    "name": "부품",
+    "name_key": "부품",
+    "qty": 1.0,
+    "unit_price": 0.30000000000000004,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "FAN",
+    "name": "Noctua",
+    "name_key": "noctua",
+    "qty": 3.0,
+    "unit_price": 0.1,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "decimals_and_none",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "Ａlpha® 연구소",
+    "contact": "김철수 연구원님"
+   },
+   "issue_date": "2026-09-30",
+   "model_hint": "G494,PRO 6000",
+   "terms": {
+    "valid_weeks": 2,
+    "delivery": "4주",
+    "payment": "후불"
+   },
+   "remarks": [
+    "- 1년 무상 보증",
+    "- 부가세 별도"
+   ],
+   "lines": [
+    {
+     "label": "GPU",
+     "name": " NVIDIA H100 ",
+     "qty": 0.5,
+     "unit_price": 1234.5
+    },
+    {
+     "label": "할인",
+     "name": "특별 할인",
+     "qty": 1,
+     "unit_price": -100000.25
+    },
+    {
+     "label": "Parts",
+     "name": "부품",
+     "items": [
+      {
+       "category": "FAN",
+       "spec": "Noctua",
+       "qty": 3,
+       "unit_price": 0.1
+      },
+      {
+       "category": "CABLE",
+       "spec": "케이블",
+       "qty": 0,
+       "unit_price": null
+      }
+     ]
+    }
+   ]
+  },
+  "author": "담당자 팀장",
+  "suffix": "옵션A",
+  "content_hash": "538313d68c934157",
+  "dedup_key": "2026 09 30 lpha 연구소 g494 pro 6000 담당자 팀장 옵션a#538313d68c934157",
+  "issued": {
+   "issue_date": "2026-09-30",
+   "subtotal": -99382.7,
+   "total": -109321.0,
+   "n_lines": 3,
+   "dedup_key": "2026 09 30 lpha 연구소 g494 pro 6000 담당자 팀장 옵션a#538313d68c934157",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "single",
+    "category": "GPU",
+    "name": "NVIDIA H100",
+    "name_key": "nvidia h100",
+    "qty": 0.5,
+    "unit_price": 1234.5,
+    "status": "draft"
+   },
+   {
+    "kind": "single",
+    "category": "할인",
+    "name": "특별 할인",
+    "name_key": "특별 할인",
+    "qty": 1.0,
+    "unit_price": -100000.25,
+    "status": "draft"
+   },
+   {
+    "kind": "set",
+    "category": "Parts",
+    "name": "부품",
+    "name_key": "부품",
+    "qty": 1.0,
+    "unit_price": 0.30000000000000004,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "FAN",
+    "name": "Noctua",
+    "name_key": "noctua",
+    "qty": 3.0,
+    "unit_price": 0.1,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "large_and_tiny",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관C"
+   },
+   "issue_date": "2026-01-02",
+   "lines": [
+    {
+     "label": "X",
+     "name": "big",
+     "qty": 1,
+     "unit_price": 1e+16
+    },
+    {
+     "label": "Y",
+     "name": "tiny",
+     "qty": 1e-05,
+     "unit_price": 123456789012.0
+    },
+    {
+     "label": "Z",
+     "name": "zero",
+     "qty": null,
+     "unit_price": 0
+    }
+   ]
+  },
+  "author": null,
+  "suffix": null,
+  "content_hash": "a044602f15ebea05",
+  "dedup_key": "2026 01 02 고객기관c 담당자 팀장#a044602f15ebea05",
+  "issued": {
+   "issue_date": "2026-01-02",
+   "subtotal": 1.0000000001234568e+16,
+   "total": 1.1000000001358026e+16,
+   "n_lines": 3,
+   "dedup_key": "2026 01 02 고객기관c 담당자 팀장#a044602f15ebea05",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "single",
+    "category": "X",
+    "name": "big",
+    "name_key": "big",
+    "qty": 1.0,
+    "unit_price": 1e+16,
+    "status": "draft"
+   },
+   {
+    "kind": "single",
+    "category": "Y",
+    "name": "tiny",
+    "name_key": "tiny",
+    "qty": 1e-05,
+    "unit_price": 123456789012.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "large_and_tiny",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관C"
+   },
+   "issue_date": "2026-01-02",
+   "lines": [
+    {
+     "label": "X",
+     "name": "big",
+     "qty": 1,
+     "unit_price": 1e+16
+    },
+    {
+     "label": "Y",
+     "name": "tiny",
+     "qty": 1e-05,
+     "unit_price": 123456789012.0
+    },
+    {
+     "label": "Z",
+     "name": "zero",
+     "qty": null,
+     "unit_price": 0
+    }
+   ]
+  },
+  "author": "담당자 팀장",
+  "suffix": "옵션A",
+  "content_hash": "a044602f15ebea05",
+  "dedup_key": "2026 01 02 고객기관c 담당자 팀장 옵션a#a044602f15ebea05",
+  "issued": {
+   "issue_date": "2026-01-02",
+   "subtotal": 1.0000000001234568e+16,
+   "total": 1.1000000001358026e+16,
+   "n_lines": 3,
+   "dedup_key": "2026 01 02 고객기관c 담당자 팀장 옵션a#a044602f15ebea05",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "single",
+    "category": "X",
+    "name": "big",
+    "name_key": "big",
+    "qty": 1.0,
+    "unit_price": 1e+16,
+    "status": "draft"
+   },
+   {
+    "kind": "single",
+    "category": "Y",
+    "name": "tiny",
+    "name_key": "tiny",
+    "qty": 1e-05,
+    "unit_price": 123456789012.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "group_unpriced_items",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관D",
+    "contact": "이영희 님"
+   },
+   "issue_date": "2026-10-02",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "G294",
+     "sets": null,
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x",
+       "qty": 2,
+       "unit_price": 10
+      },
+      {
+       "category": "OS",
+       "spec": "Ubuntu",
+       "qty": null
+      }
+     ]
+    },
+    {
+     "label": "Server",
+     "name": "G294 B",
+     "sets": 0,
+     "unit_price": 7,
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "y",
+       "qty": 1
+      }
+     ]
+    }
+   ]
+  },
+  "author": null,
+  "suffix": null,
+  "content_hash": "51057337fc47ad15",
+  "dedup_key": "2026 10 02 고객기관d 담당자 팀장#51057337fc47ad15",
+  "issued": {
+   "issue_date": "2026-10-02",
+   "subtotal": 20.0,
+   "total": 22.0,
+   "n_lines": 2,
+   "dedup_key": "2026 10 02 고객기관d 담당자 팀장#51057337fc47ad15",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "set",
+    "category": "Server",
+    "name": "G294",
+    "name_key": "g294",
+    "qty": 1.0,
+    "unit_price": 20.0,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "CPU",
+    "name": "x",
+    "name_key": "x",
+    "qty": 2.0,
+    "unit_price": 10.0,
+    "status": "draft"
+   },
+   {
+    "kind": "set",
+    "category": "Server",
+    "name": "G294 B",
+    "name_key": "g294 b",
+    "qty": 1.0,
+    "unit_price": 7.0,
+    "status": "draft"
+   }
+  ]
+ },
+ {
+  "name": "group_unpriced_items",
+  "input": {
+   "staff": {
+    "name": "담당자 팀장",
+    "tel": "010-1234-5678",
+    "email": "staff@example.com"
+   },
+   "customer": {
+    "org": "고객기관D",
+    "contact": "이영희 님"
+   },
+   "issue_date": "2026-10-02",
+   "lines": [
+    {
+     "label": "Server",
+     "name": "G294",
+     "sets": null,
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "x",
+       "qty": 2,
+       "unit_price": 10
+      },
+      {
+       "category": "OS",
+       "spec": "Ubuntu",
+       "qty": null
+      }
+     ]
+    },
+    {
+     "label": "Server",
+     "name": "G294 B",
+     "sets": 0,
+     "unit_price": 7,
+     "items": [
+      {
+       "category": "CPU",
+       "spec": "y",
+       "qty": 1
+      }
+     ]
+    }
+   ]
+  },
+  "author": "담당자 팀장",
+  "suffix": "옵션A",
+  "content_hash": "51057337fc47ad15",
+  "dedup_key": "2026 10 02 고객기관d 담당자 팀장 옵션a#51057337fc47ad15",
+  "issued": {
+   "issue_date": "2026-10-02",
+   "subtotal": 20.0,
+   "total": 22.0,
+   "n_lines": 2,
+   "dedup_key": "2026 10 02 고객기관d 담당자 팀장 옵션a#51057337fc47ad15",
+   "author": "담당자 팀장"
+  },
+  "price_rows": [
+   {
+    "kind": "set",
+    "category": "Server",
+    "name": "G294",
+    "name_key": "g294",
+    "qty": 1.0,
+    "unit_price": 20.0,
+    "status": "draft"
+   },
+   {
+    "kind": "item",
+    "category": "CPU",
+    "name": "x",
+    "name_key": "x",
+    "qty": 2.0,
+    "unit_price": 10.0,
+    "status": "draft"
+   },
+   {
+    "kind": "set",
+    "category": "Server",
+    "name": "G294 B",
+    "name_key": "g294 b",
+    "qty": 1.0,
+    "unit_price": 7.0,
+    "status": "draft"
+   }
+  ]
+ }
+]

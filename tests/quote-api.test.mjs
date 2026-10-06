@@ -1,10 +1,11 @@
 // quote-tool(Design §11.2, QT1): 견적 라우트를 실제 코드·SQL 로 실행한다(하니스의 메모리 SQLite + 가짜 R2).
 // QA-01 권한, QA-02 스키마 멱등, QA-03 이전 멱등·대조, QA-04 템플릿, QA-05 검색, QA-06 불러오기, QA-18 배지. 데이터는 모두 합성이다.
+// QT2: QA-07 생성, QA-08 dedup·확정 보호, QA-09 상태 전이(옛 test_status.py), QA-10 발송 확정, QA-11 PDF, QA-12 다운로드.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
-import { strToU8, zipSync } from 'fflate';
-import { callApi, createAccount, db, login, objects, resetDatabase, setAccess } from './helpers/hr-api-harness.mjs';
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
+import { callApi, createAccount, db, login, objects, resetDatabase, seedQuoteTemplate, setAccess, setClock } from './helpers/hr-api-harness.mjs';
 
 const { ensureQuoteSchema, resetQuoteSchemaGate, QUOTE_TABLES } = await import('../app/quote-schema.ts');
 const { normalizeQuote, parseStoredQuote, subtotal } = await import('../app/quote-model.ts');
@@ -521,4 +522,364 @@ test('quote-model: the stored-JSON loader fills pydantic defaults; the strict va
   assert.equal(ok.ok, true);
   assert.equal(ok.quote.lines[0].name, 'ab');
   assert.equal(normalizeQuote({ lines: [line], issue_date: '2026-02-30' }).field, 'issue_date');
+});
+
+// ══ QT2: 생성·상태·PDF·다운로드(Design §11.2 QA-07~12) ═══════════════════════════════
+const { quoteFilename } = await import('../app/quote-filename.ts');
+const { norm } = await import('../app/quote-textkey.ts');
+
+/** 합성 견적: 그룹(상세 2·병합 1·확약 문구) + 단품. 고객·담당자는 자리표시자. */
+function sampleQuote(overrides = {}) {
+  return {
+    customer: { org: '알파연구소', contact: '홍길동 님', tel: '010-0000-0000', email: 'customer@example.com' },
+    staff: { name: '담당자 팀장', tel: '010-1234-5678', email: 'staff@example.com' },
+    terms: { valid_weeks: 2, delivery: '4주', payment: '현금결제', place: '귀사 지정 장소' },
+    issue_date: '2026-10-05',
+    sheet_name: '견적',
+    lines: [
+      { label: 'Server', name: 'Gigabyte G494-SB0', sets: 1, items: [
+        { category: 'Chassis', spec: 'G494\nDual Socket', qty: 1, unit_price: 3000000, extra_categories: ['Board'] },
+        { category: 'GPU', spec: 'NVIDIA RTX PRO 6000 Blackwell', qty: 4, unit_price: 12000000 },
+      ], notes: ['* 정품공급확약서 제출'] },
+      { label: 'NAS', name: 'DS1621+', qty: 1, unit_price: 2500000 },
+    ],
+    remarks: ['- 3년 무상 보증', '- 부가세 별도'],
+    margin: { rate: 0.1, buy_units: { '0.0': 2500000, '0.1': 10000000 } },
+    ...overrides,
+  };
+}
+/** node:sqlite 행은 null 프로토타입이다. deepEqual 전에 평범한 객체로. */
+const plain = (value) => JSON.parse(JSON.stringify(value));
+const issuedApi = (body, options) => send('quote/issued', 'POST', body, '', options);
+const generate = (quote = sampleQuote(), extra = {}) => issuedApi({ action: 'GENERATE', quote, pdf: false, ...extra });
+const auditRows = (sql, action) => sql.prepare(`SELECT action, after_json FROM erp_audit_logs WHERE module = 'quote'${action ? ' AND action = ?' : ''} ORDER BY rowid`).all(...(action ? [action] : []));
+const zipSheets = (bytes) => {
+  const files = unzipSync(bytes);
+  return { files, names: [...strFromU8(files['xl/workbook.xml']).matchAll(/<sheet\b[^>]*name="([^"]+)"/g)].map((match) => match[1]) };
+};
+async function editorWithTemplate() {
+  const sql = await resetDatabase();
+  await seedQuoteTemplate();
+  setAccess({ quote: 'edit' });
+  return sql;
+}
+
+// ── QA-07 ────────────────────────────────────────────────────────────────
+test('QA-07: GENERATE records a draft (rev 1), stores quote/issued/<id>/1.xlsx, fans out the price log and keeps names out of the audit', async () => {
+  const sql = await editorWithTemplate();
+  setClock(Date.UTC(2026, 9, 5, 16, 30));            // KST 2026-10-06 01:30
+  const quote = sampleQuote({ issue_date: null });
+  const result = await generate(quote);
+  assert.equal(result.status, 200, JSON.stringify(result.body));
+  const expectedName = quoteFilename({ ...normalizeQuote(quote).quote, issue_date: '2026-10-06' });
+  assert.deepEqual({ ...result.body, issuedId: 1 }, {
+    issuedId: 1, rev: 1, status: 'draft', created: true, unchanged: false, filename: expectedName,
+    subtotal: 51_000_000 + 2_500_000, total: Math.round((51_000_000 + 2_500_000) * 1.1), files: { xlsx: true, pdf: false }, pending: 1,
+  });
+  assert.equal(expectedName, '견적서(엑스디노드)_261006_알파연구소(G494,PRO 6000)_홍길동 님 귀하.xlsx');
+  const row = sql.prepare(`SELECT * FROM quote_issued WHERE id = ?`).get(result.body.issuedId);
+  assert.equal(row.status, 'draft');
+  assert.equal(row.file_rev, 1);
+  assert.equal(row.issue_date, '2026-10-06');
+  assert.equal(row.xlsx_key, `quote/issued/${row.id}/1.xlsx`);
+  assert.equal(row.pdf_key, null);
+  assert.equal(row.author_account_id, 'acct_test_admin');
+  assert.equal(row.staff_name, '담당자 팀장');
+  assert.match(row.dedup_key, /^2026 10 06 알파연구소 담당자 팀장#[0-9a-f]{16}$/);
+  assert.equal(JSON.parse(row.quote_json).issue_date, '2026-10-06');
+  assert.equal(parseStoredQuote(row.quote_json).margin.rate, 0.1);
+  const stored = objects.get(row.xlsx_key);
+  assert.ok(stored, 'xlsx in R2');
+  assert.equal(stored.options.httpMetadata.contentType, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  assert.deepEqual(zipSheets(new Uint8Array(stored.value)).names, ['견적', '견적 (마진계산용)']);
+  const log = sql.prepare(`SELECT kind, category, name, name_key, qty, unit_price, status, issue_date, customer FROM quote_price_log WHERE issued_id = ? ORDER BY id`).all(row.id);
+  assert.deepEqual(log.map((entry) => [entry.kind, entry.name, entry.qty, entry.unit_price, entry.status]), [
+    ['set', 'Gigabyte G494-SB0', 1, 51_000_000, 'draft'],
+    ['item', 'G494', 1, 3_000_000, 'draft'],
+    ['item', 'NVIDIA RTX PRO 6000 Blackwell', 4, 12_000_000, 'draft'],
+    ['single', 'DS1621+', 1, 2_500_000, 'draft'],
+  ]);
+  for (const entry of log) {
+    assert.equal(entry.name_key, norm(entry.name));
+    assert.equal(entry.issue_date, '2026-10-06');
+  }
+  const audits = auditRows(sql, 'QUOTE_GENERATED');
+  assert.equal(audits.length, 1);
+  const after = JSON.parse(audits[0].after_json);
+  assert.deepEqual(after, { issuedId: row.id, rev: 1, lines: 2, subtotal: 53_500_000, total: 58_850_000, status: 'draft', created: true, unchanged: false });
+  for (const { after_json: json } of auditRows(sql)) {
+    for (const secret of ['알파연구소', '홍길동', '010-', 'example.com', '견적서(엑스디노드)']) assert.equal(json.includes(secret), false, `audit carries ${secret}`);
+  }
+  // 검증 실패·접미 제한
+  assert.equal((await generate(sampleQuote({ lines: [] }))).status, 400);
+  assert.equal((await generate(sampleQuote(), { suffix: 'x'.repeat(41) })).status, 400);
+  const suffixed = await generate(sampleQuote(), { suffix: ' 옵션:A/B ' });
+  assert.equal(suffixed.status, 200);
+  assert.ok(suffixed.body.filename.endsWith('-옵션AB.xlsx'), suffixed.body.filename);
+  setClock(null);
+});
+
+// ── QA-08 ────────────────────────────────────────────────────────────────
+test('QA-08: same quote twice → one row rev 2 without duplicate price rows; price-only option → new row; confirmed rows are not overwritten; discarded stays discarded', async () => {
+  const sql = await editorWithTemplate();
+  const first = await generate();
+  sql.prepare(`UPDATE quote_issued SET pdf_key = 'quote/issued/1/1.pdf' WHERE id = ?`).run(first.body.issuedId);
+  const second = await generate();
+  assert.equal(second.status, 200);
+  assert.equal(second.body.issuedId, first.body.issuedId);
+  assert.equal(second.body.rev, 2);
+  assert.equal(second.body.created, false);
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_issued`).get().n, 1);
+  const row = sql.prepare(`SELECT file_rev, pdf_key, xlsx_key FROM quote_issued WHERE id = ?`).get(first.body.issuedId);
+  assert.deepEqual(plain(row), { file_rev: 2, pdf_key: null, xlsx_key: `quote/issued/${first.body.issuedId}/2.xlsx` });
+  assert.ok(objects.has(`quote/issued/${first.body.issuedId}/1.xlsx`), 'the old revision is kept (add-only)');
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_price_log WHERE issued_id = ?`).get(first.body.issuedId).n, 4);
+
+  // 가격만 다른 옵션 견적 → 별건(옛 툴 analysis §3 치명 결함 재현 방지)
+  const option = sampleQuote();
+  option.lines[1].unit_price = 2_600_000;
+  const optionResult = await generate(option);
+  assert.notEqual(optionResult.body.issuedId, first.body.issuedId);
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_issued`).get().n, 2);
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_price_log`).get().n, 8);
+
+  // 확정 행에 같은 내용 재생성 → unchanged, 행·파일 그대로(QD-8)
+  assert.equal((await issuedApi({ action: 'SET_STATUS', ids: [first.body.issuedId], status: 'confirmed' })).body.changed, 1);
+  const before = plain(sql.prepare(`SELECT * FROM quote_issued WHERE id = ?`).get(first.body.issuedId));
+  const objectCount = objects.size;
+  const again = await generate();
+  assert.equal(again.status, 200);
+  assert.equal(again.body.unchanged, true);
+  assert.equal(again.body.status, 'confirmed');
+  assert.equal(again.body.issuedId, first.body.issuedId);
+  assert.deepEqual(again.body.files, { xlsx: true, pdf: false });
+  assert.deepEqual(plain(sql.prepare(`SELECT * FROM quote_issued WHERE id = ?`).get(first.body.issuedId)), before);
+  assert.equal(objects.size, objectCount, 'R2 untouched');
+  assert.deepEqual(plain(sql.prepare(`SELECT DISTINCT status FROM quote_price_log WHERE issued_id = ?`).all(first.body.issuedId)), [{ status: 'confirmed' }]);
+  assert.equal(JSON.parse(auditRows(sql, 'QUOTE_GENERATED').at(-1).after_json).unchanged, true);
+
+  // 이전한 옛 행(status NULL = confirmed)도 초안이 덮지 못한다.
+  sql.prepare(`UPDATE quote_issued SET status = NULL WHERE id = ?`).run(first.body.issuedId);
+  assert.equal((await generate()).body.unchanged, true);
+
+  // 폐기 행 재생성 → 발행 행은 discarded 유지, 단가 로그도 discarded(QD-6)
+  await issuedApi({ action: 'SET_STATUS', ids: [optionResult.body.issuedId], status: 'discarded' });
+  const regenerated = await generate(option);
+  assert.equal(regenerated.body.status, 'discarded');
+  assert.equal(regenerated.body.rev, 2);
+  assert.equal(sql.prepare(`SELECT status FROM quote_issued WHERE id = ?`).get(optionResult.body.issuedId).status, 'discarded');
+  assert.deepEqual(plain(sql.prepare(`SELECT DISTINCT status FROM quote_price_log WHERE issued_id = ?`).all(optionResult.body.issuedId)), [{ status: 'discarded' }]);
+});
+
+// ── QA-09 (옛 tests/test_status.py 16개 검사 이식) ─────────────────────────────
+test('QA-09: status transitions keep quote_issued and quote_price_log in step (old test_status.py) and cap a batch at 500', async () => {
+  const sql = await resetDatabase();
+  setAccess({ quote: 'edit' });
+  await ensureQuoteSchema(db);
+  const NAME = 'RTX PRO 6000 Max-Q';
+  const KEY = norm(NAME);
+  for (let i = 1; i <= 3; i += 1) {
+    sql.prepare(`INSERT INTO quote_issued (id, created_at, updated_at, issue_date, filename, customer, contact, total, n_lines, quote_json, status)
+      VALUES (?, 1, 1, ?, 'f', ?, ?, ?, 2, '{}', 'draft')`).run(i, `2026-09-2${i}`, `고객${i}`, `담당${i}`, i * 1_000_000);
+    sql.prepare(`INSERT INTO quote_price_log (issued_id, issue_date, customer, kind, name, name_key, qty, unit_price, status)
+      VALUES (?, ?, ?, 'item', ?, ?, 1, ?, 'draft')`).run(i, `2026-09-2${i}`, `고객${i}`, NAME, KEY, i * 100_000);
+  }
+  const counts = (table) => Object.fromEntries(sql.prepare(`SELECT COALESCE(status, 'confirmed') AS s, COUNT(*) AS n FROM ${table} GROUP BY 1`).all().map((row) => [row.s, row.n]));
+  const history = () => sql.prepare(`SELECT COUNT(*) AS n FROM quote_price_log WHERE name_key = ? AND COALESCE(status, 'confirmed') <> 'discarded'`).get(KEY).n;
+  const pending = async () => callApi('quote/history', 'GET', undefined, '?view=pending');
+  const setStatus = (ids, status) => issuedApi({ action: 'SET_STATUS', ids, status });
+
+  assert.equal((await pending()).body.count, 3, '초기 미확정 3건');
+  assert.deepEqual((await pending()).body.rows.map((row) => row.id), [1, 2, 3], '미확정 목록은 오래된 것부터');
+  const two = await setStatus([1, 2], 'confirmed');
+  assert.equal(two.body.changed, 2, '2건 확정 → changed=2');
+  assert.deepEqual(two.body.ids, [1, 2]);
+  assert.equal(two.body.price_rows, 2);
+  assert.deepEqual(counts('quote_issued'), { confirmed: 2, draft: 1 }, 'quote_issued 전이');
+  assert.deepEqual(counts('quote_price_log'), { confirmed: 2, draft: 1 }, 'price_log 가 같이 전이');
+  assert.equal(two.body.pending, 1, '미확정 1건 남음');
+  assert.equal((await setStatus([1], 'confirmed')).body.changed, 0, '이미 확정된 건은 changed=0');
+  assert.equal((await setStatus([], 'confirmed')).body.changed, 0, '빈 목록은 무해');
+  assert.equal((await setStatus([999], 'confirmed')).body.changed, 0, '없는 id 는 무해');
+  assert.equal(history(), 3, '확정·미확정 이력은 제안에 보인다');
+  const discarded = await setStatus([1, 2, 3], 'discarded');
+  assert.equal(discarded.body.changed, 3);
+  assert.equal(history(), 0, '폐기분은 제안에서 사라진다');
+  assert.deepEqual(counts('quote_price_log'), { discarded: 3 }, 'price_log 도 폐기 상태');
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_issued`).get().n, 3, '폐기해도 행은 남는다(소프트 삭제)');
+  const undo = await setStatus([1, 2, 3], 'draft');
+  assert.equal(undo.body.changed, 3);
+  assert.equal(undo.body.pending, 3, '되돌리기로 전부 미확정 복귀');
+  assert.equal(history(), 3, '되돌리면 이력도 돌아온다');
+  const bogus = await setStatus([1], 'bogus');
+  assert.equal(bogus.status, 400, '잘못된 status 는 400');
+  assert.equal(bogus.body.code, 'VALIDATION');
+  const tooMany = await setStatus(Array.from({ length: 501 }, (_, index) => index + 1), 'confirmed');
+  assert.equal(tooMany.status, 400);
+  assert.equal(tooMany.body.error, '한 번에 500건까지만 바꿀 수 있습니다.');
+  assert.equal((await setStatus(Array.from({ length: 500 }, (_, index) => index + 1), 'confirmed')).body.changed, 3);
+  // 감사: changed > 0 일 때만, id·건수·상태만.
+  const audits = auditRows(sql, 'QUOTE_STATUS_CHANGED').map((row) => JSON.parse(row.after_json));
+  assert.deepEqual(audits.map((after) => [after.status, after.changed]), [['confirmed', 2], ['discarded', 3], ['draft', 3], ['confirmed', 3]]);
+  // 보기 권한은 상태를 바꾸지 못한다.
+  setAccess({ quote: 'view' });
+  assert.equal((await setStatus([1], 'discarded')).status, 403);
+});
+
+// ── QA-10 ────────────────────────────────────────────────────────────────
+test('QA-10: CONFIRM confirms the generated row when the screen quote is unchanged, 409 STALE after an edit, 404 for an unknown id', async () => {
+  const sql = await editorWithTemplate();
+  const generated = await generate(sampleQuote(), { suffix: '옵션1' });
+  const id = generated.body.issuedId;
+  const edited = sampleQuote();
+  edited.lines[0].items[1].qty = 8;
+  const stale = await issuedApi({ action: 'CONFIRM', issuedId: id, quote: edited, suffix: '옵션1' });
+  assert.equal(stale.status, 409);
+  assert.equal(stale.body.code, 'STALE');
+  assert.equal((await issuedApi({ action: 'CONFIRM', issuedId: id, quote: sampleQuote() })).status, 409, 'a different suffix is a different key');
+  assert.equal(sql.prepare(`SELECT status FROM quote_issued WHERE id = ?`).get(id).status, 'draft');
+  // 화면의 작성일은 비어 있어도 된다(키는 행의 작성일로 만든다).
+  const ok = await issuedApi({ action: 'CONFIRM', issuedId: id, quote: sampleQuote({ issue_date: null }), suffix: '옵션1' });
+  assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  assert.deepEqual(ok.body, { issuedId: id, changed: 1, status: 'confirmed', pending: 0 });
+  assert.deepEqual(plain(sql.prepare(`SELECT DISTINCT status FROM quote_price_log WHERE issued_id = ?`).all(id)), [{ status: 'confirmed' }]);
+  assert.equal((await issuedApi({ action: 'CONFIRM', issuedId: id, quote: sampleQuote(), suffix: '옵션1' })).body.changed, 0, 'confirming twice changes nothing');
+  assert.equal((await issuedApi({ action: 'CONFIRM', issuedId: 999, quote: sampleQuote() })).status, 404);
+  const after = JSON.parse(auditRows(sql, 'QUOTE_STATUS_CHANGED')[0].after_json);
+  assert.deepEqual(after, { ids: [id], status: 'confirmed', changed: 1, priceRows: 4, via: 'CONFIRM' });
+});
+
+// ── QA-11 ────────────────────────────────────────────────────────────────
+function stubPdfFetch(handler) {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    if (String(url).startsWith('http://127.0.0.1:9/')) {
+      calls.push({ url: String(url), init });
+      return handler(init);
+    }
+    return original(url, init);
+  };
+  return { calls, restore: () => { globalThis.fetch = original; } };
+}
+const PDF_BYTES = new TextEncoder().encode('%PDF-1.7\n1 0 obj << /Type /Page >> endobj\n%%EOF\n');
+
+test('QA-11: PDF success sets pdf_key; busy/timeout/unreachable come back as pdfError while the xlsx and record stay; REGENERATE_PDF recovers', async () => {
+  const sql = await editorWithTemplate();
+  // 연결 실패(하니스 기본값: 닫힌 포트 9)
+  const offline = await generate(sampleQuote(), { pdf: true });
+  assert.equal(offline.status, 200);
+  assert.deepEqual(offline.body.files, { xlsx: true, pdf: false });
+  assert.equal(offline.body.pdfError.code, 'PDF_UNAVAILABLE');
+  const id = offline.body.issuedId;
+  assert.ok(objects.has(`quote/issued/${id}/1.xlsx`));
+
+  let stub = stubPdfFetch(() => new Response('{"error":{"code":"BUSY"}}', { status: 429, headers: { 'Content-Type': 'application/json' } }));
+  try {
+    const busy = await generate(sampleQuote({ sheet_name: '견적 2EA' }));
+    assert.equal(busy.body.pdfError, undefined, 'pdf:false skips the helper');
+    const busyPdf = await issuedApi({ action: 'GENERATE', quote: sampleQuote({ sheet_name: '견적 2EA' }) });
+    assert.equal(busyPdf.body.pdfError.code, 'PDF_BUSY');
+    assert.equal(busyPdf.body.files.xlsx, true);
+    const call = stub.calls.at(-1);
+    assert.equal(call.url, 'http://127.0.0.1:9/pdf');
+    assert.equal(call.init.method, 'POST');
+    assert.equal(call.init.headers['X-Quote-Sheet'], encodeURIComponent('견적 2EA'));
+    assert.equal(call.init.headers['Content-Type'], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    assert.deepEqual([...call.init.body.subarray(0, 2)], [0x50, 0x4b]);
+    const regenerateBusy = await issuedApi({ action: 'REGENERATE_PDF', issuedId: id });
+    assert.equal(regenerateBusy.status, 429);
+    assert.equal(regenerateBusy.body.code, 'PDF_BUSY');
+  } finally { stub.restore(); }
+
+  stub = stubPdfFetch(() => { throw new DOMException('The operation timed out.', 'TimeoutError'); });
+  try {
+    const timeout = await issuedApi({ action: 'GENERATE', quote: sampleQuote() });
+    assert.equal(timeout.body.pdfError.code, 'PDF_TIMEOUT');
+    assert.equal((await issuedApi({ action: 'REGENERATE_PDF', issuedId: id })).status, 504);
+  } finally { stub.restore(); }
+
+  stub = stubPdfFetch(() => new Response(PDF_BYTES, { status: 200, headers: { 'Content-Type': 'application/pdf', 'X-Pdf-Pages': '1' } }));
+  try {
+    const row = sql.prepare(`SELECT file_rev FROM quote_issued WHERE id = ?`).get(id);
+    const recovered = await issuedApi({ action: 'REGENERATE_PDF', issuedId: id });
+    assert.equal(recovered.status, 200, JSON.stringify(recovered.body));
+    assert.deepEqual(recovered.body, { issuedId: id, rev: row.file_rev, files: { xlsx: true, pdf: true } });
+    assert.equal(sql.prepare(`SELECT pdf_key FROM quote_issued WHERE id = ?`).get(id).pdf_key, `quote/issued/${id}/${row.file_rev}.pdf`);
+    assert.deepEqual(new Uint8Array(objects.get(`quote/issued/${id}/${row.file_rev}.pdf`).value), PDF_BYTES);
+    const fresh = await issuedApi({ action: 'GENERATE', quote: sampleQuote({ remarks: ['- 5년 무상 보증'] }) });
+    assert.deepEqual(fresh.body.files, { xlsx: true, pdf: true });
+    assert.equal(fresh.body.pdfError, undefined);
+    // 도우미가 PDF 가 아닌 것을 돌려주면 실패로 본다.
+  } finally { stub.restore(); }
+  stub = stubPdfFetch(() => new Response('<html>', { status: 200 }));
+  try {
+    assert.equal((await issuedApi({ action: 'REGENERATE_PDF', issuedId: id })).body.code, 'PDF_FAILED');
+  } finally { stub.restore(); }
+  assert.equal((await issuedApi({ action: 'REGENERATE_PDF', issuedId: 999 })).status, 404);
+  const codes = auditRows(sql, 'QUOTE_PDF_FAILED').map((row) => JSON.parse(row.after_json).code);
+  assert.deepEqual([...new Set(codes)].sort(), ['PDF_BUSY', 'PDF_FAILED', 'PDF_TIMEOUT', 'PDF_UNAVAILABLE']);
+  assert.equal(auditRows(sql, 'QUOTE_PDF_CREATED').length, 2);
+});
+
+// ── QA-12 ────────────────────────────────────────────────────────────────
+test('QA-12: files downloads carry attachment headers; the view role gets the quote sheet only; missing files are 404', async () => {
+  const sql = await editorWithTemplate();
+  const stub = stubPdfFetch(() => new Response(PDF_BYTES, { status: 200, headers: { 'Content-Type': 'application/pdf', 'X-Pdf-Pages': '1' } }));
+  let id;
+  try {
+    id = (await issuedApi({ action: 'GENERATE', quote: sampleQuote() })).body.issuedId;
+  } finally { stub.restore(); }
+  const row = sql.prepare(`SELECT filename, xlsx_key FROM quote_issued WHERE id = ?`).get(id);
+  const download = (query, options = {}) => callApi('quote/files', 'GET', undefined, query, { binary: true, ...options });
+
+  const xlsx = await download(`?issuedId=${id}&kind=xlsx`);
+  assert.equal(xlsx.status, 200);
+  assert.equal(xlsx.headers.get('content-type'), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  assert.equal(xlsx.headers.get('content-disposition'), `attachment; filename*=UTF-8''${encodeURIComponent(row.filename).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`);
+  assert.equal(xlsx.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(xlsx.headers.get('cache-control'), 'private, no-store');
+  assert.match(xlsx.headers.get('content-security-policy'), /sandbox/);
+  assert.deepEqual(xlsx.body, new Uint8Array(objects.get(row.xlsx_key).value));
+  assert.equal(zipSheets(xlsx.body).names.length, 2);
+
+  const pdf = await download(`?issuedId=${id}&kind=pdf`);
+  assert.equal(pdf.status, 200);
+  assert.equal(pdf.headers.get('content-type'), 'application/pdf');
+  assert.match(pdf.headers.get('content-disposition'), /^attachment; filename\*=UTF-8''.+\.pdf$/);
+  assert.deepEqual(pdf.body, PDF_BYTES);
+
+  setAccess({ quote: 'view' });
+  const viewed = await download(`?issuedId=${id}&kind=xlsx`);
+  assert.equal(viewed.status, 200);
+  const { files, names } = zipSheets(viewed.body);
+  assert.deepEqual(names, ['견적']);
+  for (const [name, data] of Object.entries(files)) if (name.endsWith('.xml')) assert.equal(strFromU8(data).includes('매입'), false, name);
+  assert.equal((await download(`?issuedId=${id}&kind=pdf`)).status, 200);
+  assert.equal((await issuedApi({ action: 'GENERATE', quote: sampleQuote() })).status, 403, 'view cannot generate');
+
+  setAccess({ quote: 'edit' });
+  const noPdf = await generate(sampleQuote({ remarks: ['- 1년 무상 보증'] }));
+  const missing = await download(`?issuedId=${noPdf.body.issuedId}&kind=pdf`);
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body.error, '파일이 아직 없습니다.');
+  assert.equal((await download('?issuedId=999&kind=xlsx')).status, 404);
+  assert.equal((await download(`?issuedId=${id}&kind=exe`)).status, 400);
+  setAccess({ hr: 'edit' });
+  assert.equal((await download(`?issuedId=${id}&kind=xlsx`)).status, 403, 'none cannot download');
+});
+
+test('QA-04b: GENERATE refuses a missing template (503 TEMPLATE_MISSING) and a tampered R2 body (503 TEMPLATE_INVALID)', async () => {
+  await resetDatabase();
+  setAccess({ quote: 'edit' });
+  const missing = await generate();
+  assert.equal(missing.status, 503);
+  assert.equal(missing.body.code, 'TEMPLATE_MISSING');
+  const seeded = await seedQuoteTemplate();
+  setAccess({ quote: 'edit' });
+  assert.equal((await generate()).status, 200);
+  objects.set(seeded.key, { value: new Uint8Array([0x50, 0x4b, 1, 2]), options: {} });
+  const tampered = await generate(sampleQuote({ remarks: ['- 2년'] }));
+  assert.equal(tampered.status, 503);
+  assert.equal(tampered.body.code, 'TEMPLATE_INVALID');
 });

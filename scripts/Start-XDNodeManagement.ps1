@@ -1,7 +1,7 @@
 ﻿# XDnode management 시작 스크립트(R3: vite preview 운영, R4: 무인 기동. Design §11.5.4·§11.5.8, Plan M5a·R4·D16·D18·D19).
 #
 # 순서: 로그 정리 → portproxy 확인 → (커밋이 바뀌었으면) build → .dev.vars 작성 → X_LOCAL_EXPLORER=false → preview(0.0.0.0:3000)
-#       → 브리지 3120·3130 → pid 파일 → 헬스체크(GET /api/me 가 401 이면 정상).
+#       → 브리지 3120·3130 → 견적 PDF 도우미 3150 → pid 파일 → 헬스체크(GET /api/me 가 401 이면 정상).
 # 운영은 별도 폴더(C:\xdm\prod, D18)에서 돈다. 개발 폴더에서는 npm run dev(127.0.0.1:3100)를 쓴다.
 # LAN 에 열리는지는 방화벽 규칙 'XDnode management 3000 (LAN)'이 정한다(docs/lan-operations-runbook.md).
 #
@@ -36,6 +36,9 @@ $ErrorActionPreference = "Stop"
 $ProjectPath = Split-Path -Parent $PSScriptRoot
 $ResumeBridgePort = 3120
 $ClaudeAssistantPort = 3130
+# 견적 PDF 도우미(quote-tool Design §6.3). <RunDir>\quote-pdf.external 이 있으면 다른 경로(로그온 작업)가 띄우므로 여기서는 띄우지 않는다.
+$QuotePdfPort = 3150
+$QuotePdfExternal = Join-Path $RunDir "quote-pdf.external"
 $Url = "http://localhost:$Port"
 $BuildRevPath = Join-Path $ProjectPath "dist\.build-rev"
 $Stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -278,6 +281,15 @@ Start-Bridge $ResumeBridgePort "npm.cmd run resume:bridge" "resume"
 # HR·임금계산 보조 어시스턴트(Claude CLI). 저장소 파일은 읽지 않고 ERP 서버가 넘긴 자료로만 답한다.
 Start-Bridge $ClaudeAssistantPort "npm.cmd run assistant:claude" "assistant"
 
+# 견적 PDF 도우미(Excel COM, 127.0.0.1:3150). 비대화형 세션에서 Excel 이 안 되면(QT-Q8 대안 경로) 그 사용자의 로그온 작업
+# XDnodeManagement-QuotePdf 가 도우미를 띄우고 <RunDir>\quote-pdf.external 표지 파일을 둔다. 그때는 여기서 띄우지 않는다.
+if (Test-Path -LiteralPath $QuotePdfExternal) {
+  Write-Log "INFO" "quote pdf helper 127.0.0.1:$QuotePdfPort is started elsewhere (quote-pdf.external present); not starting it here"
+}
+else {
+  Start-Bridge $QuotePdfPort "npm.cmd run quote:pdf" "quote-pdf"
+}
+
 # 4) 헬스체크. 401 이 아니면 실패다(작업 스케줄러는 종료 코드 1 을 보고 재시도한다).
 $health = Wait-Healthy $Port 60 $serverProcess
 if ($health -ne 401) {
@@ -300,7 +312,7 @@ if ($Headless -and $Port -eq 3000 -and (Get-Date).Hour -ge 9) {
 
 # 브리지는 재시도 대상이 아니다. 늦게 뜨거나 자격 증명 오류로 죽으면 경고만 남긴다(SC-12 재부팅 리허설에서 확인).
 Start-Sleep -Seconds 3
-foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort)) {
+foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort, $QuotePdfPort)) {
   if (-not (Test-LocalPort $bridgePort)) { Write-Log "WARN" "bridge 127.0.0.1:$bridgePort is not listening yet. See $LogRoot\bridge-*.log." }
 }
 

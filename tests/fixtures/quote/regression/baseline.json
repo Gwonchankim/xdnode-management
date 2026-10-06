@@ -1,0 +1,27 @@
+{
+ "count": 4,
+ "cases": 5,
+ "range": "A1:I45",
+ "skip": [
+  "H14"
+ ],
+ "diffs": [
+  {
+   "case": "server_group_span",
+   "cell": "A28"
+  },
+  {
+   "case": "server_group_span",
+   "cell": "A29"
+  },
+  {
+   "case": "parts_priced_items",
+   "cell": "H9"
+  },
+  {
+   "case": "no_set_col_dgx",
+   "cell": "A18"
+  }
+ ],
+ "note": "익명화 전 Quote 의 파이썬 출력 대 원본 xlsx(tests/regression.py 판정). 좌표만 기록한다."
+}

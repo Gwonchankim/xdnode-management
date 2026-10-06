@@ -94,6 +94,8 @@ const { resetPresence } = await import('../../app/chat-presence.ts');
 const { resetGaSchemaGate } = await import('../../app/ga-schema.ts');
 // quote-tool Design §11.1: 견적 스키마 게이트도 새 메모리 DB 마다 비운다.
 const { resetQuoteSchemaGate } = await import('../../app/quote-schema.ts');
+// QT2: 템플릿 모델 캐시(같은 sha 재사용)도 새 메모리 DB 마다 비운다.
+const { resetQuoteTemplateCache } = await import('../../app/quote-server.ts');
 const administrator = companyEmployees.find(employee => employee.id === 'gc.kim');
 
 export const TEST_ADMIN_ACCOUNT_ID = 'acct_test_admin';
@@ -121,6 +123,7 @@ export async function resetDatabase({ migrate = false } = {}) {
   resetPresence();
   resetGaSchemaGate();
   resetQuoteSchemaGate();
+  resetQuoteTemplateCache();
   sqlite = new DatabaseSync(':memory:');
   runtime.beforeBatch = null;
   runtime.forbiddenTables = null;
@@ -229,7 +232,24 @@ export async function callApi(path, method = 'GET', body, query = '', options = 
   const setCookies = response.headers.getSetCookie();
   if (response.status === 204) return { status: response.status, body: null, headers: response.headers, setCookies, response };
   const isJson = (response.headers.get('content-type') ?? '').includes('json');
+  // options.binary: 파일 다운로드(xlsx·pdf) 본문을 Uint8Array 로 돌려준다(text() 로 읽으면 바이트가 깨진다).
+  if (options.binary && !isJson) return { status: response.status, body: new Uint8Array(await response.arrayBuffer()), headers: response.headers, setCookies, response };
   return { status: response.status, body: isJson ? await response.json() : await response.text(), headers: response.headers, setCookies, response };
+}
+
+/**
+ * quote-tool Design §11.1: 테스트 템플릿(tests/fixtures/quote/template-redacted.xlsx)을 관리자 권한으로 PUT /api/quote/import?part=template 에
+ * 올린다. 호출 뒤 접근 권한은 그대로 관리자다(테스트가 setAccess 로 바꾼다).
+ */
+export async function seedQuoteTemplate() {
+  const bytes = new Uint8Array(readFileSync(new URL('../fixtures/quote/template-redacted.xlsx', import.meta.url)));
+  setAccess({}, { isAdmin: true });
+  const result = await callApi('quote/import', 'PUT', undefined, '?part=template', {
+    rawBody: bytes, contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    headers: { 'content-length': String(bytes.byteLength) },
+  });
+  if (result.status !== 200) throw new Error(`seedQuoteTemplate: ${result.status} ${JSON.stringify(result.body)}`);
+  return result.body;
 }
 export const callRoute = (name, ...args) => callApi(`hr/${name}`, ...args);
 export { db, objects };

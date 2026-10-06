@@ -1,8 +1,9 @@
 ﻿# XDnode management 정지 스크립트(R4, Design §11.5.4·§11.5.8, Plan R4).
 #
-# preview(cmd.exe → npm → node → workerd)와 브리지 3120·3130 을 끈다. 먼저 Start-XDNodeManagement.ps1 이 쓴 pid 파일로
+# preview(cmd.exe → npm → node → workerd)와 브리지 3120·3130, 견적 PDF 도우미 3150 을 끈다. 먼저 Start-XDNodeManagement.ps1 이 쓴 pid 파일로
 # taskkill /T /F 하고(workerd 까지. /T 가 없으면 workerd 가 D1 파일을 잡고 남는다), 그래도 포트가 열려 있으면 그 포트를 LISTEN 하는
 # node.exe·workerd.exe 를 찾아 끈다(포트 대체 경로). 그 밖의 프로세스(견적 툴 등)는 이름이 달라 건드리지 않는다.
+# 견적 PDF 도우미가 변환 중에 꺼져 남은 EXCEL.EXE 는 다음 기동 때 도우미가 pid 파일로 정리한다(quote-tool Design §6.1).
 # 브리지는 운영 포트(3000)를 끌 때만 끈다. 점검 인스턴스(3001)·리허설 포트는 운영 브리지를 같이 쓰므로 남긴다.
 #
 #   powershell -NoProfile -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Stop-XDNodeManagement.ps1
@@ -11,7 +12,7 @@
 #   종료 코드: 0 = 대상 포트가 모두 닫힘, 1 = 아직 열린 포트가 있음(로그 참고)
 param(
   [int]$Port = 3000,
-  [int[]]$BridgePorts = @(3120, 3130),
+  [int[]]$BridgePorts = @(3120, 3130, 3150),
   [switch]$KeepBridges,
   [string]$RunDir = "C:\xdm\run",
   [string]$LogRoot = "C:\xdm\logs",
