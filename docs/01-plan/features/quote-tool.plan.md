@@ -327,7 +327,7 @@
 - [x] tests: quote-api(스키마 멱등·권한·이전 멱등·검색 랭킹), package.json 목록
 - 배포 뒤: 운영에서 이전 스크립트 실행(옛 툴은 그대로 운영) → 이전 보고서로 QT-SC-06 확인 → 다음 03:00 백업 보고서에 `quote_*` 행 수가 나오는지 확인
 - 롤백: 직전 태그로 Deploy. 이전 데이터는 남겨도 무해하다(탭이 사라질 뿐)
-- **결과(2026-10-06)**: 커밋 `d175424`, 툴 커밋 `ece8d6f`(`tools/export_xdm_import.py`, 내보내기 `C:mworkquote-export-20261002`, reverse 998/998). `npm test` 540 통과·1 건너뜀(표지 파일 없음). 태그 `qt1-release-20261006` 09:07 운영 반영(중단 48초, 배포 전 스냅샷 무결성 OK). 09:41 운영 이전 `status OK`, 불일치 0: 코퍼스 998·1,189·5,509·59, 카탈로그 268·480, 사양 87, 고객 326행/기관 199, 구성 314, 담당자 10, 발행 1, 단가 로그 2, 스냅샷 10건 해시 일치, 템플릿 R2 `quote/template/v1.xlsx` sha256 `9a2a76f6…45b8fc`(설계 실측값과 같음). 표지 파일(`C:msecurequote-markers.json`)로 bundle-exposure 6/6, 운영 `dist/client` 45파일에서 표지 30개 0건. 남은 확인: 다음 03:00 백업 보고서의 `quote_*` 행 수, 화면에서 검색·불러오기
+- **결과(2026-10-06)**: 커밋 `d175424`, 툴 커밋 `ece8d6f`(`tools/export_xdm_import.py`, 내보내기 `C:\xdm\work\quote-export-20261002\`, reverse 998/998). `npm test` 540 통과·1 건너뜀(표지 파일 없음). 태그 `qt1-release-20261006` 09:07 운영 반영(중단 48초, 배포 전 스냅샷 무결성 OK). 09:41 운영 이전 `status OK`, 불일치 0: 코퍼스 998·1,189·5,509·59, 카탈로그 268·480, 사양 87, 고객 326행/기관 199, 구성 314, 담당자 10, 발행 1, 단가 로그 2, 스냅샷 10건 해시 일치, 템플릿 R2 `quote/template/v1.xlsx` sha256 `9a2a76f6…45b8fc`(설계 실측값과 같음). 표지 파일(`C:\xdm\secure\quote-markers.json`)로 bundle-exposure 6/6, 운영 `dist/client` 45파일에서 표지 30개 0건. 남은 확인: 다음 03:00 백업 보고서의 `quote_*` 행 수, 화면에서 검색·불러오기
 
 ### QT2 — xlsx·PDF 생성과 회귀
 - [ ] 첫날: Excel COM 세션 시험(QT-Q8). 결과에 따라 도우미 기동 경로를 정한다
