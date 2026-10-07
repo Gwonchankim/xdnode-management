@@ -412,14 +412,12 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
           <table className="admin-accounts-table">
             <thead>
               <tr>
-                <th scope="col">이름</th>
-                <th scope="col">이메일</th>
+                {/* 가로 스크롤을 줄이려고 이름·이메일, 구분·상태, 마지막 로그인·활성 세션을 한 칸씩으로 묶는다. */}
+                <th scope="col">계정</th>
                 <th scope="col">연결 직원</th>
-                <th scope="col">관리자</th>
                 <th scope="col">상태</th>
                 {grantableTabs.map((tab) => <th scope="col" key={tab.key}>{tab.label}</th>)}
-                <th scope="col">마지막 로그인</th>
-                <th scope="col">활성 세션</th>
+                <th scope="col">최근 접속</th>
                 <th scope="col">작업</th>
               </tr>
             </thead>
@@ -431,11 +429,15 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
                 const locked = Boolean(account.lockedUntil && account.lockedUntil > now) || account.failedAttempts > 0;
                 return (
                   <tr key={account.id} className={account.active ? "" : "inactive"} aria-busy={busy || undefined}>
-                    <th scope="row">{account.displayName}{self && <small> (나)</small>}</th>
-                    <td>{account.email}</td>
+                    <th scope="row" className="admin-accounts-who">
+                      <span>{account.displayName}{self && <small> (나)</small>}</span>
+                      <small className="admin-accounts-email">{account.email}</small>
+                    </th>
                     <td>{employeeName(account.employeeId)}</td>
-                    <td>{account.isAdmin ? "관리자" : "일반"}</td>
-                    <td><span className={`admin-accounts-status ${status.tone}`}>{status.label}</span></td>
+                    <td className="admin-accounts-state">
+                      <span className={`admin-accounts-role ${account.isAdmin ? "admin" : ""}`}>{account.isAdmin ? "관리자" : "일반"}</span>
+                      <span className={`admin-accounts-status ${status.tone}`}>{status.label}</span>
+                    </td>
                     {account.isAdmin
                       ? <td colSpan={grantableTabs.length}><span className="admin-accounts-all-tabs" aria-disabled="true">모든 탭 편집</span></td>
                       : grantableTabs.map((tab) => (
@@ -444,8 +446,10 @@ export default function AdminAccountsWorkspace({ currentAccountId }: { currentAc
                             onChange={(level) => void changeTab(account, tab, level)} />
                         </td>
                       ))}
-                    <td>{formatDateTime(account.lastLoginAt)}</td>
-                    <td>{account.activeSessions}</td>
+                    <td className="admin-accounts-seen">
+                      <span>{formatDateTime(account.lastLoginAt)}</span>
+                      <small>활성 세션 {account.activeSessions}개</small>
+                    </td>
                     <td>
                       <RowActions>
                           <button type="button" disabled={busy || self} title={self ? "본인 비밀번호는 비밀번호 변경에서 바꿔 주세요." : undefined} onClick={() => void resetPassword(account)}>비밀번호 초기화</button>

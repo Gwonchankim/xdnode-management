@@ -66,7 +66,7 @@ const TAB_PANELS: Record<TabKey, (ctx: PanelContext) => ReactNode> = {
     </main>
   ),
   admin: (ctx) => (
-    <main className="admin-page">
+    <main className="admin-page admin-page-wide">
       <AdminAccountsWorkspace currentAccountId={ctx.me.user.accountId} />
     </main>
   ),
