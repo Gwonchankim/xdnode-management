@@ -9,11 +9,12 @@
 //  2) Codex 의 --sandbox read-only 대신 도구를 모두 끈다(--tools ""). 저장소 파일은 읽지 않는다.
 //     예전에는 저장소 루트에서 Read·Grep·Glob 을 켜고 돌아, 탭 권한과 상관없이 .env.local 의 비밀값과
 //     직원 명부까지 읽을 수 있었다. 이제 근거는 /api/assistant 가 권한 검사를 마친 뒤 넘기는 CONTEXT JSON 뿐이다.
+// Claude 실행(도구 끔·shell 없음·표준입력)과 스키마 검사 함수는 scripts/lib/claude-cli.mjs 가 맡는다(quote-tool Design §7.1). 동작은 그대로다.
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
 import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { extractJson, json, runClaudeText, validate } from "./lib/claude-cli.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.XD_NODE_CLAUDE_ASSISTANT_PORT || 3130);
@@ -32,15 +33,7 @@ const MAX_QUESTION_LENGTH = 2000;
 const MAX_CONTEXT_BYTES = 192 * 1024;
 const RUN_TIMEOUT_MS = 300_000;
 
-// --tools "" 로 내장 도구를 모두 끈다. 아래 목록은 CLI 가 --tools 를 무시하는 경우를 위한 이중 장치다.
-const DISABLED_TOOLS = ["Bash", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "Task", "TodoWrite", "Read", "Grep", "Glob", "PowerShell"];
-
 let activeRequest = false;
-
-function json(response, status, body) {
-  response.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-  response.end(JSON.stringify(body));
-}
 
 /** Codex 다리의 buildPrompt 를 원본에서 그대로 가져온다.
  *  옮겨 적으면 두 다리의 지시가 조금씩 어긋나므로, 한쪽만 고쳐도 양쪽이 같이 따라오게 한다. */
@@ -62,87 +55,13 @@ const [buildPrompt, schema, RUN_DIRECTORY] = await Promise.all([
   mkdtemp(join(tmpdir(), "xdnode-assistant-")),
 ]);
 
-/** 스키마 검사. 이 스키마는 형태가 단순해서 필요한 규칙만 직접 본다
- *  (type, enum, required, additionalProperties, items). 새 의존성을 들이지 않기 위함이다. */
-function validate(value, schema, path = "") {
-  const errors = [];
-  const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
-  const actual = value === null ? "null" : Array.isArray(value) ? "array" : typeof value === "number"
-    ? (Number.isInteger(value) ? "integer" : "number") : typeof value;
-  if (types.length) {
-    const ok = types.some((type) => type === actual
-      || (type === "number" && actual === "integer"));
-    if (!ok) {
-      errors.push(`${path || "(root)"}: ${types.join("|")} 가 필요한데 ${actual} 입니다.`);
-      return errors;
-    }
-  }
-  if (schema.enum && !schema.enum.includes(value)) {
-    errors.push(`${path || "(root)"}: 허용되지 않은 값 ${JSON.stringify(value)}`);
-  }
-  if (actual === "object" && schema.properties) {
-    for (const key of schema.required ?? []) {
-      if (!(key in value)) errors.push(`${path ? `${path}.` : ""}${key}: 필수 항목이 없습니다.`);
-    }
-    for (const [key, child] of Object.entries(value)) {
-      const childSchema = schema.properties[key];
-      if (!childSchema) {
-        if (schema.additionalProperties === false) errors.push(`${path ? `${path}.` : ""}${key}: 허용되지 않은 항목입니다.`);
-        continue;
-      }
-      errors.push(...validate(child, childSchema, `${path ? `${path}.` : ""}${key}`));
-    }
-  }
-  if (actual === "array" && schema.items) {
-    value.forEach((item, index) => errors.push(...validate(item, schema.items, `${path}[${index}]`)));
-  }
-  return errors;
-}
-
-/** 모델이 앞뒤에 말을 붙여도 JSON 본문만 건져 낸다. */
-function extractJson(text) {
-  const trimmed = String(text ?? "").trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const body = (fenced ? fenced[1] : trimmed).trim();
-  if (body.startsWith("{")) return body;
-  const start = body.indexOf("{");
-  const end = body.lastIndexOf("}");
-  return start >= 0 && end > start ? body.slice(start, end + 1) : body;
-}
-
 function runClaude(systemPrompt, prompt) {
-  return new Promise((resolveRun, rejectRun) => {
-    const child = spawn(CLAUDE_BIN, [
-      "-p",
-      "--model", MODEL,
-      "--effort", EFFORT,
-      "--output-format", "json",
-      "--strict-mcp-config",
-      "--tools", "",
-      "--disallowed-tools", ...DISABLED_TOOLS,
-      "--system-prompt", systemPrompt,
-    ], {
-      // shell 은 쓰지 않는다. Windows 에서 인자가 이스케이프 없이 이어 붙어 프롬프트가 잘리고,
-      // --tools 뒤의 빈 문자열 인자도 사라진다.
-      cwd: RUN_DIRECTORY,
-      windowsHide: true,
-    });
-    let stdout = "";
-    let stderr = "";
-    const timer = setTimeout(() => { child.kill(); rejectRun(new Error("Claude 응답 시간이 초과되었습니다.")); }, RUN_TIMEOUT_MS);
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
-    child.stderr.on("data", (chunk) => { stderr += chunk; });
-    child.once("error", (error) => { clearTimeout(timer); rejectRun(error); });
-    child.once("close", (code) => {
-      clearTimeout(timer);
-      if (code !== 0) { rejectRun(new Error(`Claude CLI가 종료 코드 ${code}로 끝났습니다. ${stderr.slice(0, 300)}`)); return; }
-      let envelope;
-      try { envelope = JSON.parse(stdout); } catch { rejectRun(new Error("Claude CLI 응답을 읽지 못했습니다.")); return; }
-      if (envelope.is_error) { rejectRun(new Error(String(envelope.result || "Claude 응답에 실패했습니다."))); return; }
-      resolveRun({ text: envelope.result, cost: envelope.total_cost_usd, ms: envelope.duration_ms });
-    });
-    // 긴 한국어 요청이 Windows 명령줄 파서에 걸리지 않도록 표준입력으로 넘긴다.
-    child.stdin.end(prompt, "utf8");
+  // 긴 한국어 요청이 Windows 명령줄 파서에 걸리지 않도록 표준입력으로 넘긴다(lib runClaudeText).
+  return runClaudeText({
+    bin: CLAUDE_BIN, model: MODEL, effort: EFFORT, systemPrompt, prompt,
+    cwd: RUN_DIRECTORY,
+    timeoutMs: RUN_TIMEOUT_MS,
+    messages: { exit: (code, stderr) => `Claude CLI가 종료 코드 ${code}로 끝났습니다. ${stderr}` },
   });
 }
 
@@ -168,17 +87,17 @@ const server = createServer(async (request, response) => {
 
   let payload;
   try { payload = JSON.parse(raw); } catch { return json(response, 400, { error: "요청 본문을 읽지 못했습니다." }); }
-  const module = String(payload?.module ?? "").trim();
+  const area = String(payload?.module ?? "").trim();
   const question = String(payload?.question ?? "").trim();
   const context = payload?.context ?? {};
-  if (!ALLOWED_MODULES.has(module)) return json(response, 400, { error: "허용되지 않은 업무 영역입니다." });
+  if (!ALLOWED_MODULES.has(area)) return json(response, 400, { error: "허용되지 않은 업무 영역입니다." });
   if (!question) return json(response, 400, { error: "질문을 입력해 주세요." });
   if (question.length > MAX_QUESTION_LENGTH) return json(response, 413, { error: "질문이 너무 깁니다." });
   if (JSON.stringify(context).length > MAX_CONTEXT_BYTES) return json(response, 413, { error: "첨부한 자료가 너무 큽니다." });
 
   activeRequest = true;
   try {
-    const prompt = buildPrompt(module, question, context);
+    const prompt = buildPrompt(area, question, context);
     const systemPrompt = [
       "출력은 오직 JSON 하나만 반환하세요. 설명, 머리말, 코드펜스를 붙이지 마세요.",
       "다음 JSON 스키마를 정확히 따르세요:",

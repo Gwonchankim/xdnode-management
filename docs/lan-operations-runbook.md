@@ -15,7 +15,7 @@
 | 개발 폴더 | 저장소 작업 폴더. `npm run dev` = `vinext dev` `127.0.0.1:3100`(D16). R3 전환 10단계 뒤에는 운영 데이터 원본이 아니다 |
 | 운영 런타임 | `vinext build` → `vite preview --host 0.0.0.0 --port 3000 --strictPort`(`npm run serve:lan`) |
 | 서버 PC 점검용 | `npm run start` = `vite preview --host 127.0.0.1 --port 3000 --strictPort` |
-| 브리지 | 3120(이력서), 3130(어시스턴트). 둘 다 `127.0.0.1` 전용. 3110 Codex 브리지는 띄우지 않는다 |
+| 브리지 | 3120(이력서), 3130(어시스턴트), 3140(견적 AI 추출), 3150(견적 PDF). 모두 `127.0.0.1` 전용. 3110 Codex 브리지는 띄우지 않는다 |
 | 열리지 않아야 하는 포트 | 9229·9230(인스펙터, `inspectorPort:false`). 8765 견적 툴은 건드리지 않는다 |
 | 시작 | R4부터 `Start-ScheduledTask XDnodeManagement-Autostart` 하나(§9). 작업이 없을 때만 `powershell -ExecutionPolicy Bypass -File scripts\Start-XDNodeManagement.ps1` (점검 인스턴스는 `-Port 3001`) |
 | 정지 | `scripts\Stop-XDNodeManagement.ps1` (§1.2) |
@@ -169,6 +169,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\xdm\prod\scripts\Stop-XDN
 - **견적 PDF 도우미(quote-tool QT2)**: `Start -Headless`가 3120·3130 다음에 `npm run quote:pdf`(127.0.0.1:3150)를 띄우고, Stop이 3150을 끈다. 자동 기동 작업과 같은 **세션 0(비대화형)**에서 Excel COM으로 xlsx→PDF만 한다(`scripts\quote-xlsx-to-pdf.ps1`, 한 번에 하나+대기 3, 60초 시간 초과, 고아 EXCEL은 다음 기동 때 pid 파일로 정리). 확인: `Invoke-RestMethod http://127.0.0.1:3150/health` → `sessionId 0`, `interactive false`, `lastError null`. 로그는 `C:\xdm\logs\bridge-quote-pdf-*.log`(시각·ms·코드·바이트만).
   - **필수 전제: `C:\Windows\System32\config\systemprofile\Desktop` 폴더가 있어야 한다**(64비트 Office, SysWOW64 쪽도 같은 이름으로 둔다). 없으면 세션 0의 Excel이 파일을 열지 못해 `EXCEL_FAILED`(종료 코드 2, 0x800A03EC)가 난다. Windows 재설치·초기화 뒤에는 관리자 PowerShell에서 `New-Item -ItemType Directory C:\Windows\System32\config\systemprofile\Desktop, C:\Windows\SysWOW64\config\systemprofile\Desktop -Force`. 2026-10-07에 만들었다.
   - 대안 경로(도우미만 '로그온 시' 작업 + 자동 로그온, `<RunDir>\quote-pdf.external` 표지)는 위 전제로 해결되지 않을 때만 쓴다(quote-tool Design §6.4). 지금은 쓰지 않는다.
+- **견적 AI 브리지(quote-tool QT3)**: `Start -Headless`가 3130 다음, 3150 앞에 `npm run quote:bridge`(127.0.0.1:3140)를 띄우고, Stop이 3140을 끈다. `/api/quote/extract`만 부른다(편집 권한). Claude CLI를 도구를 모두 끈 채 빈 임시 폴더(`%TEMP%\xdnode-quote-*`)에서 `--no-session-persistence`로 돌리고, 이미지는 표준입력으로만 넘긴다. 한 번에 하나(바쁘면 화면에 'AI가 다른 요청을 처리하고 있습니다'). 확인: `Invoke-RestMethod http://127.0.0.1:3140/health` → `ok True`, `busy False`. 로그는 `C:\xdm\logs\bridge-quote-ai-*.log`(경로·ms·비용·이미지 수만). Claude CLI 로그인이 풀리면 3120·3130과 함께 실패한다(서버 사용자로 `claude` 로그인).
 - **총무 알림(GA1)**: `XDnodeManagement-Alerts`(매일 09:00)가 `scripts\Run-GaAlerts.ps1`을 부르고, `Start -Headless`도 ready 직후 한 번 부른다. 같은 날 두 번째부터는 서버가 건너뛴다(`xdm-yyyyMMdd.log`의 `ga-alerts:` 줄). 작업은 `Register-XDNodeManagementTasks.ps1`을 다시 실행하면 생긴다(Windows 비밀번호 입력). 알림 채널 '총무 알림'의 멤버는 실행 때마다 총무 탭 보기 이상 계정으로 맞춘다. 총무 첨부는 R2 `ga/` 접두사로 백업에 포함된다.
 - 수동 재기동: `Stop-XDNodeManagement.ps1` → `Start-ScheduledTask XDnodeManagement-Autostart` → `C:\xdm\logs\xdm-yyyyMMdd.log`에 `ready: ... -> 401`.
 - 상태 확인: `Get-ScheduledTaskInfo XDnodeManagement-Autostart`(LastTaskResult 0), `Get-ScheduledTaskInfo XDnodeManagement-Backup`.

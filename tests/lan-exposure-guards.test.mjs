@@ -34,19 +34,31 @@ test("dev server stays on this PC, with the Miniflare explorer off and state fil
 });
 
 test("assistant bridges run Claude with no tools, outside the repository, for server-to-server calls only", async () => {
-  const [assistant, resume, codex] = await Promise.all([
-    read("scripts/claude-assistant-bridge.mjs"), read("scripts/claude-resume-bridge.mjs"), read("scripts/codex-assistant-bridge.mjs"),
+  const [assistant, resume, quote, codex, claudeCli] = await Promise.all([
+    read("scripts/claude-assistant-bridge.mjs"), read("scripts/claude-resume-bridge.mjs"), read("scripts/claude-quote-bridge.mjs"),
+    read("scripts/codex-assistant-bridge.mjs"), read("scripts/lib/claude-cli.mjs"),
   ]);
-  for (const [name, source] of [["claude-assistant-bridge", assistant], ["claude-resume-bridge", resume]]) {
-    // D17: 내장 도구를 모두 끄고, CLI 가 --tools 를 무시해도 파일 읽기·실행 도구는 차단 목록에 걸린다.
-    assert.match(source, /"--tools", "",/, `${name}: --tools "" 가 없습니다`);
-    const disabled = source.match(/const DISABLED_TOOLS = \[([\s\S]*?)\];/)?.[1] ?? "";
-    for (const tool of ["Read", "Grep", "Glob", "PowerShell", "Bash", "Write", "Edit"]) {
-      assert.ok(disabled.includes(`"${tool}"`), `${name}: DISABLED_TOOLS 에 ${tool} 이 없습니다`);
-    }
+  // D17·quote-tool Design §7.1: Claude 실행은 공용 실행부 하나에서만 한다. 내장 도구를 모두 끄고(두 실행 함수 모두),
+  // CLI 가 --tools 를 무시해도 파일 읽기·실행 도구는 차단 목록에 걸린다. shell 은 쓰지 않는다.
+  assert.equal(claudeCli.match(/"--tools", "",/g)?.length, 2, 'claude-cli: runClaudeText·runClaudeVision 모두 --tools ""');
+  assert.equal(claudeCli.match(/"--disallowed-tools", \.\.\.DISABLED_TOOLS,/g)?.length, 2);
+  assert.equal(claudeCli.match(/"--strict-mcp-config",/g)?.length, 2);
+  const disabled = claudeCli.match(/export const DISABLED_TOOLS = \[([\s\S]*?)\];/)?.[1] ?? "";
+  for (const tool of ["Read", "Grep", "Glob", "PowerShell", "Bash", "Write", "Edit"]) {
+    assert.ok(disabled.includes(`"${tool}"`), `claude-cli: DISABLED_TOOLS 에 ${tool} 이 없습니다`);
+  }
+  assert.doesNotMatch(claudeCli, /shell:/);
+  assert.match(claudeCli, /if \(persist === false\) args\.push\("--no-session-persistence"\);/);
+  for (const [name, source] of [["claude-assistant-bridge", assistant], ["claude-resume-bridge", resume], ["claude-quote-bridge", quote]]) {
+    assert.match(source, /from "\.\/lib\/claude-cli\.mjs";/, `${name}: 공용 실행부를 쓰지 않습니다`);
+    assert.doesNotMatch(source, /spawn\(|node:child_process/, `${name}: 자체 spawn 이 있습니다`);
     // 저장소 루트에서 돌면 .env.local·직원 명부를 읽을 수 있다.
     assert.doesNotMatch(source, /cwd: PROJECT_PATH/, `${name}: 저장소를 작업 폴더로 씁니다`);
   }
+  // 견적 브리지(QD-15): 대화 기록을 디스크에 남기지 않고, 시작할 때 만든 빈 폴더에서 돈다.
+  assert.match(quote, /persist: false/);
+  assert.match(quote, /createRunDirectory\("xdnode-quote-"\)/);
+  assert.match(quote, /cwd: RUN_DIRECTORY/);
   assert.match(assistant, /cwd: RUN_DIRECTORY/);
   assert.match(assistant, /mkdtemp\(join\(tmpdir\(\), "xdnode-assistant-"\)\)/);
   // 요청을 처리하는 동안에는 저장소 파일을 열지 않는다. 스키마와 buildPrompt 는 시작할 때 한 번만 읽는다.
@@ -54,7 +66,7 @@ test("assistant bridges run Claude with no tools, outside the repository, for se
   assert.doesNotMatch(assistant, /await Promise\.all\(\[loadBuildPrompt\(\), /);
   assert.doesNotMatch(codex, /프로젝트 파일은 읽기 전용으로만 검토하세요/);
 
-  for (const [name, source] of [["claude-assistant-bridge", assistant], ["claude-resume-bridge", resume], ["codex-assistant-bridge", codex]]) {
+  for (const [name, source] of [["claude-assistant-bridge", assistant], ["claude-resume-bridge", resume], ["claude-quote-bridge", quote], ["codex-assistant-bridge", codex]]) {
     // 브라우저가 직접 부르면 /api/* 의 권한 검사를 건너뛴다. Origin 이 붙은 요청과 이 PC 가 아닌 Host 는 거부한다.
     assert.match(source, /const ALLOWED_HOSTS = new Set\(\[`127\.0\.0\.1:\$\{PORT\}`, `localhost:\$\{PORT\}`\]\);/, `${name}: Host 허용 목록이 없습니다`);
     assert.match(source, /request\.headers\.origin !== undefined \|\| !ALLOWED_HOSTS\.has\(String\(request\.headers\.host \?\? ""\)\)/, `${name}: Origin·Host 검사가 없습니다`);
@@ -81,7 +93,7 @@ test("R3: the launcher builds, writes .dev.vars, forces the explorer off and sta
   const launcher = await read("scripts/Start-XDNodeManagement.ps1");
   const order = [
     "netsh.exe interface portproxy show all", '$env:X_LOCAL_EXPLORER = "false"', "npm.cmd run build", "scripts\\write-dev-vars.mjs",
-    "npm.cmd run serve:lan", "npm.cmd run resume:bridge", "npm.cmd run assistant:claude", "npm.cmd run quote:pdf",
+    "npm.cmd run serve:lan", "npm.cmd run resume:bridge", "npm.cmd run assistant:claude", "npm.cmd run quote:bridge", "npm.cmd run quote:pdf",
   ];
   let last = -1;
   for (const marker of order) {
@@ -224,8 +236,8 @@ test("R4: the stop script kills the preview tree and bridges by pid file, falls 
   assert.ok(stop.includes('Join-Path $RunDir "xdm-bridge-$bridgePort.pid"'));
   // 브리지는 운영 포트(3000)를 끌 때만 끈다. 점검·리허설 포트는 운영 브리지를 건드리지 않는다.
   assert.ok(stop.includes("if ($Port -eq 3000 -and -not $KeepBridges) {"));
-  // quote-tool QT2: 견적 PDF 도우미 3150 을 더한다(견적 AI 브리지 3140 은 QT3 에서 더한다).
-  assert.ok(stop.includes("[int[]]$BridgePorts = @(3120, 3130, 3150)"));
+  // quote-tool QT2·QT3: 견적 AI 브리지 3140 과 견적 PDF 도우미 3150 을 더한다(Design §6.3).
+  assert.ok(stop.includes("[int[]]$BridgePorts = @(3120, 3130, 3140, 3150)"));
   // 포트 대체 경로와 pid 재사용 방지.
   assert.ok(stop.includes("Get-NetTCPConnection -State Listen -LocalPort $ListenPort"));
   assert.ok(stop.includes("$startedAt -gt $NotStartedAfter"));
@@ -282,8 +294,26 @@ test("QT2: the quote PDF helper binds 127.0.0.1, refuses Origin and foreign Host
   assert.ok(code.includes("$QuotePdfPort = 3150"));
   assert.ok(code.includes('$QuotePdfExternal = Join-Path $RunDir "quote-pdf.external"'));
   assert.match(code, /if \(Test-Path -LiteralPath \$QuotePdfExternal\) \{[\s\S]*?\}\s*else \{\s*Start-Bridge \$QuotePdfPort "npm\.cmd run quote:pdf" "quote-pdf"\s*\}/);
-  assert.ok(code.includes("foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort, $QuotePdfPort)) {"));
-  assert.ok(codeOf(stop).includes("[int[]]$BridgePorts = @(3120, 3130, 3150)"));
+  assert.ok(code.includes("foreach ($bridgePort in @($ResumeBridgePort, $ClaudeAssistantPort, $QuoteBridgePort, $QuotePdfPort)) {"));
+  assert.ok(codeOf(stop).includes("[int[]]$BridgePorts = @(3120, 3130, 3140, 3150)"));
   const { scripts } = JSON.parse(await read("package.json"));
   assert.equal(scripts["quote:pdf"], "node scripts/quote-pdf-helper.mjs");
+});
+
+// ── quote-tool QT3: 견적 AI 브리지 3140(Design §6.3·§7) ─────────────────────────────────────
+test("QT3: the quote AI bridge binds 127.0.0.1:3140, serves /quote-extract only, and the launcher starts it between 3130 and 3150", async () => {
+  const [bridge, launcher] = await Promise.all([read("scripts/claude-quote-bridge.mjs"), read("scripts/Start-XDNodeManagement.ps1")]);
+  assert.match(bridge, /const PORT = Number\(process\.env\.XD_NODE_CLAUDE_QUOTE_PORT \|\| 3140\);/);
+  assert.match(bridge, /server\.listen\(PORT, HOST,/);
+  assert.match(bridge, /request\.url !== "\/quote-extract"/);
+  assert.doesNotMatch(bridge, /0\.0\.0\.0|Access-Control-Allow-Origin|writeFile/);
+  assert.match(bridge, /XD_NODE_CLAUDE_QUOTE_MODEL \|\| "sonnet"/);
+  assert.match(bridge, /XD_NODE_CLAUDE_QUOTE_EFFORT \|\| "medium"/);
+  const code = codeOf(launcher);
+  assert.ok(code.includes("$QuoteBridgePort = 3140"));
+  assert.ok(code.includes('Start-Bridge $QuoteBridgePort "npm.cmd run quote:bridge" "quote-ai"'));
+  assert.ok(code.indexOf('"npm.cmd run assistant:claude"') < code.indexOf('"npm.cmd run quote:bridge"'));
+  assert.ok(code.indexOf('"npm.cmd run quote:bridge"') < code.indexOf('"npm.cmd run quote:pdf"'));
+  const { scripts } = JSON.parse(await read("package.json"));
+  assert.equal(scripts["quote:bridge"], "node scripts/claude-quote-bridge.mjs");
 });

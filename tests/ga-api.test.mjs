@@ -418,9 +418,14 @@ test('GA-D7: AI fill keeps only known fields in known formats, and the route for
   } finally {
     globalThis.fetch = original;
   }
+  // quote-tool Design §7.1·§11.7: 이미지 실행부는 공용 모듈(scripts/lib/claude-cli.mjs)의 runClaudeVision 이고, 3120 은 그것을 부른다.
   const bridge = readFileSync(new URL('../scripts/claude-resume-bridge.mjs', import.meta.url), 'utf8');
-  assert.match(bridge, /"--input-format", "stream-json",/);
-  const vision = bridge.slice(bridge.indexOf('function runClaudeVision'), bridge.indexOf('async function handleExtract'));
+  assert.match(bridge, /import \{[^}]*\brunClaudeVision\b[^}]*\} from "\.\/lib\/claude-cli\.mjs";/);
+  assert.doesNotMatch(bridge, /writeFile|mkdtemp|spawn\(/, 'the bridge itself neither spawns nor writes files');
+  const claudeCli = readFileSync(new URL('../scripts/lib/claude-cli.mjs', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  assert.match(claudeCli, /"--input-format", "stream-json",/);
+  const visionStart = claudeCli.indexOf('export function runClaudeVision');
+  const vision = claudeCli.slice(visionStart, claudeCli.indexOf('\n}\n', visionStart));
   assert.match(vision, /"--tools", "",/, 'the vision run keeps every tool off');
   assert.match(vision, /"--disallowed-tools", \.\.\.DISABLED_TOOLS,/);
   assert.doesNotMatch(vision, /writeFile|mkdtemp/, 'images go through stdin, never to disk');

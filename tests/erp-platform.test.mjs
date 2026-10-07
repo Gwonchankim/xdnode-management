@@ -571,10 +571,14 @@ test("applicant popup owns screening and interview, and the list only reports st
   assert.doesNotMatch(resumeRoute, /CLOUDFLARE_ACCOUNT_ID|LOCAL_LLM_BASE_URL|runCloudflare|runLocal/);
   // 다리는 sonnet + effort high 로 돌고, 셸 없이 띄워야 시스템 프롬프트가 잘리지 않는다.
   const bridge = await read("scripts/claude-resume-bridge.mjs");
+  const claudeCli = await read("scripts/lib/claude-cli.mjs");
   assert.match(bridge, /XD_NODE_CLAUDE_MODEL \|\| "sonnet"/);
   assert.match(bridge, /XD_NODE_CLAUDE_EFFORT \|\| "medium"/);
-  assert.match(bridge, /"--model", MODEL,/);
-  assert.match(bridge, /"--effort", EFFORT,/);
+  // quote-tool Design §7.1·§11.7: 실행 인자는 공용 실행부(scripts/lib/claude-cli.mjs)에 있고, 브리지는 자기 모델·effort 를 넘긴다.
+  assert.match(bridge, /model: MODEL, effort: EFFORT,/);
+  assert.match(claudeCli, /"--model", model,/);
+  assert.match(claudeCli, /"--effort", effort,/);
+  assert.doesNotMatch(claudeCli, /shell: (true|process\.platform)/);
   // 경력란은 "· 회사명(소속 및 직급): 재직기간 / 업무내용" 꼴로 조립한다.
   // 통 문장으로 받으면 형식이 매번 달라져 항목을 나눠 받는다.
   assert.match(resumeRoute, /type CareerEntry = \{/);
@@ -598,7 +602,8 @@ test("applicant popup owns screening and interview, and the list only reports st
   // HR·임금계산 어시스턴트는 Claude CLI 로 돈다. Codex 의 --output-schema 가 없으므로
   // 다리가 응답을 직접 검증해야 한다 — 변경안이 실제 ERP 를 바꾸기 때문이다.
   const assistantBridge = await read("scripts/claude-assistant-bridge.mjs");
-  assert.match(assistantBridge, /function validate\(value, schema, path = ""\)/);
+  assert.match(claudeCli, /export function validate\(value, schema, path = ""\)/);
+  assert.match(assistantBridge, /import \{[^}]*\bvalidate\b[^}]*\} from "\.\/lib\/claude-cli\.mjs";/);
   assert.match(assistantBridge, /Codex 의 --output-schema 를 대신하는 검증/);
   assert.match(assistantBridge, /const errors = validate\(parsed, schema\);/);
   // 프롬프트 규칙은 Codex 다리 원본을 그대로 가져다 쓴다(지시가 두 벌로 갈라지지 않게).

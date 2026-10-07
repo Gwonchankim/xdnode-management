@@ -93,7 +93,10 @@ test("local Codex assistant is mounted for HR, payroll and incentive while its b
   assert.match(claudeBridge, /const PORT = Number\(process\.env\.XD_NODE_CLAUDE_ASSISTANT_PORT \|\| 3130\)/);
   assert.match(claudeBridge, /const HOST = "127\.0\.0\.1"/);
   // Codex 의 read-only 샌드박스 대신 도구를 모두 끈다(파일 읽기 포함은 tests/lan-exposure-guards.test.mjs).
-  assert.match(claudeBridge, /const DISABLED_TOOLS = \["Bash", "Write", "Edit"/);
+  // quote-tool Design §7.1·§11.7: 도구 차단 목록은 공용 실행부에 있고, 3130 은 그 실행부로만 Claude 를 띄운다.
+  assert.match(await read("scripts/lib/claude-cli.mjs"), /export const DISABLED_TOOLS = \["Bash", "Write", "Edit"/);
+  assert.match(claudeBridge, /from "\.\/lib\/claude-cli\.mjs";/);
+  assert.doesNotMatch(claudeBridge, /spawn\(/);
   assert.match(bridge, /const HOST = "127\.0\.0\.1"/);
   assert.match(bridge, /"--sandbox", "read-only"/);
   assert.match(bridge, /"--ephemeral"/);
