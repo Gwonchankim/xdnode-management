@@ -4,7 +4,7 @@
 >
 > **Plan**: [quote-tool.plan.md](../../01-plan/features/quote-tool.plan.md) v0.2 (QT-D1~D5, QT-Q1~Q15 모두 권장안으로 확정)
 > **Project**: XDnode management
-> **Version**: 0.3
+> **Version**: 0.4
 > **Author**: gc.kim / Claude Code
 > **Date**: 2026-10-02
 > **Status**: Draft
@@ -352,8 +352,8 @@ CREATE TABLE IF NOT EXISTS quote_import_runs (
 | GET | 〃 | read | `?view=priceHistory&name=&kind=set\|item` | `{issued: priceHistory(limit 20), catalog: matchProduct(name, null, 3)}` | — |
 | GET | 〃 | read | `?view=customers&org=&contact=` | 상위 8건(PII, 서버가 고른 칸만: org, contact, tel, email, last_date, n, score) | — |
 | POST | `/api/quote/compute` | read | `{action:"SUGGEST", quote}` | `{suggestions, customer_matches}` | **없음**(QT-Q11) |
-| POST | 〃 | read | `{action:"RECOMMEND", gpu, qty?, capacity?, limit?≤10}` | `{recommendations:[…, line]}` | 없음 |
-| POST | 〃 | read | `{action:"VARIANTS", gpu, counts:int[](1~6개, 각 1~16), capacity?}` | `{variants:[{gpu_qty, line, source}]}` | 없음 |
+| POST | 〃 | read + **write**(v0.4) | `{action:"RECOMMEND", gpu, qty?, capacity?, limit?≤10}` | `{recommendations:[…, line], libraryReady}` | 없음 |
+| POST | 〃 | read + **write**(v0.4) | `{action:"VARIANTS", gpu, counts:int[](1~6개, 각 1~16), capacity?}` | `{variants:[{gpu_qty, line, source}], libraryReady}` | 없음 |
 | GET | `/api/quote/staff` | read | — | `{items:[{id, name, tel, email, accountId, sort}]}` (활성, sort 순) | — |
 | POST | 〃 | write | `{action:"SAVE", items:[{id?, name, tel, email, accountId?}]}` (≤50건, 64 KB) | `{items, before}` / 400 "담당자를 최소 한 명은 남겨야 합니다." | `QUOTE_STAFF_SAVED{before, after, added, removed, changed}` (건수만) |
 | POST | `/api/quote/extract` | write | `{text?≤60,000, instruction?≤2,000, images?:[{mediaType, data}] ≤4}` (16 MB) | `{quote, extraction:{field_notes, questions, summary}, suggestions, customer_matches}` | `QUOTE_AI_EXTRACTED{images, textChars, instructionChars, lines, filled, questions}` |
@@ -565,7 +565,7 @@ hash = sha256(utf8(parts.join("\x02"))).slice(0, 16)   // v0.3 정정: 옛 store
 - `recommend(boms, gpu, gpuQty, capacity, limit)`: `needCap = capacity || gpuQty || 1`. `s < 0.45` 제외, `+0.25`(base_max_gpu ≥ needCap), `+0.10`(gpu_qty 같음), `+min(0.12, 0.03*(n_slots−4))`(음수 가능), `+0.10`(`date ≥ "2026-01-01"`, 문자열 비교). 정렬 두 번(① `(-score, date)` ② `-score`, 안정). 같은 `base_key`는 첫 건만, `pyRound(score,3)`, `parts`는 `{slot: [first,...]}`의 첫 원소로 `{slot, category: SLOT_LABEL[slot] ?? slot.toUpperCase(), name, qty}`, `evidence` 문구 그대로.
 - `toLine(rec, gpuQty, label)`: 상세 qty는 slot이 gpu이고 gpuQty가 있으면 그 값. `label ‖ system_label ‖ "SYSTEM"`, `name ‖ parts[0].name`, `sets: 1`.
 - `variants(boms, gpu, counts, capacity)`: `recommend(gpu, null, capacity ‖ max(counts), 1)`의 1건으로 counts마다 `toLine`.
-- 응답의 `customer`·`file`(과거 견적 기관명·파일명)은 편집 권한 화면에서만 보인다(compute는 read지만 보기 권한 화면에는 추천 패널이 없다). 응답 자체는 서버가 고른 칸만 싣는다.
+- 응답의 `customer`·`file`·`evidence`에는 과거 견적 기관명·파일명이 들어간다. **v0.4(QT4 구현)**: §13.3의 대안대로 RECOMMEND·VARIANTS는 `compute`의 read 확인 뒤 `authorizeErpRequest(db, "quote", "write")`를 한 번 더 부른다(보기 권한 403 + ACCESS_DENIED 감사). 근거 문구는 옛 형식 그대로 둔다. SUGGEST는 read 그대로다.
 
 ### 4.7 Quote 검증·금액 (`app/quote-model.ts`, QT-FR-04)
 
@@ -822,7 +822,8 @@ exit 0
   - 시스템 프롬프트는 옛 `system_prompt`에서 WebSearch 문장을 "웹 검색은 할 수 없습니다. 확실하지 않으면 확실하지 않다고 말하고 제조사 사양서를 확인하라고 안내합니다."로 바꾼다. 자료·지시 구분 문장을 더한다.
   - `quoteContext`·`catalogContext`(옛 형식, `pyIntStr`)를 서버가 권한 확인 뒤 만든다. 견적의 `margin`과 고객 tel·email은 문맥에 넣지 않는다.
   - `buildChatPrompt`는 옛 형식으로 최근 14개 메시지를 넣는다. 지난 assistant 메시지는 각 8,000자에서 자른다.
-- 응답 렌더링: 상담 답은 React 노드로만 그린다(굵게·목록·표·코드 정도의 작은 마크다운 변환). 링크는 글자로만 보이고 `href`를 만들지 않는다(S8 소멸).
+- 응답 렌더링: 상담 답은 React 노드로만 그린다(굵게·목록·표·코드 정도의 작은 마크다운 변환, `app/quote-chat-format.ts`). **v0.4**: 링크는 `http:`·`https:` 절대 주소만 `<a target="_blank" rel="noopener noreferrer">`로 만들고(QT4 구현 지시), 그 밖(`javascript:`·`data:`·상대 경로)은 글자로 둔다. HTML 문자열 주입은 없다(S8 소멸).
+- **v0.4**: 상담 문맥에 '같은 GPU로 과거에 견적·납품한 구성'(`bomContext`, 구성 라이브러리 `recommend` 상위 2건×GPU 4종, 최대 6줄)을 더했다(QT-D3의 '구성 라이브러리'). 기관명·파일명·금액은 넣지 않는다. 자료는 `<quote_data>`·`<catalog_data>`·`<bom_data>`로 감싸고 안의 여닫는 태그를 지운다.
 
 ---
 
@@ -1138,6 +1139,7 @@ quote_corpus_files 998 · sheets 1,189 · items 5,509 · margin_items 59 · quot
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 0.4 | 2026-10-07 | QT4 구현 반영: RECOMMEND·VARIANTS 편집 권한(§4.6·§3.2, §13.3 대안 채택), 상담 링크는 http(s)만 rel=noopener noreferrer(§7.3), 상담 문맥에 과거 구성 요약 추가 | gc.kim / Claude Code |
 | 0.3 | 2026-10-07 | §4.4 contentHash 구분자 정정(`\x01` 비고, `\x02` 조각 — 옛 소스의 보이지 않는 제어문자가 v0.2 표기에서 빠졌다). QT2 구현에서 발견 | gc.kim / Claude Code |
 | 0.2 | 2026-10-02 | 설계 체크포인트: Q1~Q7 모두 권장안으로 확정(사용자) | gc.kim / Claude Code |
 | 0.1 | 2026-10-02 | 초안(Plan v0.2 기준). QD-1~QD-19, 테이블 15개 DDL, 라우트 10개, 이식 규칙, xlsx 조립 규칙(템플릿 실측), 도우미·브리지 프로토콜, 이전·테스트·구현 순서, 체크포인트 Q1~Q7, 계획 판정 P-1~P-12 | gc.kim / Claude Code |

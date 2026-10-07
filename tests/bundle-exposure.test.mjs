@@ -149,6 +149,8 @@ test("dist/client and dist/server carry no finance-current-data markers", async 
 const quoteStructuralMarkers = ["quote_customers", "quote_issued", "quote_corpus_", "quote_price_log", "quote_staff_profiles", "xdm-quote-server-only"];
 // QT3b: AI 추출 프롬프트(app/quote-extract.ts)·브리지 경로·단가 제안 구현(app/quote-pricing.ts)·추출 감사 이름도 서버에만 있다. 화면은 타입만 가져온다.
 quoteStructuralMarkers.push("견적 작성 보조자", "/quote-extract", "suggestion keys drifted", "QUOTE_AI_EXTRACTED", "enrichExtracted");
+// QT4: 상담 프롬프트(app/quote-chat.ts)·브리지 경로·상담 감사 이름, 구성 추천 근거 문구(app/quote-recommend.ts)·구성 라이브러리 표와 로더도 서버에만 있다.
+quoteStructuralMarkers.push("견적 상담 어시스턴트", "/quote-chat", "QUOTE_CHAT", "같은 베이스로 최대", "quote_bom_library", "loadBomLibrary", "bom_data");
 
 test("dist/client carries no quote server table names or the quote-server marker", async () => {
   const assets = await readTextAssets(clientDir);

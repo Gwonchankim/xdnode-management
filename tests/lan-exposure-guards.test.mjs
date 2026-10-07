@@ -303,11 +303,12 @@ test("QT2: the quote PDF helper binds 127.0.0.1, refuses Origin and foreign Host
 });
 
 // ── quote-tool QT3: 견적 AI 브리지 3140(Design §6.3·§7) ─────────────────────────────────────
-test("QT3: the quote AI bridge binds 127.0.0.1:3140, serves /quote-extract only, and the launcher starts it between 3130 and 3150", async () => {
+test("QT3·QT4: the quote AI bridge binds 127.0.0.1:3140, serves /quote-extract and /quote-chat only, and the launcher starts it between 3130 and 3150", async () => {
   const [bridge, launcher] = await Promise.all([read("scripts/claude-quote-bridge.mjs"), read("scripts/Start-XDNodeManagement.ps1")]);
   assert.match(bridge, /const PORT = Number\(process\.env\.XD_NODE_CLAUDE_QUOTE_PORT \|\| 3140\);/);
   assert.match(bridge, /server\.listen\(PORT, HOST,/);
-  assert.match(bridge, /request\.url !== "\/quote-extract"/);
+  assert.match(bridge, /const HANDLERS = new Map\(\[\["\/quote-extract", handleExtract\], \["\/quote-chat", handleChat\]\]\);/);
+  assert.match(bridge, /const handler = request\.method === "POST" \? HANDLERS\.get\(request\.url \?\? ""\) : undefined;/);
   assert.doesNotMatch(bridge, /0\.0\.0\.0|Access-Control-Allow-Origin|writeFile/);
   assert.match(bridge, /XD_NODE_CLAUDE_QUOTE_MODEL \|\| "sonnet"/);
   assert.match(bridge, /XD_NODE_CLAUDE_QUOTE_EFFORT \|\| "medium"/);

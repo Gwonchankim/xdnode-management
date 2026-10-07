@@ -561,6 +561,8 @@ export type EditorProps = {
   onGenerate: () => void; onConfirm: () => void; onRegeneratePdf: () => void; onDownloadFailure: () => void; emptyHint: ReactNode;
   /** 파일명 미리보기의 작성일(KST 오늘). 생성 때는 서버가 정한다. */
   today: string;
+  /** QT4 구성 추천 패널(편집 권한만). 있으면 품목 머리 아래에 그린다. onToggleRecommend 가 없으면(보기 권한) 단추도 없다. */
+  recommend?: ReactNode; recommendOpen?: boolean; onToggleRecommend?: () => void;
 };
 
 export default function QuoteEditorView(props: EditorProps) {
@@ -636,6 +638,9 @@ export default function QuoteEditorView(props: EditorProps) {
             : <span className="quote-ok-text">✓ 단가 완료</span>)}
           {props.suggestBusy && <span className="quote-muted" role="status">단가 제안을 찾는 중…</span>}
           <span className="quote-lines-tools">
+            {canEdit && props.onToggleRecommend && (
+              <button type="button" className="quote-small data" aria-pressed={Boolean(props.recommendOpen)} title="같은 GPU 로 과거에 견적·납품한 구성을 찾습니다 (Alt+R)" onClick={props.onToggleRecommend}>구성 추천</button>
+            )}
             {canEdit && <button type="button" className="quote-small" onClick={props.onApplyAll}>빈 단가 일괄 적용</button>}
             {canEdit && <button type="button" className="quote-small" title="이미 값이 있는 행을 최신 이력으로 갱신합니다(불러온 견적용)" onClick={props.onRefreshPast}>과거 단가 갱신</button>}
             {canEdit && props.undo && <button type="button" className="quote-small ghost" onClick={props.onUndo}>되돌리기 · {props.undo.label}</button>}
@@ -645,6 +650,7 @@ export default function QuoteEditorView(props: EditorProps) {
         {props.suggestError && (
           <p className="quote-error" role="alert">{props.suggestError} <button type="button" className="quote-link" onClick={props.onRetrySuggest}>다시 시도</button></p>
         )}
+        {canEdit && props.recommend}
         {draft.lines.length === 0 ? (
           <div className="quote-empty-cta">
             {props.emptyHint}

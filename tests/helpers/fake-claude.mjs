@@ -3,6 +3,7 @@
 // 받은 인자·작업 폴더·작업 폴더 안 파일 목록·표준입력을 FAKE_CLAUDE_LOG_DIR/run-<pid>.json 에 남기고, 정해진 결과 봉투를 낸다.
 // 동작은 표준입력 글에 든 표지로 고른다: "mode:ok"(기본), "mode:bad-schema"(스키마 밖 키), "mode:fence"(코드펜스로 감쌈),
 // "mode:sleep-<ms>"(기다린 뒤 ok), "mode:exit-<n>"(종료 코드 n), "mode:not-json"(JSON 이 아닌 글).
+// 상담(/quote-chat, QT4): "mode:long"(13,000자 답), "mode:empty"(빈 답).
 import { readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -23,6 +24,8 @@ process.stdin.on("end", () => {
   if (mode === "bad-schema") result = JSON.stringify({ answer: 1, memo: "C:\\secret\\.env" });
   if (mode === "fence") result = "결과입니다.\n```json\n{\"answer\":\"fenced\",\"images\":0}\n```";
   if (mode === "not-json") result = "죄송합니다. 읽을 수 없습니다.";
+  if (mode === "long") result = "가".repeat(13_000);
+  if (mode === "empty") result = "   ";
   const envelope = { type: "result", subtype: "success", is_error: false, result, total_cost_usd: 0.001, duration_ms: 7, usage: { input_tokens: 1, output_tokens: 1 } };
   const finish = () => {
     if (stream) process.stdout.write(`${JSON.stringify({ type: "system", subtype: "init" })}\n${JSON.stringify(envelope)}\n`);

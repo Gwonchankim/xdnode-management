@@ -353,10 +353,10 @@
 - **결과 2단계(2026-10-07)**: 옛 툴 폴더에 `.env`(`QUOTE_READONLY=1`, 툴 `.gitignore` 대상)를 두고 사용자가 관리자 권한으로 재기동했다(툴 서버가 '가장 높은 권한' 작업이라 일반 권한으로는 끌 수 없다). 확인: `/api/health` `readonly:true`, LAN 주소로 generate·staff·status POST 403(안내 문구), history·화면 200. 차분 이전은 새 기록이 없어 하지 않았다. **병행 관찰(QT-SC-13) 2026-10-07 ~ 2026-10-21.** 되돌리기: `.env` 삭제 후 같은 방법으로 재기동. 남은 일: 실제 견적 1건을 새 탭으로 내기
 
 ### QT4 — 상담, 구성 추천, 비교 변형
-- [ ] `app/quote-recommend.ts`, `compute` RECOMMEND·VARIANTS
-- [ ] 브리지 `/quote-chat`(도구 없음, 한 번에 하나), `app/quote-chat.ts`, `app/api/quote/chat`
-- [ ] tests: quote-pricing(추천 표본 동등성), quote-api(상담 문맥에 권한 밖 데이터 없음, 감사)
-- 배포 뒤: 상담 3문항(호환성·부품 추천·전력 계산) 확인, 웹 조회 없음 확인(브리지 로그)
+- [x] `app/quote-recommend.ts`, `compute` RECOMMEND·VARIANTS(편집 권한, Design v0.4)
+- [x] 브리지 `/quote-chat`(도구 없음, 한 번에 하나), `app/quote-chat.ts`, `app/api/quote/chat`
+- [x] tests: quote-pricing(추천 표본 동등성), quote-api(상담 문맥에 권한 밖 데이터 없음, 감사)
+- **구현(2026-10-07, 커밋 전 검토 대기)**: 툴 커밋 `09a7265`(`tools/export_xdm_recommend_fixtures.py`, 부분 사본 174건·익명화 검사 0건). QP-10 424건 불일치 0. 실제 브리지(대체 포트) 상담 1회: 웹 검색 요청을 거절하고 내부 자료로 답함, 브리지 로그 `web=0`. 운영 반영 전- 배포 뒤: 상담 3문항(호환성·부품 추천·전력 계산) 확인, 웹 조회 없음 확인(브리지 로그)
 - 롤백: 직전 태그로 Deploy
 
 ### QT5 — 전환과 폐기

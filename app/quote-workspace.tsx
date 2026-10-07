@@ -2,7 +2,8 @@
 
 // 견적 탭 루트(quote-tool Design §10). 상단 상태 알약·미확정 버튼·단축키 도움말, 왼쪽 메일(AI 추출)·최근·검색, 오른쪽 편집 화면과 하단 생성 바.
 // 상태(현재 견적·단가 제안·고객 후보·불러온 원본일·마지막 생성 결과)를 여기서 갖고, 그리기는 quote-editor-view.tsx 등이 한다.
-// 권한(§10.3): 편집(또는 관리자)은 전체 편집기, 보기는 읽기 전용(매입단가·마진·AI 추출·생성·발송 확정·미확정 일괄·담당자 관리 없음).
+// 권한(§10.3): 편집(또는 관리자)은 전체 편집기, 보기는 읽기 전용(매입단가·마진·AI 추출·구성 추천·상담·생성·발송 확정·미확정 일괄·담당자 관리 없음).
+// QT4: 구성 추천 패널(Alt+R, 품목 카드 안)과 상담 서랍(Alt+C, 오른쪽 아래 단추)은 편집 권한일 때만 그린다(서버도 quote:write 로 막는다).
 // 서버 403 이 최종 방어다. HTML 문자열 주입은 쓰지 않는다. 브라우저는 로컬 도우미(AI·PDF)를 직접 부르지 않고 /api/quote/* 만 부른다.
 //
 // 단가 제안 성능(QT3b): compute SUGGEST 는 상세 행마다 수 ms 가 들어 큰 견적 전체를 매번 다시 물으면 느리다. 줄 내용 키로 결과를 기억하고
@@ -10,7 +11,7 @@
 // 응답은 그 줄 키로 저장되므로 늦게 온 응답이 지금 화면을 틀리게 만들지 않고, 기억을 비운 뒤(발송 확정·상태 변경) 도착한 응답은 버린다.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useErpDialog } from "./erp-dialog";
-import QuoteAssistView from "./quote-assist-view";
+import QuoteAssistView, { QuoteChatDrawer, QuoteRecommendPanel } from "./quote-assist-view";
 import QuoteEditorView, { emptyPriceCount, priceAt, withPriceAt, type FooterState, type PriceUndo } from "./quote-editor-view";
 import QuoteHistoryView, { PendingDialog, type OpenRequest, type StatusChange } from "./quote-history-view";
 import QuoteStaffDialog, { type StaffSaved } from "./quote-staff-dialog";
@@ -18,7 +19,7 @@ import {
   downloadBase64, formatWon, notifyQuoteChanged, quoteRequest,
   type ExtractResult, type GenerateFailure, type GenerateResult, type LoadedWithSuggestions, type QuoteOverview, type QuoteSuggestions, type QuoteVocab, type StaffProfile,
 } from "./quote-client";
-import { DEFAULT_REMARKS, DEFAULT_TERMS, QUOTE_LIMITS, isGroup, kstToday, sheetNameError, type Quote } from "./quote-model";
+import { DEFAULT_REMARKS, DEFAULT_TERMS, QUOTE_LIMITS, isGroup, kstToday, sheetNameError, type Quote, type QuoteLine } from "./quote-model";
 import type { CustomerMatch } from "./quote-pricing";
 import { SuggestCache, lineSuggestKey } from "./quote-suggest-plan";
 
@@ -31,7 +32,7 @@ const SUGGEST_CHUNK_ROWS = 40;
 
 const SHORTCUTS: Array<[string, string]> = [
   ["Alt+1", "첫 미입력 단가 칸으로"], ["Enter", "같은 열 다음 행 단가"], ["Shift+Enter", "같은 열 이전 행"], ["Alt+Enter", "그 행의 제안 단가 적용"],
-  ["Alt+G", "xlsx + PDF 생성"], ["/", "이전 견적 검색"], ["Alt+P", "담당자 관리"], ["?", "이 도움말"],
+  ["Alt+R", "구성 추천 열기·닫기"], ["Alt+G", "xlsx + PDF 생성"], ["/", "이전 견적 검색"], ["Alt+P", "담당자 관리"], ["Alt+C", "견적 상담 열기·닫기"], ["?", "이 도움말"],
 ];
 
 function defaultQuote(withMargin: boolean): Quote {
@@ -160,6 +161,8 @@ export default function QuoteWorkspace({ canEdit, isAdmin, accountId, userName }
   const [focusSearchKey, setFocusSearchKey] = useState(0);
   const [modal, setModal] = useState<"staff" | "pending" | "keys" | "past" | null>(null);
   const [loading, setLoading] = useState(false);
+  const [recommendOpen, setRecommendOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   const draftRef = useRef(draft);
   const footerRef = useRef(footer);
@@ -341,6 +344,16 @@ export default function QuoteWorkspace({ canEdit, isAdmin, accountId, userName }
     return true;
   }
 
+  // ── 구성 추천·비교 변형 적용(QT4): 지금 견적 끝에 줄을 더한다(26줄 상한). 단가는 비워 두고 단가 제안이 채운다. ──
+  const addLines = useCallback((lines: QuoteLine[], message: string) => {
+    const room = QUOTE_LIMITS.lines - draftRef.current.lines.length;
+    if (room <= 0) { showToast(`품목 줄은 ${QUOTE_LIMITS.lines}줄(A~Z)까지입니다.`); return; }
+    const added = lines.slice(0, room).map((line) => ({ ...line, unit_price: null, items: line.items.map((item) => ({ ...item, unit_price: null })) }));
+    setDraft((current) => ({ ...current, lines: [...current.lines, ...added].slice(0, QUOTE_LIMITS.lines) }));
+    setRecommendOpen(false);
+    showToast(added.length < lines.length ? `${message} (줄 상한으로 ${lines.length - added.length}줄은 넣지 않았습니다)` : message);
+  }, [showToast]);
+
   // ── 단가 적용·되돌리기(옛 applySug·applyAllSuggestions·refreshPastPrices·undoPrices) ──
   const pushUndo = useCallback((entry: PriceUndo) => { if (entry.entries.length) setUndoStack((stack) => [...stack.slice(-19), entry]); }, []);
   const applySuggestion = useCallback((key: string, price: number) => {
@@ -511,6 +524,8 @@ export default function QuoteWorkspace({ canEdit, isAdmin, accountId, userName }
         if (event.code === "Digit1") { event.preventDefault(); gotoEmpty(); return; }
         if (event.code === "KeyG" && canEdit) { event.preventDefault(); void generate(); return; }
         if (event.code === "KeyP" && canEdit) { event.preventDefault(); setModal("staff"); return; }
+        if (event.code === "KeyR" && canEdit) { event.preventDefault(); setRecommendOpen((value) => !value); return; }
+        if (event.code === "KeyC" && canEdit) { event.preventDefault(); setChatOpen((value) => !value); return; }
       }
       if (!inField && !event.altKey && !event.ctrlKey && !event.metaKey) {
         if (event.key === "/") { event.preventDefault(); setFocusSearchKey((value) => value + 1); return; }
@@ -572,6 +587,10 @@ export default function QuoteWorkspace({ canEdit, isAdmin, accountId, userName }
             onApply={applySuggestion} onApplyAll={applyAll} onRefreshPast={refreshPast} undo={undoStack[undoStack.length - 1] ?? null} onUndo={undoPrices}
             onOpenSearch={() => setFocusSearchKey((value) => value + 1)} footer={footer} setFooter={setFooter}
             onGenerate={() => void generate()} onConfirm={() => void confirmSent()} onRegeneratePdf={() => void regeneratePdf()} onDownloadFailure={downloadFailure} today={today}
+            recommendOpen={recommendOpen} onToggleRecommend={canEdit ? () => setRecommendOpen((value) => !value) : undefined}
+            recommend={canEdit && recommendOpen ? (
+              <QuoteRecommendPanel draft={draft} room={QUOTE_LIMITS.lines - draft.lines.length} onAddLines={addLines} onClose={() => setRecommendOpen(false)} />
+            ) : null}
             emptyHint={canEdit ? (
               <div className="cta main">
                 <h5>메일로 시작</h5>
@@ -592,6 +611,7 @@ export default function QuoteWorkspace({ canEdit, isAdmin, accountId, userName }
       {modal === "pending" && canEdit && <PendingDialog onClose={() => setModal(null)} onChanged={onStatusChanged} />}
       {modal === "past" && canEdit && <PastPriceDialog rows={pastCandidates} onApply={applyPast} onClose={() => setModal(null)} />}
       {modal === "keys" && <ShortcutDialog onClose={() => setModal(null)} />}
+      {canEdit && <QuoteChatDrawer open={chatOpen} onToggle={() => setChatOpen((value) => !value)} draft={draft} accountId={accountId} />}
     </main>
   );
 }

@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import type { Quote } from "./quote-model";
 import type { CustomerMatch, Suggestion } from "./quote-pricing";
+import type { Recommendation, Variant } from "./quote-recommend";
 
 export const QUOTE_BADGE_INTERVAL_MS = 10 * 60 * 1000;
 export const QUOTE_CHANGED_EVENT = "xdm:quote-changed";
@@ -61,6 +62,11 @@ export type GenerateResult = {
   issuedId: number; rev: number; status: QuoteStatus; created: boolean; unchanged: boolean; filename: string; subtotal: number; total: number;
   files: { xlsx: boolean; pdf: boolean }; pdfError?: { code: string; message: string }; pending: number;
 };
+// ── QT4 구성 추천·상담 응답 형태(POST /api/quote/compute RECOMMEND·VARIANTS, POST /api/quote/chat). 편집 권한 화면만 쓴다. ──
+export type RecommendResult = { recommendations: Array<Recommendation & { line: Quote["lines"][number] }>; libraryReady: boolean };
+export type VariantsResult = { variants: Variant[]; libraryReady: boolean };
+export type ChatReply = { reply: string };
+
 /** 기록·저장 실패 때 응답에 실려 오는 xlsx(RECORD_FAILED·STORAGE_FAILED). */
 export type GenerateFailure = { error?: string; code?: string; field?: string; xlsxBase64?: string; filename?: string; issuedId?: number };
 

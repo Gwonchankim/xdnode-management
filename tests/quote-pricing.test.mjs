@@ -1,4 +1,4 @@
-// quote-tool(Design §11.6, QT3): 텍스트 키·신뢰도·단가 제안·고객 매칭의 TS 이식이 파이썬 옛 툴과 같은지 본다(순수 모듈).
+// quote-tool(Design §11.6, QT3·QT4): 텍스트 키·신뢰도·단가 제안·고객 매칭·구성 추천(QP-10)의 TS 이식이 파이썬 옛 툴과 같은지 본다(순수 모듈).
 // 픽스처는 옛 툴 저장소 tools/export_xdm_pricing_fixtures.py 가 보관 사본으로 만든 파이썬 출력이다(tests/fixtures/quote/{textkey,confidence,customers}.json, suggest/).
 // QP-01·02(텍스트 키·SequenceMatcher 동등)는 허용 오차 없이 === 로 본다. 이 둘이 통과하기 전에는 견적 화면 작업에 들어가지 않는다(R-QT6).
 import './helpers/tsx-loader.mjs';
@@ -354,4 +354,78 @@ test('anonymization: no value from the marker file appears in any QT3 fixture st
   }
   // 값은 출력하지 않는다(건수만).
   assert.equal(hits, 0, `${hits} marker hit(s) in QT3 fixtures`);
+});
+
+// ── QP-10 구성 추천·비교 변형 동등(QT4, Design §4.6) ─────────────────────────────
+// 픽스처: 옛 툴 저장소 tools/export_xdm_recommend_fixtures.py 가 보관 사본의 구성 라이브러리에서 고른 부분 사본(기관·파일명 익명화)과
+// 그 사본으로 돌린 파이썬 recommend·variants·to_line 출력(tests/fixtures/quote/recommend). 허용 오차 없이 deepStrictEqual 로 본다.
+const R = await import('../app/quote-recommend.ts');
+const recommendLibrary = readJson('recommend', 'library.json');
+const recommendCases = readJson('recommend', 'cases.json');
+
+test('QP-10: recommend (+ to_line per result), variants and to_line equal Python for every fixture case (0 mismatches)', () => {
+  const library = R.prepareBomLibrary(recommendLibrary);
+  assert.ok(recommendLibrary.length >= 100, `library subset has ${recommendLibrary.length} entries`);
+  const bad = [];
+  let compared = 0;
+  for (const [index, c] of recommendCases.recommend.entries()) {
+    compared += 1;
+    const got = R.recommend(library, c.gpu, c.qty, c.capacity, c.limit).map((rec) => ({ ...rec, line: R.toLine(rec, c.qty) }));
+    try { assert.deepStrictEqual(got, c.out); } catch { bad.push(`recommend #${index} gpu=${short(c.gpu)} qty=${c.qty} cap=${c.capacity} limit=${c.limit}`); }
+  }
+  for (const [index, c] of recommendCases.variants.entries()) {
+    compared += 1;
+    try { assert.deepStrictEqual(R.variants(library, c.gpu, c.counts, c.capacity), c.out); } catch { bad.push(`variants #${index} gpu=${short(c.gpu)} counts=${c.counts}`); }
+  }
+  for (const [index, c] of recommendCases.to_line.entries()) {
+    compared += 1;
+    try { assert.deepStrictEqual(R.toLine(c.rec, c.gpu_qty, c.label), c.out); } catch { bad.push(`to_line #${index} gpu_qty=${c.gpu_qty} label=${short(c.label)}`); }
+  }
+  report('QP-10', bad, compared);
+  // 표본이 실제로 경로를 고루 지난다: 결과 있는 추천·없는 추천, 증설 실적 문구, 2026 이전·이후 날짜, 여러 건 결과의 점수 내림차순.
+  const nonEmpty = recommendCases.recommend.filter((c) => c.out.length);
+  assert.ok(nonEmpty.length >= 100 && recommendCases.recommend.length - nonEmpty.length >= 10, 'both empty and non-empty recommendations');
+  assert.ok(nonEmpty.some((c) => c.out.some((rec) => /같은 베이스로 최대/.test(rec.evidence))), 'base_max_gpu evidence');
+  assert.ok(recommendLibrary.some((b) => b.date < '2026-01-01') && recommendLibrary.some((b) => b.date >= '2026-01-01'), 'date bonus on both sides');
+  assert.ok(nonEmpty.some((c) => c.out.length >= 3), 'multi-result cases');
+  assert.ok(recommendCases.variants.filter((c) => c.out.length).length >= 50, 'variants with a base');
+});
+
+test('QP-10b: sim() is the old _sim (token Jaccard without partial credit 0.6 + SequenceMatcher 0.4), and limit/needCap follow the Python truthiness', () => {
+  assert.equal(R.sim('', 'RTX 4090'), 0);
+  assert.equal(R.sim('RTX 4090', 'RTX 4090'), 1);
+  // 부분 일치('409' ⊂ '4090')는 자카드에 들어가지 않는다(score_one 과 다르다).
+  const sm = new SequenceMatcher(norm('RTX 409'), norm('RTX 4090')).ratio();
+  assert.equal(R.sim('RTX 409', 'RTX 4090'), 0.6 * (1 / 3) + 0.4 * sm);
+  const library = R.prepareBomLibrary(recommendLibrary);
+  const gpu = recommendLibrary[0].gpu_name;
+  // limit ≤ 0 이어도 옛 코드처럼 1건(넣은 뒤 개수를 본다). gpu_qty 0 은 없는 것과 같다.
+  assert.equal(R.recommend(library, gpu, null, null, 0).length, 1);
+  assert.deepStrictEqual(R.recommend(library, gpu, 0, 0, 3), R.recommend(library, gpu, null, null, 3));
+  assert.deepStrictEqual(R.recommend(R.prepareBomLibrary([]), gpu), []);
+  assert.deepStrictEqual(R.variants(R.prepareBomLibrary([]), gpu, [2, 3]), []);
+});
+
+test('anonymization: QT4 recommend fixtures carry only "고객기관N" customers, placeholder files and no e-mail or phone-like values', (t) => {
+  for (const entry of recommendLibrary) {
+    assert.match(entry.customer, /^고객기관\d+$/);
+    assert.match(entry.file, /^견적\d+\.xlsx$/);
+    assert.equal(entry.sheet_name, '견적');
+  }
+  for (const file of ['recommend/library.json', 'recommend/cases.json']) {
+    for (const text of stringsOf(readJson(...file.split('/')))) {
+      for (const [mail] of text.matchAll(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g)) assert.match(mail, /@example\.(com|org|net)$/, `${file}: e-mail address`);
+      for (const [phone] of text.matchAll(/01[016789]-?\d{3,4}-?\d{4}/g)) assert.equal(phone, '010-0000-0000', `${file}: phone-like value`);
+    }
+  }
+  const markerPath = process.env.QUOTE_PII_MARKERS || 'C:\\xdm\\secure\\quote-markers.json';
+  if (!existsSync(markerPath)) { t.diagnostic('marker file not present; marker scan skipped (values are never printed)'); return; }
+  const markers = JSON.parse(readFileSync(markerPath, 'utf8'));
+  const values = [...(markers.orgs ?? []), ...(markers.phones ?? [])].filter((value) => typeof value === 'string' && value.length >= 2);
+  let hits = 0;
+  for (const file of ['recommend/library.json', 'recommend/cases.json']) {
+    const text = stringsOf(readJson(...file.split('/'))).join('\n');
+    for (const value of values) if (text.includes(value)) hits += 1;
+  }
+  assert.equal(hits, 0, `${hits} marker hit(s) in QT4 fixtures`);
 });

@@ -1,5 +1,6 @@
 // quote-tool(Design §10·§11.6·§11.7, QT3b): 견적 편집 화면의 권한별 렌더링(서버 렌더로 실제 컴포넌트를 그린다), 단가 제안 부분 갱신 기억(순수),
 // 생성 요청 본문, 화면 소스 가드(HTML 주입 없음, 로컬 도우미 직접 호출 없음, 서버 모듈 import 없음, 단축키, 409 STALE 처리, 디바운스 ≥ 600ms).
+// QT4: 상담 답 렌더링(HTML 주입 없음·http(s) 링크만·rel=noopener noreferrer), 구성 추천·상담 서랍의 권한별 렌더링과 소스 가드.
 import './helpers/tsx-loader.mjs';
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -143,7 +144,7 @@ test('the workspace mounts the AI extraction panel, pending and staff tools for 
 
 // ── 소스 가드 ─────────────────────────────────────────────────────────────
 const uiFiles = readdirSync(path.join(root, 'app')).filter((name) => /^quote-.*\.tsx$/.test(name)).map((name) => `app/${name}`);
-const clientFiles = [...uiFiles, 'app/quote-client.ts', 'app/quote-suggest-plan.ts'];
+const clientFiles = [...uiFiles, 'app/quote-client.ts', 'app/quote-suggest-plan.ts', 'app/quote-chat-format.ts'];
 
 test('quote screens render text nodes only, never call the local helpers, never import server modules and keep storage scoped', () => {
   assert.ok(uiFiles.length >= 6, uiFiles.join(','));
@@ -184,4 +185,99 @@ test('the workspace re-asks only changed lines after ≥ 600 ms, handles 409 STA
   assert.match(assist, /quoteRequest<ExtractResult>\("\/api\/quote\/extract", "POST"/);
   assert.match(assist, /imagesToExtractInput/);
   assert.match(assist, /const MAX_IMAGES = 4;/);
+});
+
+// ── QT4: 구성 추천 패널·상담 서랍(Design §10.2·§10.3, §7.3 응답 렌더링) ─────────────────────────
+const { parseChatMarkdown, parseInline, safeHref } = await import('../app/quote-chat-format.ts');
+const { ChatMarkdown, QuoteRecommendPanel, QuoteChatDrawer, firstGpuSpec } = await import('../app/quote-assist-view.tsx');
+
+test('QT4: the chat answer renderer makes React nodes only — raw HTML stays text, links are http(s) only with rel="noopener noreferrer" (old S8)', () => {
+  const hostile = [
+    '**결론**: 된다. `PSU 2000W` 권장',
+    '<script>alert(1)</script> <img src=x onerror=alert(2)>',
+    '- [제조사 자료](https://www.nvidia.com/ko-kr/data-center/) 참고',
+    '- [나쁜 링크](javascript:alert(3)) · [데이터](data:text/html,<b>x</b>) · [상대](/api/quote/history)',
+    '맨 주소 https://example.com/spec.pdf. 끝',
+    '| 부품 | TDP |',
+    '|---|---|',
+    '| GPU <b>x</b> | 600W |',
+    '| 구분선 없는 | 표 줄 |',
+    '```',
+    '<iframe src="https://evil.example"></iframe>',
+    '```',
+  ].join('\n');
+  const html = renderToStaticMarkup(createElement(ChatMarkdown, { text: hostile }));
+  assert.doesNotMatch(html, /<script|<img|<iframe|<b>|<[^>]*\sonerror=/i, 'no HTML from the answer becomes markup');
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.match(html, /<strong>결론<\/strong>/);
+  assert.match(html, /<code>PSU 2000W<\/code>/);
+  const anchors = [...html.matchAll(/<a [^>]*>/g)].map(([tag]) => tag);
+  assert.equal(anchors.length, 2, anchors.join('\n'));
+  for (const tag of anchors) {
+    assert.match(tag, /href="https:\/\//);
+    assert.match(tag, /rel="noopener noreferrer"/);
+    assert.match(tag, /target="_blank"/);
+  }
+  assert.ok(anchors.some((tag) => tag.includes('href="https://example.com/spec.pdf"')), 'the trailing period is not part of a bare link');
+  assert.doesNotMatch(html, /href="(javascript|data|\/api)/);
+  assert.match(html, /\[나쁜 링크\]\(javascript:alert\(3\)\)/, 'unsafe links stay visible as text');
+  assert.match(html, /<table>.*<th>부품<\/th>.*<td>GPU &lt;b&gt;x&lt;\/b&gt;<\/td>/s);
+  assert.match(html, /<pre><code>&lt;iframe/);
+  // 순수 해석기: 끝나지 않는 표 줄·빈 글도 멈추지 않는다.
+  assert.deepEqual(parseChatMarkdown(''), []);
+  assert.equal(parseChatMarkdown('| a | b |').length, 1);
+  assert.equal(safeHref('javascript:alert(1)'), null);
+  assert.equal(safeHref('https://exa mple.com'), null);
+  assert.equal(safeHref('HTTPS://Example.com/a'), 'https://example.com/a');
+  assert.deepEqual(parseInline('a **b** c'), [{ kind: 'text', text: 'a ' }, { kind: 'strong', text: 'b' }, { kind: 'text', text: ' c' }]);
+});
+
+test('QT4: the recommend panel and chat drawer render for editors; the view role gets neither (Design §10.3)', () => {
+  const view = renderToStaticMarkup(createElement(QuoteWorkspace, { canEdit: false, isAdmin: false, accountId: 'acct_view', userName: '보기 사용자' }));
+  assert.doesNotMatch(view, /견적 상담|구성 추천|quote-fab|quote-chat/);
+  const edit = renderToStaticMarkup(createElement(QuoteWorkspace, { canEdit: true, isAdmin: false, accountId: 'acct_edit', userName: '편집 사용자' }));
+  assert.match(edit, /aria-label="견적 상담 열기"/);
+  assert.match(edit, /class="quote-chat" hidden=""/, 'the drawer starts closed');
+  assert.match(edit, />구성 추천</);
+  const panel = renderToStaticMarkup(createElement(QuoteRecommendPanel, { draft: sampleQuote(), room: 24, onAddLines: () => {}, onClose: () => {} }));
+  assert.match(panel, /value="RTX PRO 6000"/, 'the first GPU spec fills the GPU field (old toggleRec)');
+  assert.match(panel, /과거 구성 찾기/);
+  assert.match(panel, /2\/3\/4장 비교/);
+  assert.equal(firstGpuSpec({ lines: [] }), '');
+  const drawer = renderToStaticMarkup(createElement(QuoteChatDrawer, { open: true, onToggle: () => {}, draft: sampleQuote(), accountId: 'acct_edit' }));
+  assert.match(drawer, /알파연구소 · 2개 줄 · 부품 2종/);
+  assert.match(drawer, /웹 검색은 하지 않습니다/);
+  assert.match(drawer, /maxLength="2000"/);
+});
+
+test('QT4 source guards: no HTML injection, every link is rel="noopener noreferrer", chat/recommend go through the server routes, server prompt and recommend logic stay off the client', () => {
+  const assist = read('app/quote-assist-view.tsx');
+  const format = read('app/quote-chat-format.ts');
+  for (const [file, source] of [['app/quote-assist-view.tsx', assist], ['app/quote-chat-format.ts', format]]) {
+    assert.doesNotMatch(source, /dangerouslySetInnerHTML|\.innerHTML\s*=|insertAdjacentHTML|outerHTML/, file);
+  }
+  const anchors = [...assist.matchAll(/<a\s[^>]*>/g)].map(([tag]) => tag);
+  assert.ok(anchors.length >= 1);
+  for (const tag of anchors) assert.match(tag, /rel="noopener noreferrer"/, tag);
+  assert.match(assist, /href=\{part\.href\}/, 'hrefs come only from the parsed (safeHref) link parts');
+  assert.match(format, /url\.protocol === "http:" \|\| url\.protocol === "https:"/);
+  assert.match(assist, /quoteRequest<ChatReply>\("\/api\/quote\/chat", "POST"/);
+  assert.match(assist, /quoteRequest<RecommendResult>\("\/api\/quote\/compute", "POST", \{\s*action: "RECOMMEND"/);
+  assert.match(assist, /quoteRequest<VariantsResult>\("\/api\/quote\/compute", "POST", \{\s*action: "VARIANTS"/);
+  assert.match(assist, /const quote = \{ \.\.\.draftRef\.current, margin: null \};/, 'the chat request carries no margin');
+  assert.match(assist, /!event\.nativeEvent\.isComposing/, 'Enter while composing Hangul does not send');
+  for (const file of [...clientFiles, 'app/quote-chat-format.ts']) {
+    const source = read(file);
+    for (const match of source.matchAll(/^import\s+(type\s+)?[^;]*?from\s+"([^"]+)"/gm)) {
+      const [, typeOnly, specifier] = match;
+      assert.ok(!/quote-chat$/.test(specifier), `${file}: the chat prompt builder is server-only`);
+      if (/quote-recommend$/.test(specifier)) assert.ok(typeOnly, `${file}: value import of ${specifier} (types only on the client)`);
+    }
+  }
+  const workspace = read('app/quote-workspace.tsx');
+  for (const code of ['"KeyR"', '"KeyC"']) assert.ok(workspace.includes(`event.code === ${code} && canEdit`), code);
+  assert.match(workspace, /\{canEdit && <QuoteChatDrawer /);
+  assert.match(workspace, /recommend=\{canEdit && recommendOpen \? \(/);
+  assert.match(workspace, /onToggleRecommend=\{canEdit \? /);
+  assert.match(read('app/quote-editor-view.tsx'), /\{canEdit && props\.recommend\}/);
 });

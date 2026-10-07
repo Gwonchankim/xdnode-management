@@ -1,6 +1,6 @@
-// 견적 AI 브리지(quote-tool Design §7, QT-Q7, 127.0.0.1:3140). 견적 탭의 AI 추출을 서버 PC 의 Claude CLI 로 돌린다.
+// 견적 AI 브리지(quote-tool Design §7, QT-Q7, 127.0.0.1:3140). 견적 탭의 AI 추출(/quote-extract)과 상담(/quote-chat)을 서버 PC 의 Claude CLI 로 돌린다.
 //
-// 견적 라우트(/api/quote/extract)는 Cloudflare Worker 안에서 돌아 프로세스를 띄울 수 없다. 라우트가 권한 확인·이미지 검사를 마친 뒤
+// 견적 라우트(/api/quote/extract·/api/quote/chat)는 Cloudflare Worker 안에서 돌아 프로세스를 띄울 수 없다. 라우트가 권한 확인·이미지 검사를 마친 뒤
 // 이 브리지를 서버 대 서버로 부른다. 브라우저는 이 브리지를 직접 부르지 않는다.
 //
 // 규칙:
@@ -10,8 +10,9 @@
 //  - --no-session-persistence(QD-15): 고객 메일·견적이 ~/.claude/projects 기록 파일로 남지 않게 한다.
 //  - 한 번에 하나(바쁨 플래그 하나, 429). 본문 16 MB, 이미지 4장. 시간 초과 300초.
 //  - 모델 출력은 JSON 하나로 읽어 요청의 스키마로 검사한다. 위반이면 502 다. 라우트가 다시 정해진 칸만 거른다(app/quote-extract.ts).
-//  - 로그에는 경로·소요 ms·비용·이미지 수만 남긴다. 메일 본문·이미지·결과는 남기지 않는다.
-// /quote-chat(상담)은 QT4 에서 더한다. 그때도 같은 바쁨 플래그를 쓴다.
+//  - 로그에는 경로·소요 ms·비용·이미지 수(상담은 웹 조회 수)만 남긴다. 메일 본문·이미지·질문·결과는 남기지 않는다.
+//  - /quote-chat(상담, QT4·QT-D3): 본문 256 KB, prompt 200,000자. 도구가 모두 꺼져 있어 웹 검색을 할 수 없다. 답은 일반 텍스트이고
+//    12,000자에서 자른다. 같은 바쁨 플래그를 쓴다(한 번에 하나). 로그의 web= 는 CLI 결과 봉투의 server_tool_use(웹 검색·조회 수)다 — 0 이어야 한다.
 import { createServer } from "node:http";
 import { BodyTooLargeError, createRunDirectory, extractJson, json, readBody, runClaudeText, runClaudeVision, validate } from "./lib/claude-cli.mjs";
 
@@ -21,6 +22,8 @@ const CLAUDE_BIN = process.env.XD_NODE_CLAUDE_BIN || "claude";
 const MODEL = process.env.XD_NODE_CLAUDE_QUOTE_MODEL || "sonnet";
 const EFFORT = process.env.XD_NODE_CLAUDE_QUOTE_EFFORT || "medium";
 const MAX_EXTRACT_BYTES = 16 * 1024 * 1024;
+const MAX_CHAT_BYTES = 256 * 1024;
+const MAX_REPLY_CHARS = 12_000;
 const MAX_IMAGES = 4;
 const MAX_PROMPT_CHARS = 200_000;
 const MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
@@ -97,6 +100,51 @@ async function handleExtract(request, response) {
   }
 }
 
+/** CLI 결과 봉투의 서버 도구 사용 수(웹 검색·웹 조회). 도구를 모두 껐으므로 0 이어야 한다. 로그 확인용. */
+function webUses(usage) {
+  const tools = usage && typeof usage === "object" ? usage.server_tool_use : null;
+  if (!tools || typeof tools !== "object") return 0;
+  return (Number(tools.web_search_requests) || 0) + (Number(tools.web_fetch_requests) || 0);
+}
+
+async function handleChat(request, response) {
+  const declared = Number(request.headers["content-length"]);
+  if (Number.isFinite(declared) && declared > MAX_CHAT_BYTES) {
+    response.setHeader("Connection", "close");
+    fail(response, 413, "요청이 너무 큽니다.");
+    return;
+  }
+  let payload;
+  try {
+    payload = JSON.parse(await readBody(request, MAX_CHAT_BYTES, { drain: true }));
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) fail(response, 413, "요청이 너무 큽니다.");
+    else fail(response, 400, "요청을 읽지 못했습니다.");
+    return;
+  }
+  const system = typeof payload?.system === "string" ? payload.system.trim() : "";
+  const prompt = typeof payload?.prompt === "string" ? payload.prompt : "";
+  if (!system || !prompt.trim()) { fail(response, 400, "요청 형식을 확인해 주세요."); return; }
+  if (prompt.length > MAX_PROMPT_CHARS) { fail(response, 413, "요청이 너무 큽니다."); return; }
+  const started = Date.now();
+  try {
+    const result = await runClaudeText({ bin: CLAUDE_BIN, model: MODEL, effort: EFFORT, systemPrompt: system, prompt, cwd: RUN_DIRECTORY, timeoutMs: RUN_TIMEOUT_MS, persist: false });
+    const reply = String(result.text ?? "").trim();
+    if (!reply) {
+      console.error(`[claude-quote-bridge] /quote-chat ${Date.now() - started}ms 빈 답`);
+      fail(response, 502, "AI가 답하지 못했습니다.");
+      return;
+    }
+    console.log(`[claude-quote-bridge] /quote-chat ok ${result.ms ?? Date.now() - started}ms web=${webUses(result.usage)} cost=$${result.cost ?? "?"}`);
+    json(response, 200, { reply: reply.slice(0, MAX_REPLY_CHARS) });
+  } catch (error) {
+    console.error(`[claude-quote-bridge] /quote-chat 실패 ${Date.now() - started}ms`);
+    fail(response, 502, error instanceof Error && /시간이 초과/.test(error.message) ? "AI 응답 시간이 초과되었습니다." : "AI가 답하지 못했습니다.");
+  }
+}
+
+const HANDLERS = new Map([["/quote-extract", handleExtract], ["/quote-chat", handleChat]]);
+
 const server = createServer(async (request, response) => {
   if (request.headers.origin !== undefined || !ALLOWED_HOSTS.has(String(request.headers.host ?? ""))) {
     json(response, 403, { error: { message: "ERP 서버만 호출할 수 있는 로컬 다리입니다." } });
@@ -106,7 +154,8 @@ const server = createServer(async (request, response) => {
     json(response, 200, { ok: true, model: MODEL, effort: EFFORT, busy });
     return;
   }
-  if (request.method !== "POST" || request.url !== "/quote-extract") {
+  const handler = request.method === "POST" ? HANDLERS.get(request.url ?? "") : undefined;
+  if (!handler) {
     json(response, 404, { error: { message: "지원하지 않는 경로입니다." } });
     return;
   }
@@ -117,7 +166,7 @@ const server = createServer(async (request, response) => {
   }
   busy = true;
   try {
-    await handleExtract(request, response);
+    await handler(request, response);
   } finally {
     busy = false;
   }

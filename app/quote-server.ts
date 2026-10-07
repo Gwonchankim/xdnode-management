@@ -9,6 +9,7 @@ import {
   type CustomerInput, type HistoryEntry, type LiveRow, type PriceKind, type QuoteCatalog, type SpecInput, type Vocab,
 } from "./quote-pricing";
 import { kstToday, type Quote } from "./quote-model";
+import { prepareBomLibrary, type BomEntry, type BomLibrary, type BomPart } from "./quote-recommend";
 import { norm } from "./quote-textkey";
 
 /** dist/client 에 이 문자열이 있으면 서버 모듈이 번들에 새어 나간 것이다(tests/bundle-exposure). */
@@ -324,6 +325,38 @@ export async function loadQuoteCatalog(db: D1Database): Promise<QuoteCatalog> {
 /** 하니스 전용: 테스트마다 카탈로그 캐시를 비운다(같은 합성 버전 문자열을 여러 테스트가 쓴다). */
 export function resetQuoteCatalogCache() {
   catalogCache = null;
+  bomCache = null;
+}
+
+// ── 구성 라이브러리 캐시(QT4, Design §4.6). quote_meta 의 version:bom_library 가 키다. 기관명·파일명이 들어 있어 서버 메모리에만 둔다. ──
+let bomCache: { version: string; library: BomLibrary } | null = null;
+
+type BomRow = Omit<BomEntry, "parts"> & { parts_json: string };
+
+/** 현재 버전의 구성 라이브러리(원천 순서 = ord). 이전 전이면 빈 라이브러리다. parts_json 이 깨진 행은 뺀다. */
+export async function loadBomLibrary(db: D1Database): Promise<BomLibrary> {
+  const meta = await readQuoteMeta(db, ["version:bom_library"]);
+  const version = meta.get("version:bom_library") ?? "";
+  if (bomCache?.version === version) return bomCache.library;
+  const rows = version
+    ? (await db.prepare(`SELECT sheet_id, file, date, customer, sheet_name, total, subtotal, system_label, system_name, gpu_name, gpu_key, gpu_qty,
+        base_key, remark, parts_json, n_slots, base_max_gpu FROM quote_bom_library WHERE version = ?1 ORDER BY ord`).bind(version).all<BomRow>()).results
+    : [];
+  const entries: BomEntry[] = [];
+  for (const { parts_json: partsJson, ...row } of rows) {
+    try {
+      const parts = JSON.parse(partsJson) as unknown;
+      if (!parts || typeof parts !== "object" || Array.isArray(parts)) continue;
+      const lists = Object.values(parts as Record<string, unknown>);
+      if (!lists.length || !lists.every((list) => Array.isArray(list) && list.length > 0 && list.every((part) => part && typeof part === "object" && typeof (part as BomPart).name === "string"))) continue;
+      entries.push({ ...row, parts: parts as Record<string, BomPart[]> });
+    } catch {
+      // 깨진 행은 추천 후보에서 뺀다.
+    }
+  }
+  const library = prepareBomLibrary(entries);
+  bomCache = { version, library };
+  return library;
 }
 
 // ── 단가 이력(Design §4.4 priceHistory, 옛 store.price_history). 폐기만 뺀다(draft 는 status 를 실어 보내 신뢰도가 등급을 낮춘다). ──

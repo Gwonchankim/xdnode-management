@@ -1,6 +1,7 @@
 // quote-tool(Design §7·§11.6, QT3): 견적 AI 브리지(scripts/claude-quote-bridge.mjs)를 임의 포트와 가짜 claude(tests/helpers/fake-claude.mjs)로 띄워
 // QB-01 Origin·Host 403, QB-02 바쁨 하나(동시 요청 429), QB-03 실행 인자(도구 끔·차단 12개·기록 없음·파일 경로 없음)·빈 작업 폴더·이미지는 표준입력에만,
 // QB-04 스키마 위반 502, QB-05 413, QB-06 3120·3130 이 공용 실행부(scripts/lib/claude-cli.mjs)를 쓴다(소스)를 본다.
+// QT4: QB-07 /quote-chat(도구 끔·기록 없음·시스템 프롬프트 그대로·표준입력에 대화·답 12,000자 자름·로그 web=0), QB-08 상담 입력 검사·413·빈 답 502.
 // 실제 claude 는 띄우지 않는다. 브리지의 임시 폴더(TEMP/TMP)는 테스트 전용 폴더로 돌린다.
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -54,6 +55,7 @@ const SCHEMA = {
 const PNG_1PX = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
 const extract = (port, body, headers = {}) => call(port, { method: 'POST', pathName: '/quote-extract', body, headers });
 const request = (prompt, extra = {}) => ({ system: '견적 추출 시험입니다.', prompt, schema: SCHEMA, images: [], ...extra });
+const chat = (port, body, headers = {}) => call(port, { method: 'POST', pathName: '/quote-chat', body, headers });
 
 const work = mkdtempSync(path.join(tmpdir(), 'xdnode-quote-bridge-test-'));
 const bridgeTemp = path.join(work, 'temp');
@@ -94,7 +96,8 @@ test('QB-01: Origin and foreign Host are refused with 403; /health answers; unkn
   assert.equal((await call(port, { headers: { host: `xdnode-pc:${port}` } })).status, 403);
   assert.equal((await call(port, { headers: { host: `192.0.2.10:${port}` } })).status, 403);
   assert.equal((await call(port, { headers: { host: `localhost:${port}` } })).status, 200);
-  assert.equal((await call(port, { method: 'POST', pathName: '/quote-chat', body: { system: 'x', prompt: 'y' } })).status, 404, '/quote-chat is QT4');
+  assert.equal((await call(port, { method: 'POST', pathName: '/quote-chat', body: { system: 'x', prompt: 'mode:ok' }, headers: { origin: 'http://192.0.2.10:3000' } })).status, 403, 'chat refuses Origin too');
+  assert.equal((await call(port, { method: 'GET', pathName: '/quote-chat' })).status, 404, 'POST only');
   assert.equal((await call(port, { method: 'POST', pathName: '/extract', body: {} })).status, 404);
   assert.equal(health.headers['access-control-allow-origin'], undefined);
 });
@@ -108,6 +111,16 @@ test('QB-02: one request at a time — a second request while the first runs get
   assert.match(second.body.error.message, /다른 요청/);
   assert.equal((await first).status, 200);
   assert.equal((await extract(port, request('mode:ok'))).status, 200, 'free again');
+  // 추출과 상담이 바쁨 하나를 나눠 쓴다(QT4).
+  const slowChat = chat(port, { system: '상담 시험', prompt: 'mode:sleep-900' });
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal((await extract(port, request('mode:ok'))).status, 429, 'extract waits for chat');
+  assert.equal((await chat(port, { system: '상담 시험', prompt: 'mode:ok' })).status, 429, 'chat waits for chat');
+  assert.equal((await slowChat).status, 200);
+  const slowExtract = extract(port, request('mode:sleep-900'));
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  assert.equal((await chat(port, { system: '상담 시험', prompt: 'mode:ok' })).status, 429, 'chat waits for extract');
+  assert.equal((await slowExtract).status, 200);
 });
 
 test('QB-03: Claude runs with every tool off, no session persistence, no file paths, in an empty temp folder; images only on stdin', async () => {
@@ -198,4 +211,56 @@ test('QB-06: the resume (3120) and assistant (3130) bridges run Claude through s
   assert.doesNotMatch(read('scripts/claude-resume-bridge.mjs'), /persist/);
   assert.doesNotMatch(read('scripts/claude-assistant-bridge.mjs'), /persist/);
   assert.match(read('scripts/claude-quote-bridge.mjs'), /persist: false/);
+});
+
+test('QB-07: /quote-chat runs Claude as text with every tool off and no persistence; the system prompt goes as is, the conversation on stdin; long answers are cut at 12,000', async () => {
+  const before = new Set(readdirSync(runLog));
+  const system = '견적 상담 시험입니다.\n<quote_data>\n[A] Server\n</quote_data>';
+  const prompt = '<이전 대화>\n담당자: 첫 질문\n</이전 대화>\n\n담당자의 새 질문: mode:ok 웹에서 찾아 줘';
+  const answer = await chat(port, { system, prompt });
+  assert.equal(answer.status, 200, JSON.stringify(answer.body));
+  assert.deepEqual(answer.body, { reply: JSON.stringify({ answer: 'ok', images: 0 }) }, 'the reply is the plain result text');
+  const long = await chat(port, { system, prompt: 'mode:long' });
+  assert.equal(long.status, 200);
+  assert.equal(long.body.reply.length, 12_000);
+
+  const fresh = runs().filter((run) => !before.has(`run-${run.pid}.json`));
+  assert.equal(fresh.length, 2);
+  for (const run of fresh) {
+    const { args } = run;
+    assert.equal(args[0], '-p');
+    assert.ok(args[args.indexOf('--tools') + 1] === '', '--tools ""');
+    const disallowed = args.indexOf('--disallowed-tools');
+    assert.deepEqual(args.slice(disallowed + 1, disallowed + 13).sort(), ['Bash', 'Edit', 'Glob', 'Grep', 'NotebookEdit', 'PowerShell', 'Read', 'Task', 'TodoWrite', 'WebFetch', 'WebSearch', 'Write']);
+    assert.ok(args.includes('--no-session-persistence'), 'QD-15');
+    assert.ok(args.includes('--strict-mcp-config'));
+    assert.deepEqual(args.slice(args.indexOf('--setting-sources'), args.indexOf('--setting-sources') + 2), ['--setting-sources', 'project']);
+    assert.ok(!args.includes('stream-json'), 'chat is text only (no image input)');
+    assert.equal(args[args.indexOf('--output-format') + 1], 'json');
+    assert.equal(args[args.indexOf('--system-prompt') + 1], system, 'no JSON/schema instruction is appended for chat');
+    assert.match(path.basename(run.cwd), /^xdnode-quote-/);
+    assert.deepEqual(run.cwdFiles, []);
+  }
+  assert.equal(fresh.find((run) => run.stdin.includes('웹에서'))?.stdin, prompt, 'the conversation travels on stdin unchanged');
+  // 로그에는 경로·ms·웹 조회 수만(질문·답 없음). 도구가 꺼져 있어 web=0 이다.
+  assert.match(bridgeLog, /\/quote-chat ok \d+ms web=0 cost=\$/);
+  assert.ok(!bridgeLog.includes('웹에서 찾아') && !bridgeLog.includes('첫 질문'), 'no conversation text in the log');
+});
+
+test('QB-08: /quote-chat input checks — missing system or prompt 400, bad JSON 400, over 256 KB 413, prompt over 200,000 chars 413, empty or failed answers 502', async () => {
+  assert.equal((await chat(port, { prompt: 'mode:ok' })).status, 400, 'system is required');
+  assert.equal((await chat(port, { system: '상담', prompt: '   ' })).status, 400, 'prompt is required');
+  assert.equal((await chat(port, { system: 3, prompt: 'mode:ok' })).status, 400);
+  assert.equal((await chat(port, '{not json')).status, 400);
+  const declared = await call(port, { method: 'POST', pathName: '/quote-chat', body: '{}', headers: { 'content-length': String(256 * 1024 + 1) } });
+  assert.equal(declared.status, 413);
+  const chunked = await call(port, { method: 'POST', pathName: '/quote-chat', body: Buffer.alloc(256 * 1024 + 16, 0x20), headers: { 'transfer-encoding': 'chunked' } });
+  assert.equal(chunked.status, 413);
+  assert.equal((await chat(port, { system: '상담', prompt: 'x'.repeat(200_001) })).status, 413);
+  const empty = await chat(port, { system: '상담', prompt: 'mode:empty' });
+  assert.equal(empty.status, 502);
+  const crashed = await chat(port, { system: '상담', prompt: 'mode:exit-3' });
+  assert.equal(crashed.status, 502);
+  assert.doesNotMatch(JSON.stringify(crashed.body), /fake failure/);
+  assert.equal((await call(port)).body.busy, false);
 });
