@@ -197,7 +197,7 @@ powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\xdm\prod\
 - 종료 코드: 0 성공, 1 백업 실패(기록됨), 2 재기동 실패, 3 거부(개발 폴더, 운영 폴더 안의 백업 경로, 다른 백업 실행 중).
 - 개발 폴더(문서 폴더 아래 작업 사본)는 대상으로 받지 않는다. 리허설은 `%TEMP%` 같은 곳의 가짜 운영 폴더로 `-ProdRoot … -BackupRoot … -RunDir … -LogRoot … -Port <빈 포트> -Restart None`.
 - **관리자 화면 경고**: 계정 관리 탭이 `GET /api/admin/backups`를 읽는다. 36시간 넘게 성공이 없으면 "마지막 백업 성공: yyyy-MM-dd HH:mm. 36시간 넘게 성공한 백업이 없습니다.", 마지막 실행이 실패면 그 사유를 띄운다. 정지 단계에서 실패하면(서버가 떠 있어 기록 불가) 행이 남지 않으므로 36시간 뒤 stale 경고로 드러난다. 그때는 `C:\xdm\logs\xdm-yyyyMMdd.log`의 `backup:` 줄을 본다.
-- `C:\xdm\*` ACL은 서버 사용자로 제한한다. 백업에는 급여·비밀번호 해시·세션 해시가 들어 있다.
+- `C:\xdm\*` ACL은 서버 사용자로 제한한다. 백업에는 급여·비밀번호 해시·세션 해시가 들어 있다. 2026-10-07 적용: 관리자 PowerShell에서 `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\Set-XdmAcl.ps1`(상속 끊기 → SYSTEM·Administrators·`DESKTOP-HVUV0RL\user`만 → 하위 `/reset` → 확인). 되돌리기는 `icacls C:\ /restore C:\xdm-acl-backup-<시각>.txt`. `C:\xdm` 아래에 새로 만든 폴더·파일은 이 권한을 물려받는다. 다른 사용자로 도는 작업을 만들면 그 사용자를 따로 허용해야 한다.
 
 ## 11. 복구 (SC-7)
 

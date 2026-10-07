@@ -226,7 +226,7 @@ XDnode management를 경영지원실 전용 종합 툴로 만든다. 이번 사�
 
 **M1-4. 일괄 삭제와 정리**
 - [x] 삭제 목록의 파일을 일괄 삭제한다. 삭제 전에 삭제 대상 경로를 import·fetch하는 남는 파일이 0개인지 grep으로 확인한다 (확인: 커밋 `f203ede`(190파일, −41,888줄), `removal-guards` 'the 120 deleted files and 5 finance tests stay absent'·'no kept source imports a deleted module')
-- [ ] 재무 실데이터(`app/finance-*-data.ts`와 파생 모듈)는 작업 트리 어디에도 두지 않는다. 보관은 두 곳뿐이다 (부분: 작업 트리에는 없고 `C:\xdm\archive\finance-data-20260923\`에 4개 파일과 `SHA256SUMS.txt`가 있다. 다만 2026-10-02 `icacls` 기준 이 폴더는 상속 기본 ACL이라 '접근 제한'이 아니다 — R4 백업 ACL 항목과 같은 문제)
+- [x] 재무 실데이터(`app/finance-*-data.ts`와 파생 모듈)는 작업 트리 어디에도 두지 않는다. 보관은 두 곳뿐이다 (부분: 작업 트리에는 없고 `C:\xdm\archive\finance-data-20260923\`에 4개 파일과 `SHA256SUMS.txt`가 있다. 다만 2026-10-02 `icacls` 기준 이 폴더는 상속 기본 ACL이라 '접근 제한'이 아니다 — R4 백업 ACL 항목과 같은 문제). **2026-10-07 해결**: 관리자 PowerShell에서 `scripts/Set-XdmAcl.ps1`로 `C:\xdm` 상속을 끊고 SYSTEM·Administrators·`DESKTOP-HVUV0RL\user`만 남겼다(하위 34,521개 파일 재설정, 실패 0, 넓은 권한이 남은 폴더 0). 되돌리기 파일 `C:\xdm-acl-backup-20261007-1053.txt`. 적용 직후 3000 `/api/me` 401, 3150 health 정상, 서버 사용자 쓰기 확인)
   - archive 태그·브랜치
   - 저장소 밖 접근 제한 폴더. 파일 해시를 기록한다
 - [x] `.env.local`과 `localRuntimeVars`에서 재무 전용 `CLOUDFLARE_AI_MODEL`(재무 어시스턴트·일일 자금 라우트만 사용)을 재무 라우트와 함께 지운다(`GOOGLE_*`는 R0에서 지웠다) (확인: `removal-guards` 'the local runtime no longer forwards the unused Cloudflare AI model variable'. 운영 `.env.local`은 허용 목록 키 2개뿐이다(R3 기록). 개발 폴더 `.env.local`은 내용을 열지 않아 확인하지 않았다)
@@ -380,7 +380,7 @@ R3의 안전성과는 무관하다. 다만 R3 뒤 수동 운영 기간은 짧게
   - ⑤ 사본의 `PRAGMA integrity_check` 결과와 주요 테이블 행 수를 `backup-report.json`에 기록
   - ⑥ 날짜 폴더는 14개만 보관
   - ⑦ 외장 드라이브나 NAS로 2차 복사
-- [ ] 백업 폴더는 **저장소 밖**, 경로 120자 이하에 둔다. ACL은 서버 사용자로 제한한다. `.env.local`은 넣지 않는다. 백업에는 급여와 비밀번호 해시가 들어간다 (부분: 저장소 밖 `C:\xdm\backup`, `.env.local` 제외는 확인. ACL은 2026-10-02 `icacls` 기준 상속 기본값(`Authenticated Users:(M)`, `Users:(RX)`)이라 서버 사용자로 제한되지 않았다. `C:\xdm` 전체가 같다)
+- [x] 백업 폴더는 **저장소 밖**, 경로 120자 이하에 둔다. ACL은 서버 사용자로 제한한다. `.env.local`은 넣지 않는다. 백업에는 급여와 비밀번호 해시가 들어간다 (부분: 저장소 밖 `C:\xdm\backup`, `.env.local` 제외는 확인. ACL은 2026-10-02 `icacls` 기준 상속 기본값(`Authenticated Users:(M)`, `Users:(RX)`)이라 서버 사용자로 제한되지 않았다. `C:\xdm` 전체가 같다). **2026-10-07 해결**: 관리자 PowerShell에서 `scripts/Set-XdmAcl.ps1`로 `C:\xdm` 상속을 끊고 SYSTEM·Administrators·`DESKTOP-HVUV0RL\user`만 남겼다(하위 34,521개 파일 재설정, 실패 0, 넓은 권한이 남은 폴더 0). 되돌리기 파일 `C:\xdm-acl-backup-20261007-1053.txt`. 적용 직후 3000 `/api/me` 401, 3150 health 정상, 서버 사용자 쓰기 확인)
 - [x] 백업이 실패하면 관리자 화면에 마지막 성공 시각과 경고를 표시한다 (확인: `GET /api/admin/backups`, `tests/admin-backups.test.mjs`)
 - [x] 복구 절차(정지 → 교체 → 기동)를 문서화하고, 새 폴더에 한 번 복구해 본다(SC-7, 2026-10-01 리허설 완료). 온라인 백업(`VACUUM INTO`)은 이번 사이클에서 쓰지 않는다
 - [x] 자동 기동(D19) (확인: `XDnodeManagement-Autostart`(암호 저장), SC-12 리허설 통과(2026-09-29). D19 대체안은 쓰지 않는다. 2026-10-02 08:58 재부팅 뒤에도 08:59:58 자동 기동 → 09:00:20 ready)
