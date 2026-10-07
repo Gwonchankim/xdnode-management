@@ -4,7 +4,7 @@
 >
 > **Plan**: [quote-tool.plan.md](../../01-plan/features/quote-tool.plan.md) v0.2 (QT-D1~D5, QT-Q1~Q15 모두 권장안으로 확정)
 > **Project**: XDnode management
-> **Version**: 0.2
+> **Version**: 0.3
 > **Author**: gc.kim / Claude Code
 > **Date**: 2026-10-02
 > **Status**: Draft
@@ -526,9 +526,9 @@ export function decide(matches: Match[], live: LiveRow[], hist: HistRow[], ancho
 parts = []
 for line: parts.push(`L|${label}|${name}|${P(line.unit_price)}|${P(line.qty)}|${P(line.sets)}`)
   for item: parts.push(`I|${category}|${spec}|${P(item.qty, itemQtyDefaulted)}|${P(item.unit_price)}`)
-parts.push("R|" + remarks.join(""))
+parts.push("R|" + remarks.join("\x01"))
 parts.push(`T|${valid_weeks}|${delivery}|${payment}`)
-hash = sha256(utf8(parts.join(""))).slice(0, 16)
+hash = sha256(utf8(parts.join("\x02"))).slice(0, 16)   // v0.3 정정: 옛 store.py 소스의 보이지 않는 구분자 \x01(비고)·\x02(조각). dedup 픽스처 10건으로 확인
 ```
 - `P(v)`: `null`→`"None"`, 숫자→`pyFloatRepr(v)`(pydantic `Optional[float]`은 입력 정수 2를 `2.0`으로 만든다, 실측). **예외**: 입력 JSON에 `items[].qty` 키가 아예 없으면 pydantic 기본값 정수 `1`이 그대로 남아 `"1"`이다(실측). 그래서 `contentHash`는 정규화 전 원본 입력을 받아 키 존재를 본다(`contentHashFromInput(raw)`). 편집 화면은 qty를 항상 보내므로 이 분기는 외부 입력(추출 결과를 그대로 보낸 경우 등)에만 걸린다.
 - `valid_weeks`는 int 필드라 `String(int)`. 문자열 필드는 정규화 뒤 값(줄바꿈 `\r\n`→`\n`) 그대로.
@@ -1138,5 +1138,6 @@ quote_corpus_files 998 · sheets 1,189 · items 5,509 · margin_items 59 · quot
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
+| 0.3 | 2026-10-07 | §4.4 contentHash 구분자 정정(`\x01` 비고, `\x02` 조각 — 옛 소스의 보이지 않는 제어문자가 v0.2 표기에서 빠졌다). QT2 구현에서 발견 | gc.kim / Claude Code |
 | 0.2 | 2026-10-02 | 설계 체크포인트: Q1~Q7 모두 권장안으로 확정(사용자) | gc.kim / Claude Code |
 | 0.1 | 2026-10-02 | 초안(Plan v0.2 기준). QD-1~QD-19, 테이블 15개 DDL, 라우트 10개, 이식 규칙, xlsx 조립 규칙(템플릿 실측), 도우미·브리지 프로토콜, 이전·테스트·구현 순서, 체크포인트 Q1~Q7, 계획 판정 P-1~P-12 | gc.kim / Claude Code |

@@ -330,14 +330,15 @@
 - **결과(2026-10-06)**: 커밋 `d175424`, 툴 커밋 `ece8d6f`(`tools/export_xdm_import.py`, 내보내기 `C:\xdm\work\quote-export-20261002\`, reverse 998/998). `npm test` 540 통과·1 건너뜀(표지 파일 없음). 태그 `qt1-release-20261006` 09:07 운영 반영(중단 48초, 배포 전 스냅샷 무결성 OK). 09:41 운영 이전 `status OK`, 불일치 0: 코퍼스 998·1,189·5,509·59, 카탈로그 268·480, 사양 87, 고객 326행/기관 199, 구성 314, 담당자 10, 발행 1, 단가 로그 2, 스냅샷 10건 해시 일치, 템플릿 R2 `quote/template/v1.xlsx` sha256 `9a2a76f6…45b8fc`(설계 실측값과 같음). 표지 파일(`C:\xdm\secure\quote-markers.json`)로 bundle-exposure 6/6, 운영 `dist/client` 45파일에서 표지 30개 0건. 남은 확인: 다음 03:00 백업 보고서의 `quote_*` 행 수, 화면에서 검색·불러오기
 
 ### QT2 — xlsx·PDF 생성과 회귀
-- [ ] 첫날: Excel COM 세션 시험(QT-Q8). 결과에 따라 도우미 기동 경로를 정한다
-- [ ] 툴 저장소에서 회귀 픽스처 생성: 익명화한 5건 Quote JSON → 파이썬 xlsx → Excel 계산값 JSON(값·병합·높이·인쇄영역). 저장소에는 익명화 결과만 넣는다
-- [ ] `app/quote-model.ts`·`quote-filename.ts`·`quote-xlsx.ts`·`quote-store.ts`
-- [ ] `app/api/quote/issued`(GENERATE·REGENERATE_PDF), `app/api/quote/files`
-- [ ] `scripts/quote-pdf-helper.mjs`·`scripts/quote-xlsx-to-pdf.ps1`, Start·Stop 스크립트에 3150 추가, npm 스크립트 `quote:pdf`
-- [ ] tests: quote-xlsx(QT-SC-01 ①~④, 테스트 쪽 소형 수식 평가기로 계산), quote-pdf-helper(Origin·Host·크기·한 번에 하나, COM은 대역), quote-api(생성·dedup·다운로드 권한), lan-exposure-guards·ops-scripts 갱신
+- [x] 첫날: Excel COM 세션 시험(QT-Q8). 결과에 따라 도우미 기동 경로를 정한다 — 기본 경로(자동 기동 작업, 세션 0) 유지. 대안 경로(로그온 작업·자동 로그온)는 쓰지 않는다
+- [x] 툴 저장소에서 회귀 픽스처 생성: 익명화한 5건 Quote JSON → 파이썬 xlsx → Excel 계산값 JSON(값·병합·높이·인쇄영역). 저장소에는 익명화 결과만 넣는다
+- [x] `app/quote-model.ts`·`quote-filename.ts`·`quote-xlsx.ts`·`quote-store.ts`
+- [x] `app/api/quote/issued`(GENERATE·REGENERATE_PDF), `app/api/quote/files`
+- [x] `scripts/quote-pdf-helper.mjs`·`scripts/quote-xlsx-to-pdf.ps1`, Start·Stop 스크립트에 3150 추가, npm 스크립트 `quote:pdf`
+- [x] tests: quote-xlsx(QT-SC-01 ①~④, 테스트 쪽 소형 수식 평가기로 계산), quote-pdf-helper(Origin·Host·크기·한 번에 하나, COM은 대역), quote-api(생성·dedup·다운로드 권한), lan-exposure-guards·ops-scripts 갱신
 - 배포 뒤: 관리자 계정으로 5건 생성 → Excel 열기·PDF 1쪽 육안 확인(QT-SC-01 ⑤), QT-SC-08
 - 롤백: 직전 태그로 Deploy, 도우미 pid 정리(Stop 스크립트가 3150을 끈다)
+- **결과(2026-10-07)**: 커밋 `0ec004a`(+ 계정 관리 화면 `88cd102`), 툴 커밋 `dddc7e5`(`tools/export_xdm_fixtures.py`). 회귀 5건 TS 대 파이썬 계산값 차이 0(A1:I45·마진 K~P), TS 파일을 Excel로 다시 열어 계산해도 0. `npm test` 572/572. 태그 `qt2-release-20261007` 09:59 운영 반영(중단 40초). QT-Q8: 도우미가 세션 0·비대화형으로 떴고 처음에는 `EXCEL_FAILED`(종료 코드 2, `Workbooks.Open`에서 0x800A03EC)였다. 원인은 `C:\Windows\System32\config\systemprofile\Desktop` 폴더가 없던 것(SysWOW64 쪽은 있었다). 사용자가 관리자 권한으로 폴더를 만든 뒤 S4U 세션 0 시험 OK(2.1초, 1쪽), 운영 도우미 변환 200·1쪽 2회(8.4초·17.1초), 남은 EXCEL.EXE 0. 사람 확인용 파일 `C:\xdm\work\qt2-check\`(실제 템플릿 + 익명 회귀 견적 2건의 xlsx·PDF): PDF에 로고·직인·표·합계·한글 금액 정상. 남은 확인: 그 xlsx를 Excel에서 직접 열어 '복구' 대화상자가 없는지(QT-SC-01 ④), 운영 API로 관리자 생성 1건(QT-SC-08, 스모크 스크립트는 로그인 필요)
 
 ### QT3 — 편집 화면, 기록·검색, 단가 제안, 추출 (병행 운영 시작)
 - [ ] 파이썬 픽스처: 텍스트 키·제안 동등성(QT-SC-04·05) 먼저
