@@ -3,6 +3,9 @@
 // 규칙(D17, QT0 S5·S7):
 //  - 도구를 모두 끈다: --tools "" 로 내장 도구를 끄고, CLI 가 --tools 를 무시하는 경우를 위해 아래 목록을 --disallowed-tools 로 한 번 더 막는다.
 //  - MCP 설정을 읽지 않는다(--strict-mcp-config).
+//  - 사용자 설정(~/.claude/settings.json)을 읽지 않는다(--setting-sources project). 서버 사용자 프로필에 깔린 플러그인·훅
+//    (예: bkit)이 브리지 세션 안에서 돌아 작업 폴더에 상태 파일을 쓰고 모델 입력에 맥락을 더하던 것을 막는다(2026-10-07 실측).
+//    작업 폴더는 빈 임시 폴더라 project 설정도 없다. 구독 로그인 자격 증명은 설정이 아니라서 그대로 쓴다.
 //  - shell 을 쓰지 않는다. Windows 에서 인자가 이스케이프 없이 이어 붙어 여러 줄짜리 시스템 프롬프트가 잘리고 --tools 뒤의 빈 문자열 인자도 사라진다.
 //  - 글은 표준입력으로 넘긴다(명령줄 길이 제한). 이미지는 stream-json 입력의 image 블록으로 표준입력에 넘기므로 디스크에 파일을 만들지 않는다.
 //  - persist === false 면 --no-session-persistence 로 대화 기록(~/.claude/projects)을 디스크에 남기지 않는다(QD-15, 견적 브리지).
@@ -165,6 +168,7 @@ export function runClaudeText({ bin, model, effort, systemPrompt, prompt, cwd, t
       "--effort", effort,
       "--output-format", "json",
       "--strict-mcp-config",
+      "--setting-sources", "project",
       "--tools", "",
       "--disallowed-tools", ...DISABLED_TOOLS,
       "--system-prompt", systemPrompt,
@@ -193,6 +197,7 @@ export function runClaudeVision({ bin, model, effort, systemPrompt, text, images
       "--output-format", "stream-json",
       "--verbose",
       "--strict-mcp-config",
+      "--setting-sources", "project",
       "--tools", "",
       "--disallowed-tools", ...DISABLED_TOOLS,
       "--system-prompt", systemPrompt,

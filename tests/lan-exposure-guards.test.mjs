@@ -43,6 +43,8 @@ test("assistant bridges run Claude with no tools, outside the repository, for se
   assert.equal(claudeCli.match(/"--tools", "",/g)?.length, 2, 'claude-cli: runClaudeText·runClaudeVision 모두 --tools ""');
   assert.equal(claudeCli.match(/"--disallowed-tools", \.\.\.DISABLED_TOOLS,/g)?.length, 2);
   assert.equal(claudeCli.match(/"--strict-mcp-config",/g)?.length, 2);
+  // 서버 사용자 프로필의 플러그인·훅(사용자 설정)이 브리지 세션에서 돌지 않게 한다.
+  assert.equal(claudeCli.match(/"--setting-sources", "project",/g)?.length, 2, 'claude-cli: 두 실행 함수 모두 사용자 설정을 읽지 않는다');
   const disabled = claudeCli.match(/export const DISABLED_TOOLS = \[([\s\S]*?)\];/)?.[1] ?? "";
   for (const tool of ["Read", "Grep", "Glob", "PowerShell", "Bash", "Write", "Edit"]) {
     assert.ok(disabled.includes(`"${tool}"`), `claude-cli: DISABLED_TOOLS 에 ${tool} 이 없습니다`);
