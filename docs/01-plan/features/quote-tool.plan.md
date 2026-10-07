@@ -341,14 +341,15 @@
 - **결과(2026-10-07)**: 커밋 `0ec004a`(+ 계정 관리 화면 `88cd102`), 툴 커밋 `dddc7e5`(`tools/export_xdm_fixtures.py`). 회귀 5건 TS 대 파이썬 계산값 차이 0(A1:I45·마진 K~P), TS 파일을 Excel로 다시 열어 계산해도 0. `npm test` 572/572. 태그 `qt2-release-20261007` 09:59 운영 반영(중단 40초). QT-Q8: 도우미가 세션 0·비대화형으로 떴고 처음에는 `EXCEL_FAILED`(종료 코드 2, `Workbooks.Open`에서 0x800A03EC)였다. 원인은 `C:\Windows\System32\config\systemprofile\Desktop` 폴더가 없던 것(SysWOW64 쪽은 있었다). 사용자가 관리자 권한으로 폴더를 만든 뒤 S4U 세션 0 시험 OK(2.1초, 1쪽), 운영 도우미 변환 200·1쪽 2회(8.4초·17.1초), 남은 EXCEL.EXE 0. 사람 확인용 파일 `C:\xdm\work\qt2-check\`(실제 템플릿 + 익명 회귀 견적 2건의 xlsx·PDF): PDF에 로고·직인·표·합계·한글 금액 정상. 남은 확인: 그 xlsx를 Excel에서 직접 열어 '복구' 대화상자가 없는지(QT-SC-01 ④), 운영 API로 관리자 생성 1건(QT-SC-08, 스모크 스크립트는 로그인 필요)
 
 ### QT3 — 편집 화면, 기록·검색, 단가 제안, 추출 (병행 운영 시작)
-- [ ] 파이썬 픽스처: 텍스트 키·제안 동등성(QT-SC-04·05) 먼저
-- [ ] `app/quote-textkey.ts`·`quote-confidence.ts`·`quote-pricing.ts`, `app/api/quote/compute`(SUGGEST), `catalog`, `staff`
-- [ ] 상태 전이·미확정 일괄 화면, 담당자 프로필
-- [ ] `scripts/claude-quote-bridge.mjs`(3140, `/quote-extract`), `scripts/lib/claude-cli.mjs`(3120·3130도 이것을 쓰게 바꾸되 동작은 그대로), `app/api/quote/extract`
-- [ ] `app/quote-workspace.tsx`와 화면 파일들
-- [ ] tests: quote-pricing, quote-api(상태 불변식 QT-SC-02, 추출 정규화, 감사), bundle-exposure 표지, local-codex-assistant(브리지 공용화 회귀)
+- [x] 파이썬 픽스처: 텍스트 키·제안 동등성(QT-SC-04·05) 먼저
+- [x] `app/quote-textkey.ts`·`quote-confidence.ts`·`quote-pricing.ts`, `app/api/quote/compute`(SUGGEST), `catalog`, `staff`
+- [x] 상태 전이·미확정 일괄 화면, 담당자 프로필
+- [x] `scripts/claude-quote-bridge.mjs`(3140, `/quote-extract`), `scripts/lib/claude-cli.mjs`(3120·3130도 이것을 쓰게 바꾸되 동작은 그대로), `app/api/quote/extract`
+- [x] `app/quote-workspace.tsx`와 화면 파일들
+- [x] tests: quote-pricing, quote-api(상태 불변식 QT-SC-02, 추출 정규화, 감사), bundle-exposure 표지, local-codex-assistant(브리지 공용화 회귀)
 - 배포 뒤: 같은 날 옛 툴 읽기 전용 스위치 ON. 견적 담당자와 실제 견적 1건을 함께 낸다. 2주 관찰 시작(QT-SC-13)
 - 롤백: 직전 태그로 Deploy, 옛 툴 읽기 전용 OFF(QT3 동안 새 탭에서 만든 견적은 R2·D1에 남는다. 필요하면 xlsx를 내려받아 계속 쓴다)
+- **결과 1단계(2026-10-07)**: 커밋 `86a2f72`(QT3a 제안 이식, QP-01 9,452·QP-02 48,000 비교 불일치 0, 툴 커밋 `60a9b9f`·`c8e3b9a`), `7c857f4`(공용 실행부·3140, 분리 커밋 단독 검증 108 통과), `4a3f2d6`(추출·편집 화면), `5a77f08`(브리지가 사용자 설정·플러그인 훅을 읽지 않게 `--setting-sources project`). `npm test` 609/609. 전체 카탈로그 SUGGEST 품목당 약 6 ms → 화면은 바뀐 줄만 다시 계산. 태그 `qt3-release-20261007` 13:37 운영 반영(중단 46초). 3140 세션 0 실제 호출 200(4초). 옛 툴은 그대로 둔 채 사용자가 운영 화면(추출·제안·생성·불러오기)을 확인: 문제없음. 같은 날 옛 툴 DB 사본 기준 발행 1건·단가 로그 2건으로 QT1 이전 이후 새 기록 없음(차분 0)
 
 ### QT4 — 상담, 구성 추천, 비교 변형
 - [ ] `app/quote-recommend.ts`, `compute` RECOMMEND·VARIANTS
