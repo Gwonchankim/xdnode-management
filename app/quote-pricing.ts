@@ -369,3 +369,32 @@ export function specFor(catalog: QuoteCatalog, modelName: string | null | undefi
   }
   return best && bestScore >= 0.8 ? best.spec : null;
 }
+
+const CHASSIS_CATEGORIES = new Set(["chassis", "barebone", "샤시", "서버"]);
+
+/**
+ * AI 추출 결과 보완(옛 main.py api_extract 104-119행). 새 Quote 를 돌려준다(입력은 바꾸지 않는다).
+ *  ① 고객 매칭 1위의 점수가 1.0 이상이면 기관명을 그 표기로 바꾸고, 전화·메일 빈칸을 채운다. 1위 담당자와 지금 담당자의 앞 두 글자(코드 포인트)가
+ *     같으면 담당자도 그 표기로 바꾼다.
+ *  ② 상세 중 카테고리가 chassis·barebone·샤시·서버이고 사양이 한 줄이면 저장된 멀티라인 사양 문구(사양 → 없으면 줄 이름)로 바꾼다.
+ */
+export function enrichExtracted(catalog: QuoteCatalog, quote: Quote): Quote {
+  const customer = { ...quote.customer };
+  const matches = matchCustomer(catalog, customer.org, customer.contact);
+  if (matches.length && matches[0].score >= 1.0) {
+    const best = matches[0];
+    customer.org = best.org;
+    customer.tel = customer.tel || best.tel;
+    customer.email = customer.email || best.email;
+    if (best.contact && customer.contact && pySlice(best.contact, 2) === pySlice(customer.contact, 2)) customer.contact = best.contact;
+  }
+  const lines = quote.lines.map((line) => ({
+    ...line,
+    items: line.items.map((item) => {
+      if (!CHASSIS_CATEGORIES.has(pyStrip(item.category).toLowerCase()) || item.spec.includes("\n")) return item;
+      const spec = specFor(catalog, item.spec) ?? specFor(catalog, line.name);
+      return spec ? { ...item, spec } : item;
+    }),
+  }));
+  return { ...quote, customer, lines };
+}

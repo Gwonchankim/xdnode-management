@@ -4,6 +4,7 @@
 // 서버 모듈(quote-server·quote-schema·quote-import)은 import 하지 않는다. quote-model 은 순수 모듈이라 함께 쓴다.
 import { useEffect, useState } from "react";
 import type { Quote } from "./quote-model";
+import type { CustomerMatch, Suggestion } from "./quote-pricing";
 
 export const QUOTE_BADGE_INTERVAL_MS = 10 * 60 * 1000;
 export const QUOTE_CHANGED_EVENT = "xdm:quote-changed";
@@ -45,6 +46,41 @@ export type QuoteOverview = {
 };
 
 export const STATUS_LABEL: Record<QuoteStatus, string> = { draft: "미확정", confirmed: "확정", discarded: "폐기" };
+
+// ── QT3 편집 화면 응답 형태(POST /api/quote/compute·issued·extract, GET staff·catalog) ─────────────
+export type QuoteSuggestions = Record<string, Suggestion>;
+export type LoadedWithSuggestions = LoadedQuote & { suggestions?: QuoteSuggestions; customer_matches?: CustomerMatch[] };
+export type StaffProfile = { id: string; name: string; tel: string; email: string; accountId: string | null; sort: number };
+export type QuoteVocab = Partial<Record<"group_labels" | "categories" | "remarks" | "payment" | "delivery", string[]>>;
+export type ExtractionNotes = {
+  field_notes: Array<{ field: string; confidence: "high" | "medium" | "low"; source: string; comment: string | null }>;
+  questions: string[]; summary: string;
+};
+export type ExtractResult = { quote: Quote; extraction: ExtractionNotes; suggestions: QuoteSuggestions; customer_matches: CustomerMatch[] };
+export type GenerateResult = {
+  issuedId: number; rev: number; status: QuoteStatus; created: boolean; unchanged: boolean; filename: string; subtotal: number; total: number;
+  files: { xlsx: boolean; pdf: boolean }; pdfError?: { code: string; message: string }; pending: number;
+};
+/** 기록·저장 실패 때 응답에 실려 오는 xlsx(RECORD_FAILED·STORAGE_FAILED). */
+export type GenerateFailure = { error?: string; code?: string; field?: string; xlsxBase64?: string; filename?: string; issuedId?: number };
+
+/** 발행 견적 파일 받기 주소(서버가 권한을 다시 본다. 보기 권한 xlsx 는 견적 시트만). */
+export const quoteFileUrl = (issuedId: number, kind: "xlsx" | "pdf") => `/api/quote/files?issuedId=${issuedId}&kind=${kind}`;
+
+/** 응답에 실려 온 xlsx(base64)를 파일로 내려받게 한다. */
+export function downloadBase64(fileName: string, base64: string) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  const url = URL.createObjectURL(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
 
 /** 미확정 견적 수(탭 배지). 견적 보기 이상일 때 10분마다, 창에 돌아올 때, 견적이 바뀔 때 다시 읽는다. */
 export function useQuoteBadge(enabled: boolean) {

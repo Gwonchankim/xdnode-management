@@ -377,12 +377,13 @@ SELECT req_key, req_cls, date, price, customer, qty, kind, name, status FROM ran
  * 견적 한 건의 단가 제안과 고객 후보(옛 main._enrich). compute SUGGEST 와 history 불러오기가 함께 쓴다. 날짜는 KST 오늘.
  * 쓰기를 하지 않는다(QT-Q11).
  */
-export async function quoteSuggestions(db: D1Database, quote: Pick<Quote, "lines" | "customer">, now: number) {
+export async function quoteSuggestions(db: D1Database, quote: Pick<Quote, "lines" | "customer">, now: number, options: { customers?: boolean } = {}) {
   const catalog = await loadQuoteCatalog(db);
   const historyOf = await priceHistoryMap(db, suggestionLookups(quote), 10);
   return {
     suggestions: suggestPrices(catalog, quote, historyOf, kstToday(now)),
-    customer_matches: matchCustomer(catalog, quote.customer.org, quote.customer.contact),
+    // 화면이 바뀐 줄만 다시 물을 때(compute SUGGEST customers:false)는 고객 후보를 다시 계산하지 않는다.
+    customer_matches: options.customers === false ? null : matchCustomer(catalog, quote.customer.org, quote.customer.contact),
   };
 }
 

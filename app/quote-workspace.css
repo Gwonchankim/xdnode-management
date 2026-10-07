@@ -71,3 +71,224 @@
   .quote-module-shell .quote-layout { grid-template-columns: 1fr; }
   .quote-module-shell .quote-list { max-height: none; }
 }
+
+/* ── QT3 편집 화면(quote-editor-view·quote-assist-view·quote-price-chart·quote-staff-dialog, Design §10.2) ───────────────── */
+.quote-module-shell .quote-main { display: grid; gap: 12px; min-width: 0; }
+.quote-module-shell .quote-editor { display: grid; gap: 12px; min-width: 0; }
+.quote-module-shell button.quote-pill { cursor: pointer; }
+.quote-module-shell .quote-label { display: block; margin: 10px 0 4px; color: #52525b; font-size: 12px; font-weight: 800; }
+.quote-module-shell .quote-label small, .quote-module-shell h4 small { color: #a1a1aa; font-weight: 700; }
+.quote-module-shell .quote-warn-text { color: #c2410c; font-size: 12px; font-weight: 800; }
+.quote-module-shell .quote-ok-text { color: var(--brand-green-strong); font-size: 12px; font-weight: 900; }
+
+/* 공용 단추 */
+.quote-module-shell :is(.quote-footbar, .quote-assist, .quote-modal, .quote-empty-cta, .quote-header) button,
+.quote-module-shell .quote-small { min-height: 30px; padding: 0 12px; border: 1px solid #d4d4d8; border-radius: 9px; background: #fff; color: #18181b; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+.quote-module-shell .quote-small { min-height: 26px; padding: 0 10px; }
+.quote-module-shell :is(.quote-footbar, .quote-assist, .quote-modal) button.primary { border-color: var(--brand-green-dark); background: var(--brand-green-dark); color: #fff; }
+.quote-module-shell .quote-footbar button.brand { border-color: var(--brand-green); background: var(--brand-green-tint); color: var(--brand-green-dark); }
+.quote-module-shell :is(.quote-footbar, .quote-assist, .quote-lines) .ghost { border-color: transparent; background: transparent; }
+.quote-module-shell .quote-small.data { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+.quote-module-shell button:disabled { opacity: .5; cursor: not-allowed; }
+.quote-module-shell .quote-icon-button { width: 26px; height: 26px; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: #71717a; font-size: 13px; cursor: pointer; }
+.quote-module-shell .quote-icon-button:hover:not(:disabled) { border-color: #e4e4e7; background: #fafafa; color: #18181b; }
+.quote-module-shell .quote-link { padding: 0 4px; border: 0; background: none; color: #1d4ed8; font-size: 12px; font-weight: 800; text-decoration: underline; cursor: pointer; min-height: 0; }
+.quote-module-shell .quote-link.warn { color: #c2410c; }
+
+/* 입력 칸 */
+.quote-module-shell .quote-editor :is(input, select, textarea), .quote-module-shell .quote-assist textarea, .quote-module-shell .quote-modal input {
+  min-width: 0; padding: 5px 8px; border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; color: #18181b; font: inherit; font-size: 13px; }
+.quote-module-shell .quote-editor :is(input, textarea)[readonly], .quote-module-shell .quote-editor select:disabled { border-color: #f4f4f5; background: #fafafa; color: #3f3f46; }
+.quote-module-shell .quote-editor textarea, .quote-module-shell .quote-assist textarea { width: 100%; resize: vertical; }
+.quote-module-shell .quote-money { width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-money.empty:not([readonly]) { border: 1px dashed #fb923c; background: #fff7ed; }
+.quote-module-shell .quote-num { width: 100%; text-align: right; }
+.quote-module-shell .quote-check { display: flex; align-items: center; gap: 6px; margin: 8px 0; color: #3f3f46; font-size: 12px; font-weight: 700; }
+
+/* 머리 */
+.quote-module-shell .quote-hdrbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.quote-module-shell .quote-hdrbar strong { font-size: 15px; }
+.quote-module-shell .quote-hdrbar > button { margin-left: auto; }
+.quote-module-shell .quote-hdr-terms { color: #52525b; font-size: 12px; font-weight: 700; }
+.quote-module-shell .quote-header .quote-banner { margin-top: 10px; }
+.quote-module-shell .quote-hdrform { margin-top: 10px; border-top: 1px solid #f4f4f5; }
+.quote-module-shell .quote-hdrform h4 { margin: 14px 0 6px; color: #3f3f46; font-size: 12px; }
+.quote-module-shell .quote-grid { display: grid; gap: 8px 10px; }
+.quote-module-shell .quote-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.quote-module-shell .quote-grid.two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+.quote-module-shell .quote-field { display: grid; gap: 4px; min-width: 0; }
+.quote-module-shell .quote-field.wide { grid-column: span 2; }
+.quote-module-shell .quote-field > span { color: #71717a; font-size: 11px; font-weight: 800; }
+.quote-module-shell .quote-cands { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+
+/* 품목 */
+.quote-module-shell .quote-lines { display: grid; gap: 10px; }
+.quote-module-shell .quote-lines-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.quote-module-shell .quote-lines-head h3 { margin: 0; font-size: 15px; }
+.quote-module-shell .quote-lines-tools { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+.quote-module-shell .quote-line-card { border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden; }
+.quote-module-shell .quote-line-head { display: grid; grid-template-columns: 28px minmax(90px, 130px) minmax(180px, 1fr) 76px 70px 140px 120px auto; gap: 6px; align-items: center; padding: 8px 10px; background: #f8faf5; }
+.quote-module-shell .quote-line-no { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--brand-green-dark); color: #fff; font-size: 13px; font-weight: 900; }
+.quote-module-shell .quote-line-amt { text-align: right; font-size: 13px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-line-tools { display: flex; gap: 2px; }
+.quote-module-shell .quote-line-body { padding: 4px 10px 10px; overflow-x: auto; }
+.quote-module-shell .quote-items { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; min-width: 640px; }
+.quote-module-shell .quote-items th { padding: 6px 4px; color: #71717a; font-size: 11px; font-weight: 800; text-align: left; border-bottom: 1px solid #f4f4f5; }
+.quote-module-shell .quote-items td { padding: 4px; vertical-align: top; }
+.quote-module-shell .quote-items .no { width: 28px; color: #a1a1aa; padding-top: 10px; }
+.quote-module-shell .quote-items .cat { width: 130px; }
+.quote-module-shell .quote-items .cat input { width: 100%; }
+.quote-module-shell .quote-items .num { width: 120px; text-align: right; }
+.quote-module-shell .quote-items th.num:nth-of-type(4) { width: 72px; }
+.quote-module-shell .quote-items .merge { width: 100px; }
+.quote-module-shell .quote-items .merge input { width: 100%; }
+.quote-module-shell .quote-items .tools { width: 34px; }
+.quote-module-shell .quote-items tr.has-sug td { border-bottom: 0; }
+.quote-module-shell .quote-sug-row td { padding: 0 4px 6px 32px; }
+.quote-module-shell .quote-spec-view { width: 100%; min-height: 32px; padding: 6px 8px; display: grid; gap: 2px; border: 1px solid #e4e4e7; border-radius: 8px; background: #fff; color: #18181b; font: inherit; font-size: 12px; text-align: left; white-space: pre-wrap; cursor: text; }
+.quote-module-shell .quote-spec-view.empty span { color: #a1a1aa; }
+.quote-module-shell .quote-spec-view small { color: #1d4ed8; font-weight: 800; }
+.quote-module-shell .quote-spec-edit { font-size: 12px; }
+.quote-module-shell .quote-line-foot { display: flex; gap: 8px; align-items: flex-start; padding-top: 6px; }
+.quote-module-shell .quote-line-foot textarea { flex: 1; min-height: 30px; }
+.quote-module-shell .quote-lines-add { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.quote-module-shell .quote-empty-cta { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.quote-module-shell .quote-empty-cta .cta { padding: 14px; border: 1px dashed #d4d4d8; border-radius: 12px; }
+.quote-module-shell .quote-empty-cta .cta.main { border-color: var(--brand-green); background: var(--brand-green-tint); }
+.quote-module-shell .quote-empty-cta h5 { margin: 0 0 4px; font-size: 13px; }
+.quote-module-shell .quote-empty-cta p { margin: 0 0 8px; color: #52525b; font-size: 12px; }
+
+/* 제안 막대 */
+.quote-module-shell .quote-sug { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 10px 8px 44px; padding: 6px 10px; border-radius: 10px; background: #f8fafc; font-size: 12px; }
+.quote-module-shell .quote-sug-row .quote-sug { margin: 0; }
+.quote-module-shell .quote-sug .price { font-weight: 900; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-sug .meta { color: #71717a; }
+.quote-module-shell .quote-sug .cand { color: #52525b; }
+.quote-module-shell .quote-sug.none { background: transparent; color: #a1a1aa; }
+.quote-module-shell .quote-sug.low { background: #fef2f2; }
+.quote-module-shell .quote-sug.caution { background: #fff7ed; }
+.quote-module-shell .quote-sug .flag { color: #c2410c; font-weight: 900; }
+.quote-module-shell .quote-sug .delta { font-weight: 800; }
+.quote-module-shell .quote-sug .delta.up { color: #b91c1c; }
+.quote-module-shell .quote-sug .delta.down { color: #1d4ed8; }
+.quote-module-shell .quote-conf { padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 900; white-space: nowrap; }
+.quote-module-shell .quote-conf.high { background: var(--brand-green-tint); color: var(--brand-green-dark); }
+.quote-module-shell .quote-conf.medium { background: #fef3c7; color: #a16207; }
+.quote-module-shell .quote-conf.low { background: #fee2e2; color: #b91c1c; }
+.quote-module-shell .quote-tag { padding: 1px 6px; border-radius: 6px; background: #f4f4f5; color: #52525b; font-size: 11px; font-weight: 800; }
+.quote-module-shell .quote-tag.new { background: #e0f2fe; color: #0369a1; }
+.quote-module-shell .quote-spark path { fill: none; stroke: #2563eb; stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
+.quote-module-shell .quote-spark .flat { stroke: #9db8f0; stroke-width: 1.5; }
+.quote-module-shell .quote-spark circle { fill: #2563eb; }
+.quote-module-shell .quote-sug-panel { flex-basis: 100%; display: grid; gap: 8px; padding-top: 6px; }
+.quote-module-shell .quote-sug-panel .reason { margin: 0; color: #3f3f46; }
+.quote-module-shell .quote-sug-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.quote-module-shell .quote-hist-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.quote-module-shell .quote-hist-table th { padding: 4px 6px; color: #71717a; font-weight: 800; text-align: left; border-bottom: 1px solid #e4e4e7; }
+.quote-module-shell .quote-hist-table td { padding: 3px 6px; border-bottom: 1px solid #f4f4f5; }
+.quote-module-shell .quote-hist-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-hist-table .mono { font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-chart { position: relative; max-width: 680px; border-radius: 8px; outline-offset: 2px; }
+.quote-module-shell .quote-chart svg { width: 100%; height: auto; display: block; }
+.quote-module-shell .quote-chart .grid { stroke: #e0e0e0; stroke-width: 1; }
+.quote-module-shell .quote-chart .axis { fill: #6b6b6b; font-size: 10px; }
+.quote-module-shell .quote-chart .trend { fill: none; stroke: #2563eb; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.quote-module-shell .quote-chart .dot { fill: #fff; stroke: #2563eb; stroke-width: 2; }
+.quote-module-shell .quote-chart .last { fill: #2563eb; stroke: #fff; stroke-width: 2; }
+.quote-module-shell .quote-chart .last-label { fill: #1e40af; font-size: 11px; font-weight: 600; }
+.quote-module-shell .quote-chart .cross { stroke: #0a0a0a; stroke-width: 1; stroke-dasharray: 3 3; }
+.quote-module-shell .quote-chart .cursor { fill: #2563eb; stroke: #fff; stroke-width: 2; }
+.quote-module-shell .quote-chart .hit { fill: transparent; }
+.quote-module-shell .quote-chart-tip { margin: 2px 0 0; min-height: 16px; color: #3f3f46; font-size: 12px; font-weight: 700; }
+
+/* 비고·하단 바 */
+.quote-module-shell .quote-notes { display: grid; gap: 8px; }
+.quote-module-shell .quote-notes .quote-muted { margin: 0; }
+.quote-module-shell .quote-footbar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 10px 16px; border: 1px solid #e4e4e7; border-radius: 16px; background: #fff; box-shadow: 0 -6px 18px rgba(0,0,0,.06); }
+.quote-module-shell .quote-foot-chip { font-size: 12px; font-weight: 900; }
+.quote-module-shell .quote-foot-chip.warn { color: #c2410c; }
+.quote-module-shell .quote-foot-chip.ok { color: var(--brand-green-strong); }
+.quote-module-shell .quote-foot-chip.muted { color: #a1a1aa; }
+.quote-module-shell .quote-foot-sum { color: #52525b; font-size: 12px; }
+.quote-module-shell .quote-foot-sum b { color: #18181b; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-foot-total { display: flex; align-items: baseline; gap: 6px; }
+.quote-module-shell .quote-foot-total span { color: #71717a; font-size: 12px; font-weight: 800; }
+.quote-module-shell .quote-foot-total b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.quote-module-shell .quote-foot-korean { color: #71717a; font-size: 11px; }
+.quote-module-shell .quote-foot-actions { position: relative; margin-left: auto; display: flex; gap: 6px; }
+.quote-module-shell .quote-foot-actions button { min-height: 36px; }
+.quote-module-shell .quote-pop { position: absolute; right: 0; bottom: calc(100% + 8px); width: 300px; padding: 12px; display: grid; gap: 8px; border: 1px solid #e4e4e7; border-radius: 12px; background: #fff; box-shadow: 0 12px 30px rgba(0,0,0,.14); }
+.quote-module-shell .quote-pop .quote-muted { margin: 0; font-size: 12px; }
+.quote-module-shell .quote-foot-result { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 12px; }
+.quote-module-shell .quote-foot-result:empty { display: none; }
+.quote-module-shell .quote-filename { color: #71717a; overflow-wrap: anywhere; }
+.quote-module-shell .quote-result-links { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.quote-module-shell .quote-result-links a { color: #1d4ed8; font-weight: 900; }
+.quote-module-shell .quote-foot-result .quote-error, .quote-module-shell .quote-foot-result .quote-muted { margin: 0; }
+
+/* 메일(AI 추출) 패널 */
+.quote-module-shell .quote-assist { padding-top: 4px; }
+.quote-module-shell .quote-assist button.quote-paste { width: 100%; min-height: 56px; margin: 0; border: 1px dashed #a1a1aa; border-radius: 10px; background: #fafafa; color: #71717a; font-weight: 700; white-space: normal; }
+.quote-module-shell .quote-assist button.quote-paste:focus { outline: 2px solid var(--brand-green); border-style: solid; }
+.quote-module-shell .quote-shots { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }
+.quote-module-shell .quote-shots li { position: relative; }
+.quote-module-shell .quote-shots img { width: 72px; height: 72px; object-fit: cover; border: 1px solid #e4e4e7; border-radius: 8px; display: block; }
+.quote-module-shell .quote-shots .quote-icon-button { position: absolute; top: 2px; right: 2px; background: rgba(255,255,255,.9); }
+.quote-module-shell .quote-assist-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.quote-module-shell .quote-progress { margin-top: 10px; display: grid; gap: 4px; color: #71717a; font-size: 12px; }
+.quote-module-shell .quote-progress .bar { height: 4px; border-radius: 999px; background: #f4f4f5; overflow: hidden; }
+.quote-module-shell .quote-progress .bar i { display: block; width: 40%; height: 100%; border-radius: 999px; background: var(--brand-green); animation: quote-progress 1.4s ease-in-out infinite; }
+@keyframes quote-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.quote-module-shell .quote-ai-memo { margin-top: 12px; padding-top: 10px; display: grid; gap: 8px; border-top: 1px solid #f4f4f5; font-size: 12px; }
+.quote-module-shell .quote-field-notes, .quote-module-shell .quote-questions { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 4px; }
+.quote-module-shell .quote-field-notes li { display: flex; flex-wrap: wrap; gap: 6px; color: #3f3f46; }
+.quote-module-shell .quote-field-notes li.medium { color: #a16207; }
+.quote-module-shell .quote-field-notes li.low { color: #b91c1c; }
+.quote-module-shell .quote-questions li::before { content: "· "; }
+
+/* 최근 목록의 파일 받기 */
+.quote-module-shell .quote-list-row { display: flex; align-items: stretch; gap: 4px; }
+.quote-module-shell .quote-list-row > button { flex: 1; min-width: 0; }
+.quote-module-shell .quote-list-files { display: grid; gap: 2px; align-content: center; }
+.quote-module-shell .quote-list-files a { padding: 1px 6px; border: 1px solid #e4e4e7; border-radius: 6px; color: #1d4ed8; font-size: 11px; font-weight: 900; text-decoration: none; text-align: center; }
+
+/* 대화상자·토스트 */
+.quote-module-shell .quote-modal-backdrop { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(9,9,11,.5); }
+.quote-module-shell .quote-modal { width: min(600px, 100%); max-height: calc(100vh - 32px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; border-radius: 16px; background: #fff; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
+.quote-module-shell .quote-modal.wide { width: min(760px, 100%); }
+.quote-module-shell .quote-modal > header, .quote-module-shell .quote-modal > footer { display: flex; align-items: center; gap: 8px; padding: 14px 18px; }
+.quote-module-shell .quote-modal > header { justify-content: space-between; border-bottom: 1px solid #f4f4f5; }
+.quote-module-shell .quote-modal > footer { border-top: 1px solid #f4f4f5; justify-content: flex-end; }
+.quote-module-shell .quote-modal .spacer { flex: 1; }
+.quote-module-shell .quote-modal-body { padding: 12px 18px; overflow: auto; }
+.quote-module-shell .quote-staff-table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+.quote-module-shell .quote-staff-table th { padding: 4px; color: #71717a; font-size: 11px; text-align: left; }
+.quote-module-shell .quote-staff-table td { padding: 3px 4px; }
+.quote-module-shell .quote-staff-table td input:not([type="radio"]) { width: 100%; }
+.quote-module-shell .quote-staff-table td.center { text-align: center; }
+.quote-module-shell .quote-staff-table tr.mine td { background: var(--brand-green-tint); }
+.quote-module-shell .quote-pending-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.quote-module-shell .quote-pending-list label { display: grid; grid-template-columns: 20px 92px minmax(0, 1fr) 110px 70px; gap: 8px; align-items: center; padding: 6px 4px; border-bottom: 1px solid #f4f4f5; font-size: 13px; cursor: pointer; }
+.quote-module-shell .quote-pending-list .org { display: grid; min-width: 0; }
+.quote-module-shell .quote-pending-list .org b, .quote-module-shell .quote-pending-list .org small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quote-module-shell .quote-pending-list .org small, .quote-module-shell .quote-pending-list .by, .quote-module-shell .quote-pending-list .d { color: #71717a; font-size: 12px; }
+.quote-module-shell .quote-pending-list .amt { text-align: right; font-weight: 800; }
+.quote-module-shell .quote-keys td { padding: 5px 8px 5px 0; font-size: 13px; }
+.quote-module-shell .quote-keys kbd { padding: 2px 6px; border: 1px solid #d4d4d8; border-bottom-width: 2px; border-radius: 6px; background: #fafafa; font-size: 12px; }
+.quote-module-shell .quote-toast { position: fixed; left: 50%; top: calc(var(--erp-nav-height) + 16px); z-index: 70; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 8px 10px 8px 14px; border-radius: 999px; background: #18181b; color: #fff; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.18); }
+.quote-module-shell .quote-toast button { min-height: 22px; padding: 0 10px; border: 1px solid rgba(255,255,255,.45); border-radius: 999px; background: none; color: #fff; font-size: 11px; cursor: pointer; }
+
+@media (max-width: 1280px) {
+  .quote-module-shell .quote-line-head { grid-template-columns: 28px minmax(80px, 110px) minmax(140px, 1fr) 70px 64px 120px; }
+  .quote-module-shell .quote-line-amt, .quote-module-shell .quote-line-tools { grid-column: span 3; justify-self: end; }
+  .quote-module-shell .quote-grid.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .quote-module-shell .quote-page { padding: 16px; }
+  .quote-module-shell .quote-line-head { grid-template-columns: 28px 1fr 1fr; }
+  .quote-module-shell .quote-grid.four, .quote-module-shell .quote-grid.two { grid-template-columns: 1fr; }
+  .quote-module-shell .quote-field.wide { grid-column: auto; }
+  .quote-module-shell .quote-foot-actions { margin-left: 0; width: 100%; }
+  .quote-module-shell .quote-pending-list label { grid-template-columns: 20px 1fr 70px; }
+  .quote-module-shell .quote-pending-list .d, .quote-module-shell .quote-pending-list .by { display: none; }
+}
