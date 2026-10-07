@@ -20,6 +20,7 @@ test("payroll Excel export accepts the styled title and header rows", async () =
 });
 
 const UNAUDITED_PERSONAL_ROUTES = ["chat/read-state/route.ts", "chat/me/route.ts"];
+const READ_ONLY_COMPUTE_ROUTES = ["quote/compute/route.ts"];
 
 test("every mutating API route calls the authorization helper and writes an audit trail", async () => {
   // R1(Design §8.7): 삭제된 재무·영업 라우트 목록 대신, 남은 app/api 라우트 전부를 훑는다.
@@ -41,9 +42,28 @@ test("every mutating API route calls the authorization helper and writes an audi
     // R5(Design §4.2.8): 읽음 위치 PUT 은 감사하지 않는다(읽을 때마다 감사 행이 쌓이지 않게).
     // messenger-enhancement(ME-MD9, DD14): 나만 보는 개인 상태(알림 수준·스레드 읽음·북마크)의 chat/me 도 같다. 예외는 이 두 파일뿐이다.
     if (UNAUDITED_PERSONAL_ROUTES.includes(route)) { assert.doesNotMatch(source, /writeErpAudit\(/, route); continue; }
+    // quote-tool QT-Q11(Design §3.5): 읽기만 하는 계산(단가 제안 등)의 POST 는 감사하지 않는다. 아래 소스 가드가 읽기 전용을 강제한다.
+    if (READ_ONLY_COMPUTE_ROUTES.includes(route)) { assert.doesNotMatch(source, /writeErpAudit\(/, route); continue; }
     assert.match(source, /writeErpAudit\(/, `${route}: missing writeErpAudit`);
   }
   assert.ok(mutating >= 20, `only ${mutating} mutating routes found`);
+});
+
+test("read-only compute routes (quote-tool QT-Q11) cannot write: no audit, no batch/run, no R2, no mutating SQL, allow-listed imports only", async () => {
+  const allowed = new Set(["cloudflare:workers", "../../../erp-platform", "../../../quote-schema", "../../../quote-server", "../../../quote-model",
+    "../../../quote-pricing", "../../../quote-recommend"]);
+  for (const route of READ_ONLY_COMPUTE_ROUTES) {
+    const source = await read(`app/api/${route}`);
+    assert.match(source, /authorizeErpRequest\(db, "quote", "read"\)/, route);
+    assert.match(source, /ensureQuoteSchema\(db\)/, route);
+    for (const forbidden of [/writeErpAudit\(/, /\.run\(/, /\.batch\(/, /HR_AUDIO/, /quote-store/, /\bexecute\(/]) assert.doesNotMatch(source, forbidden, `${route}: ${forbidden}`);
+    // 주석·문자열을 가리지 않고 파일 전체에서 SQL 변경 키워드를 찾는다(대소문자 무시). ensureQuoteSchema 는 이름으로만 부른다.
+    assert.doesNotMatch(source, /\b(INSERT|UPDATE|DELETE|REPLACE|UPSERT|DROP|ALTER|CREATE)\b/i, `${route}: mutating SQL keyword`);
+    const imports = [...source.matchAll(/^\s*import\s[^;]*?from\s+"([^"]+)"/gm)].map((match) => match[1]);
+    assert.ok(imports.length >= 3, `${route}: import scan found ${imports.length}`);
+    for (const specifier of imports) assert.ok(allowed.has(specifier), `${route}: import ${specifier} is not allowed in a read-only compute route`);
+    assert.doesNotMatch(source, /\bimport\(/, `${route}: dynamic import`);
+  }
 });
 
 test("retirement effectiveness and compensation confirmation are server-controlled", async () => {

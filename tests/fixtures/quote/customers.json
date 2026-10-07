@@ -1,0 +1,2595 @@
+{
+ "customers": {
+  "가나대학교": [
+   {
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0001",
+    "email": "c01@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "contact": "홍길순 연구원님",
+    "tel": "02-000-0002",
+    "email": "c02@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "contact": "김철수 님",
+    "tel": "02-000-0003",
+    "email": "c03@example.com",
+    "last_date": "2025-11-10",
+    "n": 2
+   }
+  ],
+  "가나대학교 산학협력단": [
+   {
+    "contact": "이영희 님",
+    "tel": "02-000-0004",
+    "email": "c04@example.com",
+    "last_date": "2026-05-01",
+    "n": 3
+   },
+   {
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0005",
+    "email": "c05@example.com",
+    "last_date": null,
+    "n": 1
+   }
+  ],
+  "가나대학교병원": [
+   {
+    "contact": "박민수 과장님",
+    "tel": "02-000-0006",
+    "email": "c06@example.com",
+    "last_date": "2026-01-15",
+    "n": 4
+   }
+  ],
+  "다라테크": [
+   {
+    "contact": "최지우 대리님",
+    "tel": "02-000-0007",
+    "email": "c07@example.com",
+    "last_date": "2026-08-30",
+    "n": 7
+   }
+  ],
+  "(주)다라테크": [
+   {
+    "contact": "최지우 대리님",
+    "tel": "02-000-0008",
+    "email": "c08@example.com",
+    "last_date": "2026-02-11",
+    "n": 2
+   },
+   {
+    "contact": "정우성 팀장님",
+    "tel": "02-000-0009",
+    "email": "c09@example.com",
+    "last_date": "2026-02-11",
+    "n": 2
+   }
+  ],
+  "마바연구소": [
+   {
+    "contact": "강감찬 박사님",
+    "tel": "02-000-0010",
+    "email": "c10@example.com",
+    "last_date": "",
+    "n": 3
+   },
+   {
+    "contact": "을지문덕 님",
+    "tel": "02-000-0011",
+    "email": "c11@example.com",
+    "last_date": null,
+    "n": 3
+   }
+  ],
+  "사아전자": [
+   {
+    "contact": "유관순 책임님",
+    "tel": "02-000-0012",
+    "email": "c12@example.com",
+    "last_date": "2024-12-31",
+    "n": 1
+   },
+   {
+    "contact": "윤봉길 선임님",
+    "tel": "02-000-0013",
+    "email": "c13@example.com",
+    "last_date": "2025-01-01",
+    "n": null
+   }
+  ],
+  "자차소프트": [
+   {
+    "contact": "안중근 님",
+    "tel": "02-000-0014",
+    "email": "c14@example.com",
+    "last_date": "2026-09-01",
+    "n": 6
+   },
+   {
+    "contact": "안창호 님",
+    "tel": "02-000-0015",
+    "email": "c15@example.com",
+    "last_date": "2026-09-01",
+    "n": 6
+   }
+  ],
+  "카타정보통신": [
+   {
+    "contact": "세종 님",
+    "tel": "02-000-0016",
+    "email": "c16@example.com",
+    "last_date": "2025-07-07",
+    "n": 2
+   }
+  ],
+  "파하바이오": [
+   {
+    "contact": "장영실 연구원님",
+    "tel": "02-000-0017",
+    "email": "c17@example.com",
+    "last_date": "2026-02-28",
+    "n": 1
+   },
+   {
+    "contact": "장보고 연구원님",
+    "tel": "02-000-0018",
+    "email": "c18@example.com",
+    "last_date": "2026-02-28",
+    "n": 1
+   }
+  ],
+  "한국가상연구원": [
+   {
+    "contact": "신사임당 박사님",
+    "tel": "02-000-0019",
+    "email": "c19@example.com",
+    "last_date": "2026-06-30",
+    "n": 9
+   },
+   {
+    "contact": "이순신 선임연구원님",
+    "tel": "02-000-0020",
+    "email": "c20@example.com",
+    "last_date": "2026-07-01",
+    "n": 4
+   }
+  ],
+  "한국가상연구원 부설 데이터센터": [
+   {
+    "contact": "이순신 선임연구원님",
+    "tel": "02-000-0021",
+    "email": "c21@example.com",
+    "last_date": "2026-07-02",
+    "n": 2
+   }
+  ],
+  "Alpha Lab": [
+   {
+    "contact": "John Doe",
+    "tel": "02-000-0022",
+    "email": "c22@example.com",
+    "last_date": "2026-04-04",
+    "n": 1
+   },
+   {
+    "contact": "Jane Roe",
+    "tel": "02-000-0023",
+    "email": "c23@example.com",
+    "last_date": "2026-04-04",
+    "n": 3
+   }
+  ],
+  "ALPHA LAB Inc.": [
+   {
+    "contact": "John Smith",
+    "tel": "02-000-0024",
+    "email": "c24@example.com",
+    "last_date": "2025-12-12",
+    "n": 2
+   }
+  ],
+  "베타시스템즈": [
+   {
+    "contact": "김유신 부장님",
+    "tel": "02-000-0025",
+    "email": "c25@example.com",
+    "last_date": "2026-01-01",
+    "n": 5
+   },
+   {
+    "contact": "김춘추 차장님",
+    "tel": "02-000-0026",
+    "email": "c26@example.com",
+    "last_date": "2026-01-02",
+    "n": 5
+   }
+  ],
+  "베타 시스템": [
+   {
+    "contact": "김유신 부장님",
+    "tel": "02-000-0027",
+    "email": "c27@example.com",
+    "last_date": "2023-03-03",
+    "n": 1
+   }
+  ],
+  "감마대학교": [
+   {
+    "contact": "허준 교수님",
+    "tel": "02-000-0028",
+    "email": "c28@example.com",
+    "last_date": "2026-09-30",
+    "n": 2
+   },
+   {
+    "contact": "허균 교수님",
+    "tel": "02-000-0029",
+    "email": "c29@example.com",
+    "last_date": "2026-09-30",
+    "n": 2
+   },
+   {
+    "contact": "허난설헌 교수님",
+    "tel": "02-000-0030",
+    "email": "c30@example.com",
+    "last_date": "2026-09-29",
+    "n": 2
+   }
+  ]
+ },
+ "spec_library": {
+  "Dual Socket": {
+   "spec": "SPEC-000\n자리표시자",
+   "date": "2025-08-11",
+   "category": "Barebone"
+  },
+  "Advantech HPC-7485 (4U)": {
+   "spec": "SPEC-001\n자리표시자",
+   "date": "2026-09-03",
+   "category": "Chassis"
+  },
+  "Advantech ASMB-977T2-00A1 (4GPU)": {
+   "spec": "SPEC-002\n자리표시자",
+   "date": "2026-09-08",
+   "category": "BAREBONE"
+  },
+  "Advantech XD-7485 (4U)": {
+   "spec": "SPEC-003\n자리표시자",
+   "date": "2025-07-21",
+   "category": "Chassis"
+  },
+  "Advantech ASMB-977 (4GPU)": {
+   "spec": "SPEC-004\n자리표시자",
+   "date": "2026-09-03",
+   "category": "Board"
+  },
+  "2 x Socket (LGA 4710), 2 x Intel Xeon® 6th Processors (up to 350W TDP)": {
+   "spec": "SPEC-005\n자리표시자",
+   "date": "2025-07-08",
+   "category": "Barebone"
+  },
+  "AMD RYZEN™ Threadripper™ PRO 7000 WX-Series Processors": {
+   "spec": "SPEC-006\n자리표시자",
+   "date": "2025-07-11",
+   "category": "SYSTEM"
+  },
+  "1+1 Redundant 2000W 94% Power Supply": {
+   "spec": "SPEC-007\n자리표시자",
+   "date": "2026-09-08",
+   "category": "Chassis"
+  },
+  "1. 소프트웨어 구성": {
+   "spec": "SPEC-008\n자리표시자",
+   "date": "2025-08-22",
+   "category": "시스템 구성 및\n검증 사항"
+  },
+  "Processor : 2 x Socket (LGA 6096), AMD EPYC™ 9005 series(up to 500W)": {
+   "spec": "SPEC-009\n자리표시자",
+   "date": "2025-08-13",
+   "category": "SYSTEM"
+  },
+  "Supports up to 8 x Dual slot Gen5 GPUs": {
+   "spec": "SPEC-010\n자리표시자",
+   "date": "2026-09-04",
+   "category": "Chassis"
+  },
+  "Gigabyte Server System G294-S41-AAP2": {
+   "spec": "SPEC-011\n자리표시자",
+   "date": "2026-09-09",
+   "category": "Chassis"
+  },
+  "아키텍처 - Ada Lovelace": {
+   "spec": "SPEC-012\n자리표시자",
+   "date": "2025-10-17",
+   "category": "상세스펙"
+  },
+  "아키텍처 - NVIDIA Blackwell": {
+   "spec": "SPEC-013\n자리표시자",
+   "date": "2025-10-17",
+   "category": "상세스펙"
+  },
+  "BlueField SmartNIC 25GbE dual-port SFP28, PCIe Gen3.0/4.0 x8, G-Series 1 6": {
+   "spec": "SPEC-014\n자리표시자",
+   "date": "2025-10-22",
+   "category": "MBF1M332A\n-ASCAT"
+  },
+  "Processor : 2 x Socket SP5 (LGA 6096) AMD EPYC™ 9005 series processors*": {
+   "spec": "SPEC-015\n자리표시자",
+   "date": "2025-10-23",
+   "category": "Spec"
+  },
+  "1200W Power Supply": {
+   "spec": "SPEC-016\n자리표시자",
+   "date": "2026-06-23",
+   "category": "Chassis"
+  },
+  "ASMB-817T2-00A1": {
+   "spec": "SPEC-017\n자리표시자",
+   "date": "2026-08-14",
+   "category": "BAREBONE"
+  },
+  "Gigabyte Server System G494-SB0-AAP2": {
+   "spec": "SPEC-018\n자리표시자",
+   "date": "2026-09-11",
+   "category": "Chassis"
+  },
+  "NVIDIA-Certified Systems™ - Data Center Servers": {
+   "spec": "SPEC-019\n자리표시자",
+   "date": "2026-03-18",
+   "category": "Barebone"
+  },
+  "HPC-7000": {
+   "spec": "SPEC-020\n자리표시자",
+   "date": "2025-12-04",
+   "category": "Chassis"
+  },
+  "System :": {
+   "spec": "SPEC-021\n자리표시자",
+   "date": "2025-12-10",
+   "category": "BAREBONE"
+  },
+  "Processor : 2 x Socket (LGA 4710), 2 x Intel Xeon® 6th Processors": {
+   "spec": "SPEC-022\n자리표시자",
+   "date": "2025-12-10",
+   "category": "BAREBONE"
+  },
+  "DGX H200 System 8x 141GB GPUs Full": {
+   "spec": "SPEC-023\n자리표시자",
+   "date": "2025-12-10",
+   "category": ""
+  },
+  "DGX software and std support bundle Subscription (NVIDIA Base": {
+   "spec": "SPEC-024\n자리표시자",
+   "date": "2025-12-10",
+   "category": "Support Service"
+  },
+  "Advantech ASMB-977I-00A1 (4GPU)": {
+   "spec": "SPEC-025\n자리표시자",
+   "date": "2026-07-22",
+   "category": "Board"
+  },
+  "Power : 3+1 redundant 3200W 80 PLUS Titanium power supply": {
+   "spec": "SPEC-026\n자리표시자",
+   "date": "2026-01-29",
+   "category": "BAREBONE"
+  },
+  "HPC-7000 Tower (HPC-7000-12ZB)": {
+   "spec": "SPEC-027\n자리표시자",
+   "date": "2026-05-08",
+   "category": "Chassis"
+  },
+  "G294-S41-AAP2": {
+   "spec": "SPEC-028\n자리표시자",
+   "date": "2026-06-18",
+   "category": "Barebone"
+  },
+  "2 x Socket": {
+   "spec": "SPEC-029\n자리표시자",
+   "date": "2026-02-04",
+   "category": "BAREBONE"
+  },
+  "MICRONIX Classic II FULL CHANGE 800W 80PLUS": {
+   "spec": "SPEC-030\n자리표시자",
+   "date": "2026-02-09",
+   "category": "POWER"
+  },
+  "서울 → 부산 2월": {
+   "spec": "SPEC-031\n자리표시자",
+   "date": "2026-02-20",
+   "category": "서버 이전 \n및 \n설치 기술지원"
+  },
+  "RedCastle Application Server For Agent": {
+   "spec": "SPEC-032\n자리표시자",
+   "date": "2026-08-11",
+   "category": "RedCastle V4.0"
+  },
+  "NETBACKUP ENTERPRISE XPLAT 1 FRONT END TB PLUS ONPREMISE STANDARD": {
+   "spec": "SPEC-033\n자리표시자",
+   "date": "2026-08-11",
+   "category": "COHESITY NETBACKUP (subscription 60MO)"
+  },
+  "DBSAFER DB V5.0 DBMS License (per Core)": {
+   "spec": "SPEC-034\n자리표시자",
+   "date": "2026-03-05",
+   "category": ""
+  },
+  "ManTech Continuous Cluster Server for Workgroup Edition, Linux": {
+   "spec": "SPEC-035\n자리표시자",
+   "date": "2026-03-30",
+   "category": "MCCS-L \n이중화솔루션"
+  },
+  "Asrockrack 2U4G8E-EGS2": {
+   "spec": "SPEC-036\n자리표시자",
+   "date": "2026-08-20",
+   "category": "System"
+  },
+  "ASRock Rack 4U8G-EGS2": {
+   "spec": "SPEC-037\n자리표시자",
+   "date": "2026-03-23",
+   "category": "Chassis"
+  },
+  "1970005349T000_ CPU cooler for 2U, 4U, and wallmount chassis": {
+   "spec": "SPEC-038\n자리표시자",
+   "date": "2026-03-10",
+   "category": "COOLER"
+  },
+  "12코어 CPU, 16코어 GPU, 16코어 Neural Engine": {
+   "spec": "SPEC-039\n자리표시자",
+   "date": "2026-03-11",
+   "category": ""
+  },
+  "14인치": {
+   "spec": "SPEC-040\n자리표시자",
+   "date": "2026-03-11",
+   "category": ""
+  },
+  "QM9700 MQM9700-NS2F": {
+   "spec": "SPEC-041\n자리표시자",
+   "date": "2026-03-13",
+   "category": "Mellanox \nSwitch"
+  },
+  "RedCastle Application Server For Agent (over 9core)": {
+   "spec": "SPEC-042\n자리표시자",
+   "date": "2026-03-30",
+   "category": "RedCastle V4.0"
+  },
+  "ManTech Continuous Cluster Server for Virtual Edition": {
+   "spec": "SPEC-043\n자리표시자",
+   "date": "2026-08-11",
+   "category": "MCCS-VM"
+  },
+  "ASRock Rack 2U2G-GNR/HPR": {
+   "spec": "SPEC-044\n자리표시자",
+   "date": "2026-04-20",
+   "category": "Chassis"
+  },
+  "ASRock Rack 2U2G-TURIN/HPR": {
+   "spec": "SPEC-045\n자리표시자",
+   "date": "2026-04-17",
+   "category": "Chassis"
+  },
+  "MSI S2205-01": {
+   "spec": "SPEC-046\n자리표시자",
+   "date": "2026-05-12",
+   "category": "Chassis"
+  },
+  "2U Rackmount Chassis for ATX/EATX Motherboard with 8 Hot-Swap SAS3/SATA3 HDD Trays and RPS for storage servers.": {
+   "spec": "SPEC-047\n자리표시자",
+   "date": "2026-04-27",
+   "category": "CHASSIS"
+  },
+  "LGA4677 Intel® 5th/4th Gen Xeon® Scalable ATX server board with DDR5, PCIe Gen5, and dual 10GbE for data centers and enterprise servers.": {
+   "spec": "SPEC-048\n자리표시자",
+   "date": "2026-04-27",
+   "category": "M/B"
+  },
+  "(1) 인텔® 제온® 골드 5318Y 2.1G, 24C/48T, 11.2GT/s, 36M 캐시, Turbo, HT (165W)": {
+   "spec": "SPEC-049\n자리표시자",
+   "date": "2026-05-11",
+   "category": ""
+  },
+  "(1) 인텔® 제온® 실버 4314 2.4G, 16C/32T, 10.4GT/s, 24M 캐시, Turbo, HT (135W)": {
+   "spec": "SPEC-050\n자리표시자",
+   "date": "2026-05-11",
+   "category": ""
+  },
+  ">16포트 USB/VGA, 17\" 1280*1024, keyboard & Tuchpad, Single RAIL": {
+   "spec": "SPEC-051\n자리표시자",
+   "date": "2026-05-11",
+   "category": ""
+  },
+  "Windows Server 2025 Standard": {
+   "spec": "SPEC-052\n자리표시자",
+   "date": "2026-05-11",
+   "category": "윈도우 라이선스"
+  },
+  "기업용/COEM(DSP)/16core/64bit/CAL미포함 한글": {
+   "spec": "SPEC-053\n자리표시자",
+   "date": "2026-05-11",
+   "category": ""
+  },
+  "GPU VRAM : 141GB": {
+   "spec": "SPEC-054\n자리표시자",
+   "date": "2026-05-20",
+   "category": ""
+  },
+  "2.5\" Chassis with up to 8 SAS4/SATA Drives, Smart Flow, Front PERC 12(H965i) * 1EA": {
+   "spec": "SPEC-055\n자리표시자",
+   "date": "2026-05-21",
+   "category": ""
+  },
+  "3.5\" Chassis with up to 12 SAS/SATA Drives, LP Adapter PERC 11 * 1EA": {
+   "spec": "SPEC-056\n자리표시자",
+   "date": "2026-05-20",
+   "category": ""
+  },
+  "ASRock Rack TURIND8X-2T": {
+   "spec": "SPEC-057\n자리표시자",
+   "date": "2026-05-29",
+   "category": "M/B"
+  },
+  "HPC-7000 Tower (HPC-7000-50ZB)": {
+   "spec": "SPEC-058\n자리표시자",
+   "date": "2026-06-02",
+   "category": "Chassis"
+  },
+  "ASRock Rack EC262D4U": {
+   "spec": "SPEC-059\n자리표시자",
+   "date": "2026-06-02",
+   "category": "Board"
+  },
+  "ThinkSystem SR650 V4 12x3.5인치 섀시": {
+   "spec": "SPEC-060\n자리표시자",
+   "date": "2026-06-04",
+   "category": ""
+  },
+  "ESC8000A-E13P (4U 8GPU)": {
+   "spec": "SPEC-061\n자리표시자",
+   "date": "2026-06-04",
+   "category": "Barebone"
+  },
+  "Advantech ASMB-831T2-00A1": {
+   "spec": "SPEC-062\n자리표시자",
+   "date": "2026-08-28",
+   "category": "Board"
+  },
+  "Entreprendre SATA 6TB (SATA3)": {
+   "spec": "SPEC-063\n자리표시자",
+   "date": "2026-06-11",
+   "category": "SATA HDD"
+  },
+  "3.5-inch bays: 3.5-inch SATA hard disk drives, 2.5-inch SATA solid state drives": {
+   "spec": "SPEC-064\n자리표시자",
+   "date": "2026-06-11",
+   "category": "Drive Compatibility"
+  },
+  "Enterprise SATA 6TB × 4EA = 24TB": {
+   "spec": "SPEC-065\n자리표시자",
+   "date": "2026-07-22",
+   "category": "3.5\" SATA HDD"
+  },
+  "2.5\" Chassis with up to 16 SAS4/SATA Drives, Smart Flow, Front PERC 12 (H965i) * 1": {
+   "spec": "SPEC-066\n자리표시자",
+   "date": "2026-06-15",
+   "category": "Chassis"
+  },
+  "Intel Xeon 6 Performance 6527P": {
+   "spec": "SPEC-067\n자리표시자",
+   "date": "2026-06-15",
+   "category": "CPU"
+  },
+  "ASMB-807-00A1": {
+   "spec": "SPEC-068\n자리표시자",
+   "date": "2026-06-23",
+   "category": "Board"
+  },
+  "Network : 1GbE LAN 4PORT": {
+   "spec": "SPEC-069\n자리표시자",
+   "date": "2026-07-22",
+   "category": "Network\n+\nACC"
+  },
+  "Intel Xeon SILVER 4309Y 2.8G, 8C/16T, 10.4GT/s, 12M Cache, Turbo, HT (105W) * 1": {
+   "spec": "SPEC-070\n자리표시자",
+   "date": "2026-06-30",
+   "category": "SPC"
+  },
+  "Advantech ASMB-925-00A1": {
+   "spec": "SPEC-071\n자리표시자",
+   "date": "2026-07-23",
+   "category": "Board"
+  },
+  "HPE DL380 Gen11 12LFF NC CTO Svr *1ea": {
+   "spec": "SPEC-072\n자리표시자",
+   "date": "2026-07-02",
+   "category": "SPC"
+  },
+  "NVIDIA HGX™ B300": {
+   "spec": "SPEC-073\n자리표시자",
+   "date": "2026-07-15",
+   "category": "SPC"
+  },
+  "Gigabyte MZ73-LM1": {
+   "spec": "SPEC-074\n자리표시자",
+   "date": "2026-07-08",
+   "category": "Board"
+  },
+  "SYS-521Series": {
+   "spec": "SPEC-075\n자리표시자",
+   "date": "2026-07-09",
+   "category": "Chassis"
+  },
+  "Advantech HPC-8208-80RA1": {
+   "spec": "SPEC-076\n자리표시자",
+   "date": "2026-07-23",
+   "category": "Chassis"
+  },
+  "Advantech HPC-8208-55RA1 (2U)": {
+   "spec": "SPEC-077\n자리표시자",
+   "date": "2026-09-01",
+   "category": "Chassis"
+  },
+  "Advantech ASMB-927T2-00A1": {
+   "spec": "SPEC-078\n자리표시자",
+   "date": "2026-09-01",
+   "category": "Board"
+  },
+  "ASMB-928T2-00A1": {
+   "spec": "SPEC-079\n자리표시자",
+   "date": "2026-07-24",
+   "category": "Board"
+  },
+  "Gigabyte Server System G493-SB0-AAP1": {
+   "spec": "SPEC-080\n자리표시자",
+   "date": "2026-07-27",
+   "category": "Chassis"
+  },
+  "G494-SB0-AAP2": {
+   "spec": "SPEC-081\n자리표시자",
+   "date": "2026-09-03",
+   "category": "Chassis"
+  },
+  "2U (NVIDIA MGX™ architecture)": {
+   "spec": "SPEC-082\n자리표시자",
+   "date": "2026-08-12",
+   "category": "Chassis"
+  },
+  "BASE P2 Tower G2 W880 500W Platinum qualified 92%": {
+   "spec": "SPEC-083\n자리표시자",
+   "date": "2026-08-19",
+   "category": "SPEC"
+  },
+  "S6053G480RAU8": {
+   "spec": "SPEC-084\n자리표시자",
+   "date": "2026-09-03",
+   "category": "BAREBONE"
+  },
+  "MSi S3063G290RAU4": {
+   "spec": "SPEC-085\n자리표시자",
+   "date": "2026-09-04",
+   "category": "BAREBONE"
+  },
+  "Gigabyte Server System G294-Z42-AAP2": {
+   "spec": "SPEC-086\n자리표시자",
+   "date": "2026-09-08",
+   "category": "Chassis"
+  }
+ },
+ "match_customer": [
+  {
+   "org": "가나대학교",
+   "contact": "홍길동 교수님",
+   "expected": [
+    {
+     "org": "가나대학교",
+     "score": 1.5,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.333,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 1.125,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0005",
+     "email": "c05@example.com",
+     "last_date": null,
+     "n": 1
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.0,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교병원",
+     "score": 0.833,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.625,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.6,
+     "contact": "허준 교수님",
+     "tel": "02-000-0028",
+     "email": "c28@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.6,
+     "contact": "허균 교수님",
+     "tel": "02-000-0029",
+     "email": "c29@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "가나대학교",
+   "contact": null,
+   "expected": [
+    {
+     "org": "가나대학교",
+     "score": 1.0,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.0,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.0,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교병원",
+     "score": 0.833,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.625,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.625,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0005",
+     "email": "c05@example.com",
+     "last_date": null,
+     "n": 1
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.6,
+     "contact": "허준 교수님",
+     "tel": "02-000-0028",
+     "email": "c28@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.6,
+     "contact": "허균 교수님",
+     "tel": "02-000-0029",
+     "email": "c29@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "가나대",
+   "contact": "홍길",
+   "expected": [
+    {
+     "org": "가나대학교",
+     "score": 1.15,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.15,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.829,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0005",
+     "email": "c05@example.com",
+     "last_date": null,
+     "n": 1
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.75,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교병원",
+     "score": 0.6,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.429,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    }
+   ]
+  },
+  {
+   "org": "가나대학교 산학협력단",
+   "contact": "이영희",
+   "expected": [
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 1.5,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 1.0,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0005",
+     "email": "c05@example.com",
+     "last_date": null,
+     "n": 1
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.625,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.625,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.625,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "가나 대학교",
+   "contact": "김철수",
+   "expected": [
+    {
+     "org": "가나대학교",
+     "score": 1.409,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교병원",
+     "score": 0.936,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.909,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.909,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    }
+   ]
+  },
+  {
+   "org": "가나대학교병원",
+   "contact": "박민수 과장님",
+   "expected": [
+    {
+     "org": "가나대학교병원",
+     "score": 1.5,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.0,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.833,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.833,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    }
+   ]
+  },
+  {
+   "org": "다라테크",
+   "contact": "최지우",
+   "expected": [
+    {
+     "org": "다라테크",
+     "score": 1.5,
+     "contact": "최지우 대리님",
+     "tel": "02-000-0007",
+     "email": "c07@example.com",
+     "last_date": "2026-08-30",
+     "n": 7
+    },
+    {
+     "org": "(주)다라테크",
+     "score": 1.3,
+     "contact": "최지우 대리님",
+     "tel": "02-000-0008",
+     "email": "c08@example.com",
+     "last_date": "2026-02-11",
+     "n": 2
+    },
+    {
+     "org": "(주)다라테크",
+     "score": 0.967,
+     "contact": "정우성 팀장님",
+     "tel": "02-000-0009",
+     "email": "c09@example.com",
+     "last_date": "2026-02-11",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "(주)다라테크",
+   "contact": "",
+   "expected": [
+    {
+     "org": "(주)다라테크",
+     "score": 1.0,
+     "contact": "최지우 대리님",
+     "tel": "02-000-0008",
+     "email": "c08@example.com",
+     "last_date": "2026-02-11",
+     "n": 2
+    },
+    {
+     "org": "(주)다라테크",
+     "score": 1.0,
+     "contact": "정우성 팀장님",
+     "tel": "02-000-0009",
+     "email": "c09@example.com",
+     "last_date": "2026-02-11",
+     "n": 2
+    },
+    {
+     "org": "다라테크",
+     "score": 0.8,
+     "contact": "최지우 대리님",
+     "tel": "02-000-0007",
+     "email": "c07@example.com",
+     "last_date": "2026-08-30",
+     "n": 7
+    }
+   ]
+  },
+  {
+   "org": "주식회사 다라테크",
+   "contact": "정우성",
+   "expected": [
+    {
+     "org": "(주)다라테크",
+     "score": 1.3,
+     "contact": "정우성 팀장님",
+     "tel": "02-000-0009",
+     "email": "c09@example.com",
+     "last_date": "2026-02-11",
+     "n": 2
+    },
+    {
+     "org": "(주)다라테크",
+     "score": 0.967,
+     "contact": "최지우 대리님",
+     "tel": "02-000-0008",
+     "email": "c08@example.com",
+     "last_date": "2026-02-11",
+     "n": 2
+    },
+    {
+     "org": "다라테크",
+     "score": 0.782,
+     "contact": "최지우 대리님",
+     "tel": "02-000-0007",
+     "email": "c07@example.com",
+     "last_date": "2026-08-30",
+     "n": 7
+    }
+   ]
+  },
+  {
+   "org": "마바",
+   "contact": "강감찬",
+   "expected": [
+    {
+     "org": "마바연구소",
+     "score": 1.071,
+     "contact": "강감찬 박사님",
+     "tel": "02-000-0010",
+     "email": "c10@example.com",
+     "last_date": "",
+     "n": 3
+    },
+    {
+     "org": "마바연구소",
+     "score": 0.571,
+     "contact": "을지문덕 님",
+     "tel": "02-000-0011",
+     "email": "c11@example.com",
+     "last_date": null,
+     "n": 3
+    }
+   ]
+  },
+  {
+   "org": "마바연구소",
+   "contact": "을지",
+   "expected": [
+    {
+     "org": "마바연구소",
+     "score": 1.4,
+     "contact": "을지문덕 님",
+     "tel": "02-000-0011",
+     "email": "c11@example.com",
+     "last_date": null,
+     "n": 3
+    },
+    {
+     "org": "마바연구소",
+     "score": 1.0,
+     "contact": "강감찬 박사님",
+     "tel": "02-000-0010",
+     "email": "c10@example.com",
+     "last_date": "",
+     "n": 3
+    }
+   ]
+  },
+  {
+   "org": "",
+   "contact": "홍길동",
+   "expected": []
+  },
+  {
+   "org": "사아전자",
+   "contact": null,
+   "expected": [
+    {
+     "org": "사아전자",
+     "score": 1.0,
+     "contact": "유관순 책임님",
+     "tel": "02-000-0012",
+     "email": "c12@example.com",
+     "last_date": "2024-12-31",
+     "n": 1
+    },
+    {
+     "org": "사아전자",
+     "score": 1.0,
+     "contact": "윤봉길 선임님",
+     "tel": "02-000-0013",
+     "email": "c13@example.com",
+     "last_date": "2025-01-01",
+     "n": null
+    }
+   ]
+  },
+  {
+   "org": "자차소프트",
+   "contact": "안",
+   "expected": [
+    {
+     "org": "자차소프트",
+     "score": 1.25,
+     "contact": "안중근 님",
+     "tel": "02-000-0014",
+     "email": "c14@example.com",
+     "last_date": "2026-09-01",
+     "n": 6
+    },
+    {
+     "org": "자차소프트",
+     "score": 1.25,
+     "contact": "안창호 님",
+     "tel": "02-000-0015",
+     "email": "c15@example.com",
+     "last_date": "2026-09-01",
+     "n": 6
+    }
+   ]
+  },
+  {
+   "org": "카타 정보통신",
+   "contact": null,
+   "expected": [
+    {
+     "org": "카타정보통신",
+     "score": 0.923,
+     "contact": "세종 님",
+     "tel": "02-000-0016",
+     "email": "c16@example.com",
+     "last_date": "2025-07-07",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "파하바이오",
+   "contact": "장",
+   "expected": [
+    {
+     "org": "파하바이오",
+     "score": 1.25,
+     "contact": "장영실 연구원님",
+     "tel": "02-000-0017",
+     "email": "c17@example.com",
+     "last_date": "2026-02-28",
+     "n": 1
+    },
+    {
+     "org": "파하바이오",
+     "score": 1.25,
+     "contact": "장보고 연구원님",
+     "tel": "02-000-0018",
+     "email": "c18@example.com",
+     "last_date": "2026-02-28",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "org": "한국가상연구원",
+   "contact": null,
+   "expected": [
+    {
+     "org": "한국가상연구원",
+     "score": 1.0,
+     "contact": "신사임당 박사님",
+     "tel": "02-000-0019",
+     "email": "c19@example.com",
+     "last_date": "2026-06-30",
+     "n": 9
+    },
+    {
+     "org": "한국가상연구원",
+     "score": 1.0,
+     "contact": "이순신 선임연구원님",
+     "tel": "02-000-0020",
+     "email": "c20@example.com",
+     "last_date": "2026-07-01",
+     "n": 4
+    },
+    {
+     "org": "한국가상연구원 부설 데이터센터",
+     "score": 0.609,
+     "contact": "이순신 선임연구원님",
+     "tel": "02-000-0021",
+     "email": "c21@example.com",
+     "last_date": "2026-07-02",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "한국가상",
+   "contact": "이순신",
+   "expected": [
+    {
+     "org": "한국가상연구원",
+     "score": 1.227,
+     "contact": "이순신 선임연구원님",
+     "tel": "02-000-0020",
+     "email": "c20@example.com",
+     "last_date": "2026-07-01",
+     "n": 4
+    },
+    {
+     "org": "한국가상연구원 부설 데이터센터",
+     "score": 0.9,
+     "contact": "이순신 선임연구원님",
+     "tel": "02-000-0021",
+     "email": "c21@example.com",
+     "last_date": "2026-07-02",
+     "n": 2
+    },
+    {
+     "org": "한국가상연구원",
+     "score": 0.894,
+     "contact": "신사임당 박사님",
+     "tel": "02-000-0019",
+     "email": "c19@example.com",
+     "last_date": "2026-06-30",
+     "n": 9
+    }
+   ]
+  },
+  {
+   "org": "alpha lab",
+   "contact": "john",
+   "expected": [
+    {
+     "org": "Alpha Lab",
+     "score": 1.5,
+     "contact": "John Doe",
+     "tel": "02-000-0022",
+     "email": "c22@example.com",
+     "last_date": "2026-04-04",
+     "n": 1
+    },
+    {
+     "org": "ALPHA LAB Inc.",
+     "score": 1.283,
+     "contact": "John Smith",
+     "tel": "02-000-0024",
+     "email": "c24@example.com",
+     "last_date": "2025-12-12",
+     "n": 2
+    },
+    {
+     "org": "Alpha Lab",
+     "score": 1.167,
+     "contact": "Jane Roe",
+     "tel": "02-000-0023",
+     "email": "c23@example.com",
+     "last_date": "2026-04-04",
+     "n": 3
+    }
+   ]
+  },
+  {
+   "org": "ALPHA",
+   "contact": null,
+   "expected": [
+    {
+     "org": "Alpha Lab",
+     "score": 0.714,
+     "contact": "Jane Roe",
+     "tel": "02-000-0023",
+     "email": "c23@example.com",
+     "last_date": "2026-04-04",
+     "n": 3
+    },
+    {
+     "org": "Alpha Lab",
+     "score": 0.714,
+     "contact": "John Doe",
+     "tel": "02-000-0022",
+     "email": "c22@example.com",
+     "last_date": "2026-04-04",
+     "n": 1
+    },
+    {
+     "org": "ALPHA LAB Inc.",
+     "score": 0.526,
+     "contact": "John Smith",
+     "tel": "02-000-0024",
+     "email": "c24@example.com",
+     "last_date": "2025-12-12",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "Alpha Lab Inc",
+   "contact": "Jane",
+   "expected": [
+    {
+     "org": "Alpha Lab",
+     "score": 1.318,
+     "contact": "Jane Roe",
+     "tel": "02-000-0023",
+     "email": "c23@example.com",
+     "last_date": "2026-04-04",
+     "n": 3
+    },
+    {
+     "org": "ALPHA LAB Inc.",
+     "score": 1.13,
+     "contact": "John Smith",
+     "tel": "02-000-0024",
+     "email": "c24@example.com",
+     "last_date": "2025-12-12",
+     "n": 2
+    },
+    {
+     "org": "Alpha Lab",
+     "score": 0.985,
+     "contact": "John Doe",
+     "tel": "02-000-0022",
+     "email": "c22@example.com",
+     "last_date": "2026-04-04",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "org": "베타시스템즈",
+   "contact": "김유신",
+   "expected": [
+    {
+     "org": "베타시스템즈",
+     "score": 1.5,
+     "contact": "김유신 부장님",
+     "tel": "02-000-0025",
+     "email": "c25@example.com",
+     "last_date": "2026-01-01",
+     "n": 5
+    },
+    {
+     "org": "베타 시스템",
+     "score": 1.333,
+     "contact": "김유신 부장님",
+     "tel": "02-000-0027",
+     "email": "c27@example.com",
+     "last_date": "2023-03-03",
+     "n": 1
+    },
+    {
+     "org": "베타시스템즈",
+     "score": 1.167,
+     "contact": "김춘추 차장님",
+     "tel": "02-000-0026",
+     "email": "c26@example.com",
+     "last_date": "2026-01-02",
+     "n": 5
+    }
+   ]
+  },
+  {
+   "org": "베타 시스템즈",
+   "contact": null,
+   "expected": [
+    {
+     "org": "베타시스템즈",
+     "score": 0.923,
+     "contact": "김춘추 차장님",
+     "tel": "02-000-0026",
+     "email": "c26@example.com",
+     "last_date": "2026-01-02",
+     "n": 5
+    },
+    {
+     "org": "베타시스템즈",
+     "score": 0.923,
+     "contact": "김유신 부장님",
+     "tel": "02-000-0025",
+     "email": "c25@example.com",
+     "last_date": "2026-01-01",
+     "n": 5
+    },
+    {
+     "org": "베타 시스템",
+     "score": 0.923,
+     "contact": "김유신 부장님",
+     "tel": "02-000-0027",
+     "email": "c27@example.com",
+     "last_date": "2023-03-03",
+     "n": 1
+    }
+   ]
+  },
+  {
+   "org": "감마대학교",
+   "contact": "허",
+   "expected": [
+    {
+     "org": "감마대학교",
+     "score": 1.25,
+     "contact": "허준 교수님",
+     "tel": "02-000-0028",
+     "email": "c28@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 1.25,
+     "contact": "허균 교수님",
+     "tel": "02-000-0029",
+     "email": "c29@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 1.25,
+     "contact": "허난설헌 교수님",
+     "tel": "02-000-0030",
+     "email": "c30@example.com",
+     "last_date": "2026-09-29",
+     "n": 2
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.6,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.6,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.6,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "감마대학교",
+   "contact": "허난설헌 교수님",
+   "expected": [
+    {
+     "org": "감마대학교",
+     "score": 1.5,
+     "contact": "허난설헌 교수님",
+     "tel": "02-000-0030",
+     "email": "c30@example.com",
+     "last_date": "2026-09-29",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 1.167,
+     "contact": "허준 교수님",
+     "tel": "02-000-0028",
+     "email": "c28@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 1.167,
+     "contact": "허균 교수님",
+     "tel": "02-000-0029",
+     "email": "c29@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.6,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.6,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.6,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "없는기관",
+   "contact": null,
+   "expected": []
+  },
+  {
+   "org": "대학교",
+   "contact": null,
+   "expected": [
+    {
+     "org": "가나대학교",
+     "score": 0.75,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.75,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.75,
+     "contact": "허준 교수님",
+     "tel": "02-000-0028",
+     "email": "c28@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.75,
+     "contact": "허균 교수님",
+     "tel": "02-000-0029",
+     "email": "c29@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.75,
+     "contact": "허난설헌 교수님",
+     "tel": "02-000-0030",
+     "email": "c30@example.com",
+     "last_date": "2026-09-29",
+     "n": 2
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.75,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교병원",
+     "score": 0.6,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.429,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    }
+   ]
+  },
+  {
+   "org": "Lab",
+   "contact": "John Doe",
+   "expected": [
+    {
+     "org": "Alpha Lab",
+     "score": 1.0,
+     "contact": "John Doe",
+     "tel": "02-000-0022",
+     "email": "c22@example.com",
+     "last_date": "2026-04-04",
+     "n": 1
+    },
+    {
+     "org": "ALPHA LAB Inc.",
+     "score": 0.853,
+     "contact": "John Smith",
+     "tel": "02-000-0024",
+     "email": "c24@example.com",
+     "last_date": "2025-12-12",
+     "n": 2
+    },
+    {
+     "org": "Alpha Lab",
+     "score": 0.667,
+     "contact": "Jane Roe",
+     "tel": "02-000-0023",
+     "email": "c23@example.com",
+     "last_date": "2026-04-04",
+     "n": 3
+    }
+   ]
+  },
+  {
+   "org": "가나대학교 산학협력단",
+   "contact": "홍길동 교수님",
+   "expected": [
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 1.5,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0005",
+     "email": "c05@example.com",
+     "last_date": null,
+     "n": 1
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.125,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 1.0,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.958,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 0.625,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    }
+   ]
+  },
+  {
+   "org": "®가나대학교™",
+   "contact": "홍길동",
+   "expected": [
+    {
+     "org": "가나대학교",
+     "score": 1.5,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0001",
+     "email": "c01@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.333,
+     "contact": "홍길순 연구원님",
+     "tel": "02-000-0002",
+     "email": "c02@example.com",
+     "last_date": "2026-03-02",
+     "n": 5
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 1.125,
+     "contact": "홍길동 교수님",
+     "tel": "02-000-0005",
+     "email": "c05@example.com",
+     "last_date": null,
+     "n": 1
+    },
+    {
+     "org": "가나대학교",
+     "score": 1.0,
+     "contact": "김철수 님",
+     "tel": "02-000-0003",
+     "email": "c03@example.com",
+     "last_date": "2025-11-10",
+     "n": 2
+    },
+    {
+     "org": "가나대학교병원",
+     "score": 0.833,
+     "contact": "박민수 과장님",
+     "tel": "02-000-0006",
+     "email": "c06@example.com",
+     "last_date": "2026-01-15",
+     "n": 4
+    },
+    {
+     "org": "가나대학교 산학협력단",
+     "score": 0.625,
+     "contact": "이영희 님",
+     "tel": "02-000-0004",
+     "email": "c04@example.com",
+     "last_date": "2026-05-01",
+     "n": 3
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.6,
+     "contact": "허준 교수님",
+     "tel": "02-000-0028",
+     "email": "c28@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    },
+    {
+     "org": "감마대학교",
+     "score": 0.6,
+     "contact": "허균 교수님",
+     "tel": "02-000-0029",
+     "email": "c29@example.com",
+     "last_date": "2026-09-30",
+     "n": 2
+    }
+   ]
+  }
+ ],
+ "spec_for": [
+  {
+   "name": "Dual Socket",
+   "expected": "SPEC-000\n자리표시자"
+  },
+  {
+   "name": "Advantech HPC-7485 (4U)",
+   "expected": "SPEC-001\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-977T2-00A1 (4GPU)",
+   "expected": "SPEC-002\n자리표시자"
+  },
+  {
+   "name": "Advantech XD-7485 (4U)",
+   "expected": "SPEC-003\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-977 (4GPU)",
+   "expected": "SPEC-004\n자리표시자"
+  },
+  {
+   "name": "2 x Socket (LGA 4710), 2 x Intel Xeon® 6th Processors (up to 350W TDP)",
+   "expected": "SPEC-005\n자리표시자"
+  },
+  {
+   "name": "AMD RYZEN™ Threadripper™ PRO 7000 WX-Series Processors",
+   "expected": "SPEC-006\n자리표시자"
+  },
+  {
+   "name": "1+1 Redundant 2000W 94% Power Supply",
+   "expected": "SPEC-007\n자리표시자"
+  },
+  {
+   "name": "1. 소프트웨어 구성",
+   "expected": "SPEC-008\n자리표시자"
+  },
+  {
+   "name": "Processor : 2 x Socket (LGA 6096), AMD EPYC™ 9005 series(up to 500W)",
+   "expected": "SPEC-009\n자리표시자"
+  },
+  {
+   "name": "Supports up to 8 x Dual slot Gen5 GPUs",
+   "expected": "SPEC-010\n자리표시자"
+  },
+  {
+   "name": "Gigabyte Server System G294-S41-AAP2",
+   "expected": "SPEC-011\n자리표시자"
+  },
+  {
+   "name": "아키텍처 - Ada Lovelace",
+   "expected": "SPEC-012\n자리표시자"
+  },
+  {
+   "name": "아키텍처 - NVIDIA Blackwell",
+   "expected": "SPEC-013\n자리표시자"
+  },
+  {
+   "name": "BlueField SmartNIC 25GbE dual-port SFP28, PCIe Gen3.0/4.0 x8, G-Series 1 6",
+   "expected": "SPEC-014\n자리표시자"
+  },
+  {
+   "name": "Processor : 2 x Socket SP5 (LGA 6096) AMD EPYC™ 9005 series processors*",
+   "expected": "SPEC-015\n자리표시자"
+  },
+  {
+   "name": "1200W Power Supply",
+   "expected": "SPEC-016\n자리표시자"
+  },
+  {
+   "name": "ASMB-817T2-00A1",
+   "expected": "SPEC-017\n자리표시자"
+  },
+  {
+   "name": "Gigabyte Server System G494-SB0-AAP2",
+   "expected": "SPEC-018\n자리표시자"
+  },
+  {
+   "name": "NVIDIA-Certified Systems™ - Data Center Servers",
+   "expected": "SPEC-019\n자리표시자"
+  },
+  {
+   "name": "HPC-7000",
+   "expected": "SPEC-020\n자리표시자"
+  },
+  {
+   "name": "System :",
+   "expected": "SPEC-021\n자리표시자"
+  },
+  {
+   "name": "Processor : 2 x Socket (LGA 4710), 2 x Intel Xeon® 6th Processors",
+   "expected": "SPEC-022\n자리표시자"
+  },
+  {
+   "name": "DGX H200 System 8x 141GB GPUs Full",
+   "expected": "SPEC-023\n자리표시자"
+  },
+  {
+   "name": "DGX software and std support bundle Subscription (NVIDIA Base",
+   "expected": "SPEC-024\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-977I-00A1 (4GPU)",
+   "expected": "SPEC-025\n자리표시자"
+  },
+  {
+   "name": "Power : 3+1 redundant 3200W 80 PLUS Titanium power supply",
+   "expected": "SPEC-026\n자리표시자"
+  },
+  {
+   "name": "HPC-7000 Tower (HPC-7000-12ZB)",
+   "expected": "SPEC-027\n자리표시자"
+  },
+  {
+   "name": "G294-S41-AAP2",
+   "expected": "SPEC-028\n자리표시자"
+  },
+  {
+   "name": "2 x Socket",
+   "expected": "SPEC-029\n자리표시자"
+  },
+  {
+   "name": "MICRONIX Classic II FULL CHANGE 800W 80PLUS",
+   "expected": "SPEC-030\n자리표시자"
+  },
+  {
+   "name": "서울 → 부산 2월",
+   "expected": "SPEC-031\n자리표시자"
+  },
+  {
+   "name": "RedCastle Application Server For Agent",
+   "expected": "SPEC-032\n자리표시자"
+  },
+  {
+   "name": "NETBACKUP ENTERPRISE XPLAT 1 FRONT END TB PLUS ONPREMISE STANDARD",
+   "expected": "SPEC-033\n자리표시자"
+  },
+  {
+   "name": "DBSAFER DB V5.0 DBMS License (per Core)",
+   "expected": "SPEC-034\n자리표시자"
+  },
+  {
+   "name": "ManTech Continuous Cluster Server for Workgroup Edition, Linux",
+   "expected": "SPEC-035\n자리표시자"
+  },
+  {
+   "name": "Asrockrack 2U4G8E-EGS2",
+   "expected": "SPEC-036\n자리표시자"
+  },
+  {
+   "name": "ASRock Rack 4U8G-EGS2",
+   "expected": "SPEC-037\n자리표시자"
+  },
+  {
+   "name": "1970005349T000_ CPU cooler for 2U, 4U, and wallmount chassis",
+   "expected": "SPEC-038\n자리표시자"
+  },
+  {
+   "name": "12코어 CPU, 16코어 GPU, 16코어 Neural Engine",
+   "expected": "SPEC-039\n자리표시자"
+  },
+  {
+   "name": "14인치",
+   "expected": "SPEC-040\n자리표시자"
+  },
+  {
+   "name": "QM9700 MQM9700-NS2F",
+   "expected": "SPEC-041\n자리표시자"
+  },
+  {
+   "name": "RedCastle Application Server For Agent (over 9core)",
+   "expected": "SPEC-042\n자리표시자"
+  },
+  {
+   "name": "ManTech Continuous Cluster Server for Virtual Edition",
+   "expected": "SPEC-043\n자리표시자"
+  },
+  {
+   "name": "ASRock Rack 2U2G-GNR/HPR",
+   "expected": "SPEC-044\n자리표시자"
+  },
+  {
+   "name": "ASRock Rack 2U2G-TURIN/HPR",
+   "expected": "SPEC-045\n자리표시자"
+  },
+  {
+   "name": "MSI S2205-01",
+   "expected": "SPEC-046\n자리표시자"
+  },
+  {
+   "name": "2U Rackmount Chassis for ATX/EATX Motherboard with 8 Hot-Swap SAS3/SATA3 HDD Trays and RPS for storage servers.",
+   "expected": "SPEC-047\n자리표시자"
+  },
+  {
+   "name": "LGA4677 Intel® 5th/4th Gen Xeon® Scalable ATX server board with DDR5, PCIe Gen5, and dual 10GbE for data centers and enterprise servers.",
+   "expected": "SPEC-048\n자리표시자"
+  },
+  {
+   "name": "(1) 인텔® 제온® 골드 5318Y 2.1G, 24C/48T, 11.2GT/s, 36M 캐시, Turbo, HT (165W)",
+   "expected": "SPEC-049\n자리표시자"
+  },
+  {
+   "name": "(1) 인텔® 제온® 실버 4314 2.4G, 16C/32T, 10.4GT/s, 24M 캐시, Turbo, HT (135W)",
+   "expected": "SPEC-050\n자리표시자"
+  },
+  {
+   "name": ">16포트 USB/VGA, 17\" 1280*1024, keyboard & Tuchpad, Single RAIL",
+   "expected": "SPEC-051\n자리표시자"
+  },
+  {
+   "name": "Windows Server 2025 Standard",
+   "expected": "SPEC-052\n자리표시자"
+  },
+  {
+   "name": "기업용/COEM(DSP)/16core/64bit/CAL미포함 한글",
+   "expected": "SPEC-053\n자리표시자"
+  },
+  {
+   "name": "GPU VRAM : 141GB",
+   "expected": "SPEC-054\n자리표시자"
+  },
+  {
+   "name": "2.5\" Chassis with up to 8 SAS4/SATA Drives, Smart Flow, Front PERC 12(H965i) * 1EA",
+   "expected": "SPEC-055\n자리표시자"
+  },
+  {
+   "name": "3.5\" Chassis with up to 12 SAS/SATA Drives, LP Adapter PERC 11 * 1EA",
+   "expected": "SPEC-056\n자리표시자"
+  },
+  {
+   "name": "ASRock Rack TURIND8X-2T",
+   "expected": "SPEC-057\n자리표시자"
+  },
+  {
+   "name": "HPC-7000 Tower (HPC-7000-50ZB)",
+   "expected": "SPEC-058\n자리표시자"
+  },
+  {
+   "name": "ASRock Rack EC262D4U",
+   "expected": "SPEC-059\n자리표시자"
+  },
+  {
+   "name": "ThinkSystem SR650 V4 12x3.5인치 섀시",
+   "expected": "SPEC-060\n자리표시자"
+  },
+  {
+   "name": "ESC8000A-E13P (4U 8GPU)",
+   "expected": "SPEC-061\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-831T2-00A1",
+   "expected": "SPEC-062\n자리표시자"
+  },
+  {
+   "name": "Entreprendre SATA 6TB (SATA3)",
+   "expected": "SPEC-063\n자리표시자"
+  },
+  {
+   "name": "3.5-inch bays: 3.5-inch SATA hard disk drives, 2.5-inch SATA solid state drives",
+   "expected": "SPEC-064\n자리표시자"
+  },
+  {
+   "name": "Enterprise SATA 6TB × 4EA = 24TB",
+   "expected": "SPEC-065\n자리표시자"
+  },
+  {
+   "name": "2.5\" Chassis with up to 16 SAS4/SATA Drives, Smart Flow, Front PERC 12 (H965i) * 1",
+   "expected": "SPEC-066\n자리표시자"
+  },
+  {
+   "name": "Intel Xeon 6 Performance 6527P",
+   "expected": "SPEC-067\n자리표시자"
+  },
+  {
+   "name": "ASMB-807-00A1",
+   "expected": "SPEC-068\n자리표시자"
+  },
+  {
+   "name": "Network : 1GbE LAN 4PORT",
+   "expected": "SPEC-069\n자리표시자"
+  },
+  {
+   "name": "Intel Xeon SILVER 4309Y 2.8G, 8C/16T, 10.4GT/s, 12M Cache, Turbo, HT (105W) * 1",
+   "expected": "SPEC-070\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-925-00A1",
+   "expected": "SPEC-071\n자리표시자"
+  },
+  {
+   "name": "HPE DL380 Gen11 12LFF NC CTO Svr *1ea",
+   "expected": "SPEC-072\n자리표시자"
+  },
+  {
+   "name": "NVIDIA HGX™ B300",
+   "expected": "SPEC-073\n자리표시자"
+  },
+  {
+   "name": "Gigabyte MZ73-LM1",
+   "expected": "SPEC-074\n자리표시자"
+  },
+  {
+   "name": "SYS-521Series",
+   "expected": "SPEC-075\n자리표시자"
+  },
+  {
+   "name": "Advantech HPC-8208-80RA1",
+   "expected": "SPEC-076\n자리표시자"
+  },
+  {
+   "name": "Advantech HPC-8208-55RA1 (2U)",
+   "expected": "SPEC-077\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-927T2-00A1",
+   "expected": "SPEC-078\n자리표시자"
+  },
+  {
+   "name": "ASMB-928T2-00A1",
+   "expected": "SPEC-079\n자리표시자"
+  },
+  {
+   "name": "Gigabyte Server System G493-SB0-AAP1",
+   "expected": "SPEC-080\n자리표시자"
+  },
+  {
+   "name": "G494-SB0-AAP2",
+   "expected": "SPEC-081\n자리표시자"
+  },
+  {
+   "name": "2U (NVIDIA MGX™ architecture)",
+   "expected": "SPEC-082\n자리표시자"
+  },
+  {
+   "name": "BASE P2 Tower G2 W880 500W Platinum qualified 92%",
+   "expected": "SPEC-083\n자리표시자"
+  },
+  {
+   "name": "S6053G480RAU8",
+   "expected": "SPEC-084\n자리표시자"
+  },
+  {
+   "name": "MSi S3063G290RAU4",
+   "expected": "SPEC-085\n자리표시자"
+  },
+  {
+   "name": "Gigabyte Server System G294-Z42-AAP2",
+   "expected": "SPEC-086\n자리표시자"
+  },
+  {
+   "name": "Dual Socket 2EA",
+   "expected": "SPEC-000\n자리표시자"
+  },
+  {
+   "name": "AdvantechHPC-7485(4U)",
+   "expected": "SPEC-001\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-97T72-00A1 (4GPU)",
+   "expected": "SPEC-002\n자리표시자"
+  },
+  {
+   "name": "Advant1ech XD-7485 (4U)",
+   "expected": "SPEC-003\n자리표시자"
+  },
+  {
+   "name": "ADVANTECH ASMB-977 (4GPU)",
+   "expected": "SPEC-004\n자리표시자"
+  },
+  {
+   "name": "2 x Socket (LGA 4710), 2 x Intel Xeon® 6th Processors (up tao 350W TDP)",
+   "expected": "SPEC-005\n자리표시자"
+  },
+  {
+   "name": "AMD RYZEN™ Threadripper™ PRO 8111 WX-Series Processors",
+   "expected": "SPEC-006\n자리표시자"
+  },
+  {
+   "name": "1+1 REDUNDANT 2000W 94% POWER SUPPLY",
+   "expected": "SPEC-007\n자리표시자"
+  },
+  {
+   "name": "1. 소프트웨어 구성 2EA",
+   "expected": "SPEC-008\n자리표시자"
+  },
+  {
+   "name": "Processor : 2 x Socket (GA 6096), AMD EPYC™ 9005 series(up to 500W)",
+   "expected": "SPEC-009\n자리표시자"
+  },
+  {
+   "name": "Supports up to 8 x Dual slot Gen5 G1PUs",
+   "expected": "SPEC-010\n자리표시자"
+  },
+  {
+   "name": "Gigabyte Server System G395-S52-AAP3",
+   "expected": "SPEC-011\n자리표시자"
+  },
+  {
+   "name": "아키텍처-AdaLovelace",
+   "expected": "SPEC-012\n자리표시자"
+  },
+  {
+   "name": "키텍처 - NVIDIA Blackwell",
+   "expected": "SPEC-013\n자리표시자"
+  },
+  {
+   "name": "NVIDIA BlueField SmartNIC 25GbE dual-port SFP28, PCIe Gen3.0/4.0 x8, G-Series 1 6",
+   "expected": "SPEC-014\n자리표시자"
+  },
+  {
+   "name": "Processor:2xSocketSP5(LGA6096)AMDEPYC™9005seriesprocessors*",
+   "expected": "SPEC-015\n자리표시자"
+  },
+  {
+   "name": "NVIDIA 1200W Power Supply",
+   "expected": "SPEC-016\n자리표시자"
+  },
+  {
+   "name": "ASMB-c817T2-00A1",
+   "expected": "SPEC-017\n자리표시자"
+  },
+  {
+   "name": "NVIDIA Gigabyte Server System G494-SB0-AAP2",
+   "expected": "SPEC-018\n자리표시자"
+  },
+  {
+   "name": "NVIDIA-+Certified Systems™ - Data Center Servers",
+   "expected": "SPEC-019\n자리표시자"
+  },
+  {
+   "name": "HPC-7000 2EA",
+   "expected": "SPEC-020\n자리표시자"
+  },
+  {
+   "name": "System : 2EA",
+   "expected": null
+  },
+  {
+   "name": "Processor : 2 x Socket (LGA 4710),a 2 x Intel Xeon® 6th Processors",
+   "expected": "SPEC-022\n자리표시자"
+  },
+  {
+   "name": "DGX H200 SYSTEM 8X 141GB GPUS FULL",
+   "expected": "SPEC-023\n자리표시자"
+  },
+  {
+   "name": "DGX software and std support bunde Subscription (NVIDIA Base",
+   "expected": "SPEC-024\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-988I-11A2 (5GPU)",
+   "expected": null
+  },
+  {
+   "name": "Powe : 3+1 redundant 3200W 80 PLUS Titanium power supply",
+   "expected": "SPEC-026\n자리표시자"
+  },
+  {
+   "name": "HPC-7000 Towebr (HPC-7000-12ZB)",
+   "expected": "SPEC-027\n자리표시자"
+  },
+  {
+   "name": "G294-S1-AAP2",
+   "expected": "SPEC-028\n자리표시자"
+  },
+  {
+   "name": "2  xSocket",
+   "expected": "SPEC-029\n자리표시자"
+  },
+  {
+   "name": "NVIDIA MICRONIX Classic II FULL CHANGE 800W 80PLUS",
+   "expected": "SPEC-030\n자리표시자"
+  },
+  {
+   "name": "서울 →1 부산 2월",
+   "expected": "SPEC-031\n자리표시자"
+  },
+  {
+   "name": "NVIDIA RedCastle Application Server For Agent",
+   "expected": "SPEC-032\n자리표시자"
+  },
+  {
+   "name": "NVIDIA NETBACKUP ENTERPRISE XPLAT 1 FRONT END TB PLUS ONPREMISE STANDARD",
+   "expected": "SPEC-033\n자리표시자"
+  },
+  {
+   "name": "DBSAFER DB V5.0 DBMS LICENSE (PER CORE)",
+   "expected": "SPEC-034\n자리표시자"
+  },
+  {
+   "name": "ManTechContinuousClusterServerforWorkgroupEdition,Linux",
+   "expected": "SPEC-035\n자리표시자"
+  },
+  {
+   "name": "Asrockrack 2U4G8E-EGS2 2EA",
+   "expected": "SPEC-036\n자리표시자"
+  },
+  {
+   "name": "ASRock ack 4U8G-EGS2",
+   "expected": "SPEC-037\n자리표시자"
+  },
+  {
+   "name": "1970005349T000_ CaPU cooler for 2U, 4U, and wallmount chassis",
+   "expected": "SPEC-038\n자리표시자"
+  },
+  {
+   "name": "12코어CPU,16코어GPU,16코어NeuralEngine",
+   "expected": "SPEC-039\n자리표시자"
+  },
+  {
+   "name": "14인치",
+   "expected": "SPEC-040\n자리표시자"
+  },
+  {
+   "name": "QM9700 MQM9700-NS12F",
+   "expected": "SPEC-041\n자리표시자"
+  },
+  {
+   "name": "RedCastle Application Server For Agent (over 9core) 2EA",
+   "expected": "SPEC-042\n자리표시자"
+  },
+  {
+   "name": "ManTech Continuous Cluster Server for Virtual dition",
+   "expected": "SPEC-043\n자리표시자"
+  },
+  {
+   "name": "ASRock Rack 2U2G-GNR/HPR 2EA",
+   "expected": "SPEC-044\n자리표시자"
+  },
+  {
+   "name": "A2SRock Rack 2U2G-TURIN/HPR",
+   "expected": "SPEC-045\n자리표시자"
+  },
+  {
+   "name": " MSI S2205-01",
+   "expected": "SPEC-046\n자리표시자"
+  },
+  {
+   "name": "2U Rackmount Chassis for ATX/EATX Motherboard with 8  Hot-Swap SAS3/SATA3 HDD Trays and RPS for storage servers.",
+   "expected": "SPEC-047\n자리표시자"
+  },
+  {
+   "name": "LGA4677 INTEL® 5TH/4TH GEN XEON® SCALABLE ATX SERVER BOARD WITH DDR5, PCIE GEN5, AND DUAL 10GBE FOR DATA CENTERS AND ENTERPRISE SERVERS.",
+   "expected": "SPEC-048\n자리표시자"
+  },
+  {
+   "name": "(1) 인텔® 제온® 골드 5318Y 2.1G, 24C/4T8, 11.2GT/s, 36M 캐시, Turbo, HT (165W)",
+   "expected": "SPEC-049\n자리표시자"
+  },
+  {
+   "name": "(1) 인텔® 제온® 실버 4314 2.4G, 16C/32T, 10.4GT/S, 24M 캐시, TURBO, HT (135W)",
+   "expected": "SPEC-050\n자리표시자"
+  },
+  {
+   "name": ">27포트 USB/VGA, 28\" 2391*2135, keyboard & Tuchpad, Single RAIL",
+   "expected": "SPEC-051\n자리표시자"
+  },
+  {
+   "name": "Windows Server 3136 Standard",
+   "expected": "SPEC-052\n자리표시자"
+  },
+  {
+   "name": "기업용/COEM(DSP)/16CORE/64BIT/CAL미포함 한글",
+   "expected": "SPEC-053\n자리표시자"
+  },
+  {
+   "name": "GPU RAM : 141GB",
+   "expected": "SPEC-054\n자리표시자"
+  },
+  {
+   "name": "2.5\" CHASSIS WITH UP TO 8 SAS4/SATA DRIVES, SMART FLOW, FRONT PERC 12(H965I) * 1EA",
+   "expected": "SPEC-055\n자리표시자"
+  },
+  {
+   "name": "3.5\" Chassis with up to 12 SAS/SATA Drives, LP Adapter PER C11 * 1EA",
+   "expected": "SPEC-056\n자리표시자"
+  },
+  {
+   "name": "NVIDIA ASRock Rack TURIND8X-2T",
+   "expected": "SPEC-057\n자리표시자"
+  },
+  {
+   "name": "HPC-7000 Tower (HPC-7000-50ZB) 2EA",
+   "expected": "SPEC-058\n자리표시자"
+  },
+  {
+   "name": "ARSock Rack EC262D4U",
+   "expected": "SPEC-059\n자리표시자"
+  },
+  {
+   "name": "ThinkSystem SR650 V4 12x3.5인치 섀시 2EA",
+   "expected": "SPEC-060\n자리표시자"
+  },
+  {
+   "name": "ECS8000A-E13P (4U 8GPU)",
+   "expected": "SPEC-061\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-83 1T2-00A1",
+   "expected": "SPEC-062\n자리표시자"
+  },
+  {
+   "name": "Entreprendre SATA 6TB (SATA)",
+   "expected": "SPEC-063\n자리표시자"
+  },
+  {
+   "name": "3.5-INCH BAYS: 3.5-INCH SATA HARD DISK DRIVES, 2.5-INCH SATA SOLID STATE DRIVES",
+   "expected": "SPEC-064\n자리표시자"
+  },
+  {
+   "name": "Enterprise SATA 6BT × 4EA = 24TB",
+   "expected": "SPEC-065\n자리표시자"
+  },
+  {
+   "name": "2.5\"Chassiswithupto16SAS4/SATADrives,SmartFlow,FrontPERC12(H965i)*1",
+   "expected": "SPEC-066\n자리표시자"
+  },
+  {
+   "name": "Intel 0Xeon 6 Performance 6527P",
+   "expected": "SPEC-067\n자리표시자"
+  },
+  {
+   "name": "ASM-B807-00A1",
+   "expected": "SPEC-068\n자리표시자"
+  },
+  {
+   "name": "Network:1GbELAN4PORT",
+   "expected": "SPEC-069\n자리표시자"
+  },
+  {
+   "name": "NVIDIA Intel Xeon SILVER 4309Y 2.8G, 8C/16T, 10.4GT/s, 12M Cache, Turbo, HT (105W) * 1",
+   "expected": "SPEC-070\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-925-00A1 2EA",
+   "expected": "SPEC-071\n자리표시자"
+  },
+  {
+   "name": "HPEDL380Gen1112LFFNCCTOSvr*1ea",
+   "expected": "SPEC-072\n자리표시자"
+  },
+  {
+   "name": "NVIDIA HGX™ B00",
+   "expected": "SPEC-073\n자리표시자"
+  },
+  {
+   "name": "GigabyteMZ73-LM1",
+   "expected": "SPEC-074\n자리표시자"
+  },
+  {
+   "name": "SYS-521Series",
+   "expected": "SPEC-075\n자리표시자"
+  },
+  {
+   "name": "AdvantechHPC-8208-80RA1",
+   "expected": "SPEC-076\n자리표시자"
+  },
+  {
+   "name": "ADVANTECH HPC-8208-55RA1 (2U)",
+   "expected": "SPEC-077\n자리표시자"
+  },
+  {
+   "name": "Advantech ASMB-927T2-00A1 2EA",
+   "expected": "SPEC-078\n자리표시자"
+  },
+  {
+   "name": "ASMB-928T20-0A1",
+   "expected": "SPEC-079\n자리표시자"
+  },
+  {
+   "name": "GIGABYTE SERVER SYSTEM G493-SB0-AAP1",
+   "expected": "SPEC-080\n자리표시자"
+  },
+  {
+   "name": "G494-S0B-AAP2",
+   "expected": "SPEC-081\n자리표시자"
+  },
+  {
+   "name": "NVIDIA 2U (NVIDIA MGX™ architecture)",
+   "expected": "SPEC-082\n자리표시자"
+  },
+  {
+   "name": "BASE P2 Tower G2 W880 500W Platinum qualified 92% 2EA",
+   "expected": "SPEC-083\n자리표시자"
+  },
+  {
+   "name": "S605 3G480RAU8",
+   "expected": "SPEC-084\n자리표시자"
+  },
+  {
+   "name": "MSi S31063G290RAU4",
+   "expected": "SPEC-085\n자리표시자"
+  },
+  {
+   "name": "GIGABYTE SERVER SYSTEM G294-Z42-AAP2",
+   "expected": "SPEC-086\n자리표시자"
+  },
+  {
+   "name": "",
+   "expected": null
+  },
+  {
+   "name": "없는 모델",
+   "expected": null
+  },
+  {
+   "name": "G494",
+   "expected": null
+  },
+  {
+   "name": "Gigabyte",
+   "expected": null
+  },
+  {
+   "name": "Supermicro",
+   "expected": null
+  },
+  {
+   "name": "ASUS ESC8000A-E12P",
+   "expected": null
+  }
+ ]
+}

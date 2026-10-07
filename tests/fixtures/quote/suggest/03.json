@@ -1,0 +1,1311 @@
+{
+ "quote": {
+  "customer": {
+   "org": "Alpha Lab",
+   "contact": "John Doe",
+   "tel": "010-0000-0000",
+   "email": "customer@example.com"
+  },
+  "terms": {
+   "valid_weeks": 1,
+   "delivery": "발주 후 4~6주 소요 예상",
+   "payment": "협의 후 결정",
+   "place": "귀사 지정 장소",
+   "stamp_omitted": true
+  },
+  "staff": {
+   "name": "담당자 팀장",
+   "tel": "010-1234-5678",
+   "email": "staff@example.com"
+  },
+  "issue_date": "2026-09-17",
+  "lines": [
+   {
+    "label": "GPU",
+    "name": "NVIDIA L40S D6 48GB",
+    "items": [],
+    "qty": 2.0,
+    "unit_price": 13200000.0,
+    "notes": []
+   },
+   {
+    "label": "NAS",
+    "name": "Synology DS2422+",
+    "items": [
+     {
+      "category": "Disk Station",
+      "spec": "DS2422+",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "Plus HDD",
+      "spec": "HAT3320-20T",
+      "qty": 4.0,
+      "extra_categories": []
+     },
+     {
+      "category": "Option",
+      "spec": "E10M20-T1",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "SSD",
+      "spec": "SNV3410-400G",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "RAM&Railkit",
+      "spec": "D4ES02-4G",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "서비스",
+      "spec": "방문설치(인천/경치)",
+      "qty": 1.0,
+      "extra_categories": []
+     }
+    ],
+    "sets": 1.0,
+    "unit_price": 9700000.0,
+    "notes": []
+   }
+  ],
+  "remarks": [
+   " -방문설치 (영업시간 내/ 장비 설치 및 세팅, 관리자 교육 포함 1시간 내외/ 시놀로지 설정에 한하여 지원)\n -20TB×4 / RAID 5 구성 시 가용량: 54TB, HDD 1개 장애까지 보호 가능"
+  ],
+  "sheet_name": "견적"
+ },
+ "normal": {
+  "suggestions": {
+   "0": {
+    "name": "NVIDIA L40S 48GB",
+    "matches": [
+     {
+      "score": 1.163,
+      "match_score": 1.163,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 38,
+      "last_price": 13200000,
+      "last_price_date": "2026-09-09",
+      "min": 9870000,
+      "max": 13200000,
+      "note": "L40S는 48GB PCIe 단일 SKU. 용량/PCIe/D6 표기 유무 차이뿐이며 9.87~13.2M 단일 밴드. L4와는 별개.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-24",
+        "price": 11100000,
+        "customer": "고객30",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000,
+        "customer": "고객32",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000,
+        "customer": "고객33",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000,
+        "customer": "고객32",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000,
+        "customer": "고객33",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13200000,
+        "customer": "고객34",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13200000,
+        "customer": "고객35",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.705,
+      "match_score": 0.705,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA L4 24GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 20,
+      "last_price": 5000000,
+      "last_price_date": "2026-08-14",
+      "min": 3150000,
+      "max": 5000000,
+      "note": "L4는 24GB 단일 SKU. 3.15~5.0M 시기별 연속.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-10",
+        "price": 3700000,
+        "customer": "고객28",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-10",
+        "price": 3700000,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 3750000,
+        "customer": "고객81",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 3750000,
+        "customer": "고객82",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 3800000,
+        "customer": "고객28",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 3800000,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 5000000,
+        "customer": "고객40",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 5000000,
+        "customer": "고객41",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.705,
+      "match_score": 0.705,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA L40 48GB",
+      "category": "DC GPU",
+      "kind": "part",
+      "n": 1,
+      "last_price": 8250000,
+      "last_price_date": "2025-03-24",
+      "min": 8250000,
+      "max": 8250000,
+      "note": "'엔비디아 NVIDIA' 중복 표기 정리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-03-24",
+        "price": 8250000,
+        "customer": "고객226",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 13200000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "L40S는 48GB PCIe 단일 SKU. 용량/PCIe/D6 표기 유무 차이뿐이며 9.87~13.2M 단일 밴드. L4와는 별개.",
+    "min": 2400000.0,
+    "max": 13200000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 13200000,
+      "customer": "고객34",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 13200000,
+      "customer": "고객35",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-20",
+      "price": 13150000,
+      "customer": "고객32",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-20",
+      "price": 13150000,
+      "customer": "고객33",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 13150000,
+      "customer": "고객32",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 13150000,
+      "customer": "고객33",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000,
+      "customer": "고객30",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000,
+      "customer": "고객31",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.163,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 13200000.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 22
+   },
+   "1": {
+    "name": "Synology DS2422+",
+    "matches": [],
+    "suggested": 10012345.0,
+    "suggested_date": "2026-05-11",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 10012345.0,
+    "max": 10012345.0,
+    "history": [
+     {
+      "date": "2026-05-11",
+      "price": 10012345.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "발행 기록이 1건뿐",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 9700000.0,
+    "delta": 312345.0,
+    "delta_pct": 3.2,
+    "age_days": 143
+   },
+   "1.0": {
+    "name": "Synology DS2422+ NAS",
+    "matches": [
+     {
+      "score": 1.054,
+      "match_score": 1.054,
+      "cat_rel": null,
+      "contained": true,
+      "name": "Synology DS2422+ NAS",
+      "category": "NAS",
+      "kind": "part",
+      "n": 2,
+      "last_price": 9700000,
+      "last_price_date": "2026-09-09",
+      "min": 9700000,
+      "max": 9700000,
+      "note": "",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-09",
+        "price": 9700000,
+        "customer": "고객34",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 9700000,
+        "customer": "고객35",
+        "qty": 0
+       }
+      ]
+     }
+    ],
+    "suggested": 9700000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "",
+    "min": 9700000,
+    "max": 9700000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 9700000,
+      "customer": "고객34",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 9700000,
+      "customer": "고객35",
+      "qty": 0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.05)",
+    "match_score": 1.054,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 22
+   },
+   "1.1": {
+    "name": "HAT3320-20T",
+    "matches": [],
+    "suggested": 401554.0,
+    "suggested_date": null,
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 401554.0,
+    "max": 401554.0,
+    "history": [
+     {
+      "date": null,
+      "price": 401554.0,
+      "customer": "고객3",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "발행 기록이 1건뿐",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1.2": {
+    "name": "E10M20-T1",
+    "matches": [],
+    "suggested": 300777.0,
+    "suggested_date": "2026-07-07",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 300777.0,
+    "max": 300777.0,
+    "history": [
+     {
+      "date": "2026-07-07",
+      "price": 300777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "발행 기록이 1건뿐",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 86
+   },
+   "1.4": {
+    "name": "D4ES02-4G",
+    "matches": [],
+    "suggested": 505777.0,
+    "suggested_date": "2026-09-30",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 500777.0,
+    "max": 505777.0,
+    "history": [
+     {
+      "date": "2026-09-30",
+      "price": 505777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-05-14",
+      "price": 500777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 1
+   },
+   "1.5": {
+    "name": "방문설치(인천/경치)",
+    "matches": [],
+    "suggested": 600777.0,
+    "suggested_date": "2025-12-31",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 600777.0,
+    "max": 600777.0,
+    "history": [
+     {
+      "date": "2025-12-31",
+      "price": 600777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "미확정 견적의 단가 (발송 확인 전)",
+    "match_score": null,
+    "suggested_grade": "draft",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 274
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "Alpha Lab",
+    "score": 1.5,
+    "contact": "John Doe",
+    "tel": "02-000-0022",
+    "email": "c22@example.com",
+    "last_date": "2026-04-04",
+    "n": 1
+   },
+   {
+    "org": "ALPHA LAB Inc.",
+    "score": 1.283,
+    "contact": "John Smith",
+    "tel": "02-000-0024",
+    "email": "c24@example.com",
+    "last_date": "2025-12-12",
+    "n": 2
+   },
+   {
+    "org": "Alpha Lab",
+    "score": 1.167,
+    "contact": "Jane Roe",
+    "tel": "02-000-0023",
+    "email": "c23@example.com",
+    "last_date": "2026-04-04",
+    "n": 3
+   }
+  ]
+ },
+ "normal_price_history_calls": [
+  {
+   "name": "NVIDIA L40S D6 48GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-04-01",
+     "price": 2400000.0,
+     "customer": "고객3",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "NVIDIA L40S D6 48GB",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-04-01",
+     "price": 2500000.0,
+     "customer": "고객3",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "NVIDIA L40S D6 48GB",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Synology DS2422+",
+   "kind": "set",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-05-11",
+     "price": 10012345.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Synology DS2422+",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "DS2422+",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "HAT3320-20T",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": null,
+     "price": 401554.0,
+     "customer": "고객3",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "HAT3320-20T",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "E10M20-T1",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-07-08",
+     "price": null,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "E10M20-T1",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 300777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "E10M20-T1",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 0.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "E10M20-T1",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "SNV3410-400G",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "D4ES02-4G",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-09-30",
+     "price": 505777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "D4ES02-4G",
+     "status": "draft"
+    },
+    {
+     "date": "2026-05-14",
+     "price": 500777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "D4ES02-4G",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "방문설치(인천/경치)",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2025-12-31",
+     "price": 600777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "방문설치(인천/경치)",
+     "status": "draft"
+    }
+   ]
+  }
+ ],
+ "fallback": {
+  "suggestions": {
+   "0": {
+    "name": "NVIDIA L40S 48GB",
+    "matches": [
+     {
+      "score": 0.973,
+      "match_score": 0.973,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 29,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 11500000.0,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000.0,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.716,
+      "match_score": 0.716,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA L40S",
+      "category": "GPU",
+      "kind": null,
+      "n": 5,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-19",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-05-27",
+        "price": 10500000.0,
+        "customer": "고객18",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.607,
+      "match_score": 0.607,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA A10 D6 24GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 5,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 13150000.0,
+    "suggested_date": "2026-08-20",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 2400000.0,
+    "max": 13150000.0,
+    "history": [
+     {
+      "date": "2026-08-20",
+      "price": 13150000.0,
+      "customer": "고객33",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000.0,
+      "customer": "고객31",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-21",
+      "price": 11500000.0,
+      "customer": "고객29",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 11500000.0,
+      "customer": "고객105",
+      "qty": 3.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 11500000.0,
+      "customer": "고객105",
+      "qty": 3.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-01",
+      "price": 2400000.0,
+      "customer": "고객3",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-04-01",
+      "price": 2500000.0,
+      "customer": "고객3",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 0.973,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 13200000.0,
+    "delta": -50000.0,
+    "delta_pct": -0.4,
+    "age_days": 42
+   },
+   "1": {
+    "name": "Synology RS826+x 1EA (4bay 랙마운트)",
+    "matches": [
+     {
+      "score": 0.388,
+      "match_score": 0.388,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Synology RS826+x 1EA (4bay 랙마운트)",
+      "category": "Storage",
+      "kind": null,
+      "n": 7,
+      "last_price": 5780000.0,
+      "last_price_date": "2026-06-12",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-12",
+        "price": 5780000.0,
+        "customer": "고객115",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 5780000.0,
+    "suggested_date": "2026-06-12",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 5780000.0,
+    "max": 10012345.0,
+    "history": [
+     {
+      "date": "2026-06-12",
+      "price": 5780000.0,
+      "customer": "고객115",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-11",
+      "price": 10012345.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 0.388,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 9700000.0,
+    "delta": -3920000.0,
+    "delta_pct": -40.4,
+    "age_days": 111
+   },
+   "1.1": {
+    "name": "HAT3320-20T",
+    "matches": [],
+    "suggested": 401554.0,
+    "suggested_date": null,
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 401554.0,
+    "max": 401554.0,
+    "history": [
+     {
+      "date": null,
+      "price": 401554.0,
+      "customer": "고객3",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "발행 기록이 1건뿐",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1.2": {
+    "name": "E10M20-T1",
+    "matches": [],
+    "suggested": 300777.0,
+    "suggested_date": "2026-07-07",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 300777.0,
+    "max": 300777.0,
+    "history": [
+     {
+      "date": "2026-07-07",
+      "price": 300777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "발행 기록이 1건뿐",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 86
+   },
+   "1.4": {
+    "name": "D4ES02-4G",
+    "matches": [],
+    "suggested": 505777.0,
+    "suggested_date": "2026-09-30",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 500777.0,
+    "max": 505777.0,
+    "history": [
+     {
+      "date": "2026-09-30",
+      "price": 505777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-05-14",
+      "price": 500777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 1
+   },
+   "1.5": {
+    "name": "방문설치(인천/경치)",
+    "matches": [],
+    "suggested": 600777.0,
+    "suggested_date": "2025-12-31",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 600777.0,
+    "max": 600777.0,
+    "history": [
+     {
+      "date": "2025-12-31",
+      "price": 600777.0,
+      "customer": "고객3",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "미확정 견적의 단가 (발송 확인 전)",
+    "match_score": null,
+    "suggested_grade": "draft",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 274
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "Alpha Lab",
+    "score": 1.5,
+    "contact": "John Doe",
+    "tel": "02-000-0022",
+    "email": "c22@example.com",
+    "last_date": "2026-04-04",
+    "n": 1
+   },
+   {
+    "org": "ALPHA LAB Inc.",
+    "score": 1.283,
+    "contact": "John Smith",
+    "tel": "02-000-0024",
+    "email": "c24@example.com",
+    "last_date": "2025-12-12",
+    "n": 2
+   },
+   {
+    "org": "Alpha Lab",
+    "score": 1.167,
+    "contact": "Jane Roe",
+    "tel": "02-000-0023",
+    "email": "c23@example.com",
+    "last_date": "2026-04-04",
+    "n": 3
+   }
+  ]
+ },
+ "fallback_price_history_calls": [
+  {
+   "name": "NVIDIA L40S D6 48GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-04-01",
+     "price": 2400000.0,
+     "customer": "고객3",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "NVIDIA L40S D6 48GB",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-04-01",
+     "price": 2500000.0,
+     "customer": "고객3",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "NVIDIA L40S D6 48GB",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Synology DS2422+",
+   "kind": "set",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-05-11",
+     "price": 10012345.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Synology DS2422+",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "DS2422+",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "HAT3320-20T",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": null,
+     "price": 401554.0,
+     "customer": "고객3",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "HAT3320-20T",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "E10M20-T1",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-07-08",
+     "price": null,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "E10M20-T1",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 300777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "E10M20-T1",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 0.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "E10M20-T1",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "SNV3410-400G",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "D4ES02-4G",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-09-30",
+     "price": 505777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "D4ES02-4G",
+     "status": "draft"
+    },
+    {
+     "date": "2026-05-14",
+     "price": 500777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "D4ES02-4G",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "방문설치(인천/경치)",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2025-12-31",
+     "price": 600777.0,
+     "customer": "고객3",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "방문설치(인천/경치)",
+     "status": "draft"
+    }
+   ]
+  }
+ ]
+}

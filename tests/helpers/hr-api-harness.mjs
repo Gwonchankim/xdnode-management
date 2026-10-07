@@ -95,7 +95,8 @@ const { resetGaSchemaGate } = await import('../../app/ga-schema.ts');
 // quote-tool Design §11.1: 견적 스키마 게이트도 새 메모리 DB 마다 비운다.
 const { resetQuoteSchemaGate } = await import('../../app/quote-schema.ts');
 // QT2: 템플릿 모델 캐시(같은 sha 재사용)도 새 메모리 DB 마다 비운다.
-const { resetQuoteTemplateCache } = await import('../../app/quote-server.ts');
+// QT3: 카탈로그 캐시(quote_meta 버전 키)도 비운다. 테스트마다 같은 합성 버전 문자열을 다른 내용으로 쓴다.
+const { resetQuoteTemplateCache, resetQuoteCatalogCache } = await import('../../app/quote-server.ts');
 const administrator = companyEmployees.find(employee => employee.id === 'gc.kim');
 
 export const TEST_ADMIN_ACCOUNT_ID = 'acct_test_admin';
@@ -124,6 +125,7 @@ export async function resetDatabase({ migrate = false } = {}) {
   resetGaSchemaGate();
   resetQuoteSchemaGate();
   resetQuoteTemplateCache();
+  resetQuoteCatalogCache();
   sqlite = new DatabaseSync(':memory:');
   runtime.beforeBatch = null;
   runtime.forbiddenTables = null;

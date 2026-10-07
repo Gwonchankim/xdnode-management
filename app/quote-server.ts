@@ -4,6 +4,12 @@ import "server-only";
 // 고객 연락처·과거 견적은 서버에서만 다룬다. 이 파일을 클라이언트에서 import 하면 빌드가 실패한다(server-only).
 import { erpError, type ErpPrincipal } from "./erp-platform";
 import { XLSX_MIME, inspectTemplate, loadTemplate, sha256Hex, unzipTemplate, type TemplateModel } from "./quote-xlsx";
+import {
+  buildQuoteCatalog, matchCustomer, suggestPrices, suggestionLookups,
+  type CustomerInput, type HistoryEntry, type LiveRow, type PriceKind, type QuoteCatalog, type SpecInput, type Vocab,
+} from "./quote-pricing";
+import { kstToday, type Quote } from "./quote-model";
+import { norm } from "./quote-textkey";
 
 /** dist/client 에 이 문자열이 있으면 서버 모듈이 번들에 새어 나간 것이다(tests/bundle-exposure). */
 export const QUOTE_SERVER_MARKER = "xdm-quote-server-only";
@@ -252,6 +258,132 @@ export async function requestPdf(baseUrl: string, xlsx: Uint8Array, sheetName: s
     const name = (error as { name?: string } | null)?.name;
     return { ok: false, code: name === "TimeoutError" || name === "AbortError" ? "PDF_TIMEOUT" : "PDF_FAILED", ms: elapsed() };
   }
+}
+
+// ── 카탈로그 캐시(QT3, Design §4.5·QD-13). quote_meta 의 현재 버전 셋을 이은 값이 키다. 버전이 바뀌면 다시 읽는다. ──
+// 고객 연락처(PII)도 이 캐시에 들어간다. 서버 메모리에만 있고 응답에는 라우트가 고른 칸만 싣는다.
+let catalogCache: { key: string; catalog: QuoteCatalog } | null = null;
+
+const parseJsonList = <T>(text: string | null | undefined): T[] => {
+  if (!text) return [];
+  try {
+    const value = JSON.parse(text);
+    return Array.isArray(value) ? (value as T[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+type ProductRow = {
+  canonical: string; category: string | null; kind: string; spellings_json: string; n: number; min: number | null; max: number | null;
+  last_price: number | null; last_date: string | null; note: string | null; caution: string | null; history_json: string;
+};
+type LegacyRow = { name: string; category: string | null; n: number; group_ratio: number; last_price: number | null; last_price_date: string | null; price_history_json: string };
+
+/** 현재 버전의 카탈로그(v2 제품·옛 카탈로그·사양·고객·어휘)를 읽어 미리 계산해 둔다. 이전 전이면 빈 카탈로그다. */
+export async function loadQuoteCatalog(db: D1Database): Promise<QuoteCatalog> {
+  const meta = await readQuoteMeta(db, ["version:catalog_v2", "version:catalog", "version:bom_library"]);
+  const v2 = meta.get("version:catalog_v2") ?? "";
+  const v1 = meta.get("version:catalog") ?? "";
+  const key = `${v2}|${v1}|${meta.get("version:bom_library") ?? ""}`;
+  if (catalogCache?.key === key) return catalogCache.catalog;
+  const [products, legacy, specs, customers, vocabMeta] = await Promise.all([
+    db.prepare(`SELECT canonical, category, kind, spellings_json, n, min, max, last_price, last_date, note, caution, history_json
+      FROM quote_catalog_products WHERE version = ?1 ORDER BY ord`).bind(v2).all<ProductRow>(),
+    db.prepare(`SELECT name, category, n, group_ratio, last_price, last_price_date, price_history_json
+      FROM quote_catalog_legacy WHERE version = ?1 ORDER BY ord`).bind(v1).all<LegacyRow>(),
+    db.prepare(`SELECT name, spec FROM quote_spec_library WHERE version = ?1 ORDER BY ord`).bind(v1).all<SpecInput>(),
+    db.prepare(`SELECT org, contact, tel, email, last_date, n FROM quote_customers WHERE version = ?1 ORDER BY ord`).bind(v1).all<CustomerInput>(),
+    v1 ? readQuoteMeta(db, [`vocab:${v1}`]) : Promise.resolve(new Map<string, string>()),
+  ]);
+  let vocab: Vocab = {};
+  try {
+    const parsed = JSON.parse(vocabMeta.get(`vocab:${v1}`) ?? "{}");
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) vocab = parsed as Vocab;
+  } catch {
+    vocab = {};
+  }
+  const catalog = buildQuoteCatalog({
+    products: products.results.map((row) => ({
+      canonical: row.canonical, category: row.category, kind: row.kind, spellings: parseJsonList<string>(row.spellings_json).filter((entry) => typeof entry === "string"),
+      n: row.n, min: row.min, max: row.max, last_price: row.last_price, last_date: row.last_date, note: row.note, caution: row.caution,
+      history: parseJsonList<HistoryEntry>(row.history_json),
+    })),
+    legacy: legacy.results.map((row) => ({
+      name: row.name, category: row.category, n: row.n, group_ratio: row.group_ratio, last_price: row.last_price, last_price_date: row.last_price_date,
+      price_history: parseJsonList<HistoryEntry>(row.price_history_json),
+    })),
+    specs: specs.results,
+    customers: customers.results,
+    vocab,
+  });
+  catalogCache = { key, catalog };
+  return catalog;
+}
+
+/** 하니스 전용: 테스트마다 카탈로그 캐시를 비운다(같은 합성 버전 문자열을 여러 테스트가 쓴다). */
+export function resetQuoteCatalogCache() {
+  catalogCache = null;
+}
+
+// ── 단가 이력(Design §4.4 priceHistory, 옛 store.price_history). 폐기만 뺀다(draft 는 status 를 실어 보내 신뢰도가 등급을 낮춘다). ──
+const PRICE_COLUMNS = `issue_date AS date, unit_price AS price, customer, qty, kind, name, COALESCE(status, 'confirmed') AS status`;
+
+/** 한 이름의 이력, 최신순. kind 'set' = 세트가만, 'item' = 상세·단품, 없으면 전부. 키(norm)가 비면 []. */
+export async function priceHistory(db: D1Database, name: string, kind: PriceKind | null, limit: number): Promise<LiveRow[]> {
+  const key = norm(name);
+  if (!key) return [];
+  const kindSql = kind === "set" ? " AND kind = 'set'" : kind === "item" ? " AND kind IN ('item', 'single')" : "";
+  const rows = await db.prepare(`SELECT ${PRICE_COLUMNS} FROM quote_price_log
+    WHERE name_key = ?1 AND COALESCE(status, 'confirmed') <> 'discarded'${kindSql} ORDER BY issue_date DESC, id DESC LIMIT ?2`).bind(key, limit).all<LiveRow>();
+  return rows.results;
+}
+
+/**
+ * 제안이 부를 이력을 한 번에 읽는다(줄·상세마다 따로 조회하지 않는다). 요청 (키, 종류)마다 priceHistory 와 같은 정렬·상한을
+ * ROW_NUMBER 로 지킨다. 요청 목록은 JSON 하나로 bind 한다(D1 bind 100개 상한). 돌려주는 함수는 동기 조회다.
+ */
+export async function priceHistoryMap(db: D1Database, lookups: ReadonlyArray<{ name: string; kind: PriceKind }>, limit = 10): Promise<(name: string, kind: PriceKind) => LiveRow[]> {
+  const requests = new Map<string, [string, PriceKind]>();
+  for (const lookup of lookups) {
+    const key = norm(lookup.name);
+    if (key) requests.set(`${lookup.kind}|${key}`, [key, lookup.kind]);
+  }
+  const found = new Map<string, LiveRow[]>();
+  if (requests.size) {
+    const rows = await db.prepare(`WITH req AS (
+  SELECT DISTINCT json_extract(value, '$[0]') AS k, json_extract(value, '$[1]') AS cls FROM json_each(?1)
+), ranked AS (
+  SELECT req.k AS req_key, req.cls AS req_cls, p.issue_date AS date, p.unit_price AS price, p.customer AS customer, p.qty AS qty, p.kind AS kind,
+    p.name AS name, COALESCE(p.status, 'confirmed') AS status,
+    ROW_NUMBER() OVER (PARTITION BY req.k, req.cls ORDER BY p.issue_date DESC, p.id DESC) AS rn
+  FROM req JOIN quote_price_log p ON p.name_key = req.k
+  WHERE COALESCE(p.status, 'confirmed') <> 'discarded'
+    AND ((req.cls = 'set' AND p.kind = 'set') OR (req.cls = 'item' AND p.kind IN ('item', 'single')))
+)
+SELECT req_key, req_cls, date, price, customer, qty, kind, name, status FROM ranked WHERE rn <= ?2 ORDER BY req_key, req_cls, rn`)
+      .bind(JSON.stringify([...requests.values()]), limit).all<LiveRow & { req_key: string; req_cls: PriceKind }>();
+    for (const { req_key: key, req_cls: kind, ...row } of rows.results) {
+      const id = `${kind}|${key}`;
+      const list = found.get(id);
+      if (list) list.push(row);
+      else found.set(id, [row]);
+    }
+  }
+  return (name, kind) => found.get(`${kind}|${norm(name)}`) ?? [];
+}
+
+/**
+ * 견적 한 건의 단가 제안과 고객 후보(옛 main._enrich). compute SUGGEST 와 history 불러오기가 함께 쓴다. 날짜는 KST 오늘.
+ * 쓰기를 하지 않는다(QT-Q11).
+ */
+export async function quoteSuggestions(db: D1Database, quote: Pick<Quote, "lines" | "customer">, now: number) {
+  const catalog = await loadQuoteCatalog(db);
+  const historyOf = await priceHistoryMap(db, suggestionLookups(quote), 10);
+  return {
+    suggestions: suggestPrices(catalog, quote, historyOf, kstToday(now)),
+    customer_matches: matchCustomer(catalog, quote.customer.org, quote.customer.contact),
+  };
 }
 
 /** 기록·저장 실패 때 응답에 싣는 xlsx(base64, Worker 에는 Buffer 가 없다). */

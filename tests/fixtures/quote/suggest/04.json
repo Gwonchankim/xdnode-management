@@ -1,0 +1,597 @@
+{
+ "quote": {
+  "customer": {
+   "org": "한국가상연구원",
+   "contact": "신사임당 박사님",
+   "tel": "010-0000-0000",
+   "email": "customer@example.com"
+  },
+  "terms": {
+   "valid_weeks": 1,
+   "delivery": "협의 후 결정",
+   "payment": "현금결제",
+   "place": "귀사 지정 장소",
+   "project": "프로젝트명",
+   "stamp_omitted": true
+  },
+  "staff": {
+   "name": "담당자 팀장",
+   "tel": "010-1234-5678",
+   "email": "staff@example.com"
+  },
+  "issue_date": "2026-09-17",
+  "lines": [
+   {
+    "label": "DGX B300 H/W",
+    "name": "DGX B300 8X 288GB Full with Business Std Support, 3 Years",
+    "items": [],
+    "qty": 1.0,
+    "unit_price": 936600000.0,
+    "notes": []
+   },
+   {
+    "label": "DGX B300 S/W",
+    "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+    "items": [],
+    "qty": 1.0,
+    "unit_price": 171150000.0,
+    "notes": []
+   },
+   {
+    "label": "ACC",
+    "name": "Essentials Licensing Run : AI, 8 GPU, 3 Years",
+    "items": [],
+    "qty": 1.0,
+    "unit_price": 126000000.0,
+    "notes": []
+   }
+  ],
+  "remarks": [
+   "- H/W 무상 보증 3년 / S/W 필수 구매 항목"
+  ],
+  "sheet_name": "견적"
+ },
+ "normal": {
+  "suggestions": {
+   "0": {
+    "name": "NVIDIA ENT Business Standard Support Services for ADPTR-BF, 3 Years",
+    "matches": [
+     {
+      "score": 0.397,
+      "match_score": 0.397,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA ENT Business Standard Support Services for ADPTR-BF, 3 Years",
+      "category": "SUP-ADPTR-BF-3S",
+      "kind": "service",
+      "n": 2,
+      "last_price": 260000,
+      "last_price_date": "2025-10-22",
+      "min": 260000,
+      "max": 260000,
+      "note": "BlueField 어댑터 3년 표준 지원 서비스",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-22",
+        "price": 260000,
+        "customer": "고객200",
+        "qty": 14.0
+       },
+       {
+        "date": "2025-10-22",
+        "price": 260000,
+        "customer": "고객161",
+        "qty": 14.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": "service",
+    "caution": null,
+    "note": "BlueField 어댑터 3년 표준 지원 서비스",
+    "min": 260000,
+    "max": 260000,
+    "history": [
+     {
+      "date": "2025-10-22",
+      "price": 260000,
+      "customer": "고객200",
+      "qty": 14.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-10-22",
+      "price": 260000,
+      "customer": "고객161",
+      "qty": 14.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.397) — 이름만 참고",
+    "match_score": 0.397,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 936600000.0,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1": {
+    "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+    "matches": [
+     {
+      "score": 1.118,
+      "match_score": 1.118,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+      "category": "DGX B300 S/W",
+      "kind": "license",
+      "n": 4,
+      "last_price": 171150000,
+      "last_price_date": "2026-09-09",
+      "min": 171150000,
+      "max": 171150000,
+      "note": "per GPU 3년 구독. per node·기간이 다른 SKU와 통합 금지",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-03",
+        "price": 171150000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 171150000,
+        "customer": "고객6",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 171150000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 171150000,
+        "customer": "고객6",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.628,
+      "match_score": 0.628,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA Run:ai Essentials Licensing, 8 GPU, 3 Years",
+      "category": "ACC",
+      "kind": "license",
+      "n": 2,
+      "last_price": 126000000,
+      "last_price_date": "2026-09-09",
+      "min": 126000000,
+      "max": 126000000,
+      "note": "Run:ai 8GPU 3년. AI Enterprise Essentials와는 별개 제품",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-09",
+        "price": 126000000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 126000000,
+        "customer": "고객6",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.418,
+      "match_score": 0.418,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA ENT Business Standard Support Services for ADPTR-BF, 3 Years",
+      "category": "SUP-ADPTR-BF-3S",
+      "kind": "service",
+      "n": 2,
+      "last_price": 260000,
+      "last_price_date": "2025-10-22",
+      "min": 260000,
+      "max": 260000,
+      "note": "BlueField 어댑터 3년 표준 지원 서비스",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-22",
+        "price": 260000,
+        "customer": "고객200",
+        "qty": 14.0
+       },
+       {
+        "date": "2025-10-22",
+        "price": 260000,
+        "customer": "고객161",
+        "qty": 14.0
+       }
+      ]
+     }
+    ],
+    "suggested": 171150000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "license",
+    "caution": null,
+    "note": "per GPU 3년 구독. per node·기간이 다른 SKU와 통합 금지",
+    "min": 2400001.0,
+    "max": 171150000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 171150000,
+      "customer": "고객177",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 171150000,
+      "customer": "고객6",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 171150000,
+      "customer": "고객177",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 171150000,
+      "customer": "고객6",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-02",
+      "price": 2400001.0,
+      "customer": "고객4",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-04-02",
+      "price": 2500001.0,
+      "customer": "고객4",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.118,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 171150000.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 22
+   },
+   "2": {
+    "name": "NVIDIA Run:ai Essentials Licensing, 8 GPU, 3 Years",
+    "matches": [
+     {
+      "score": 1.104,
+      "match_score": 1.104,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA Run:ai Essentials Licensing, 8 GPU, 3 Years",
+      "category": "ACC",
+      "kind": "license",
+      "n": 2,
+      "last_price": 126000000,
+      "last_price_date": "2026-09-09",
+      "min": 126000000,
+      "max": 126000000,
+      "note": "Run:ai 8GPU 3년. AI Enterprise Essentials와는 별개 제품",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-09",
+        "price": 126000000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 126000000,
+        "customer": "고객6",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.532,
+      "match_score": 0.532,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+      "category": "DGX B300 S/W",
+      "kind": "license",
+      "n": 4,
+      "last_price": 171150000,
+      "last_price_date": "2026-09-09",
+      "min": 171150000,
+      "max": 171150000,
+      "note": "per GPU 3년 구독. per node·기간이 다른 SKU와 통합 금지",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-03",
+        "price": 171150000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 171150000,
+        "customer": "고객6",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 171150000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 171150000,
+        "customer": "고객6",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 126000000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "license",
+    "caution": null,
+    "note": "Run:ai 8GPU 3년. AI Enterprise Essentials와는 별개 제품",
+    "min": 126000000,
+    "max": 126000000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 126000000,
+      "customer": "고객177",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 126000000,
+      "customer": "고객6",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.10)",
+    "match_score": 1.104,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 126000000.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 22
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "한국가상연구원",
+    "score": 1.5,
+    "contact": "신사임당 박사님",
+    "tel": "02-000-0019",
+    "email": "c19@example.com",
+    "last_date": "2026-06-30",
+    "n": 9
+   },
+   {
+    "org": "한국가상연구원",
+    "score": 1.167,
+    "contact": "이순신 선임연구원님",
+    "tel": "02-000-0020",
+    "email": "c20@example.com",
+    "last_date": "2026-07-01",
+    "n": 4
+   },
+   {
+    "org": "한국가상연구원 부설 데이터센터",
+    "score": 0.775,
+    "contact": "이순신 선임연구원님",
+    "tel": "02-000-0021",
+    "email": "c21@example.com",
+    "last_date": "2026-07-02",
+    "n": 2
+   }
+  ]
+ },
+ "normal_price_history_calls": [
+  {
+   "name": "DGX B300 8X 288GB Full with Business Std Support, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-04-02",
+     "price": 2400001.0,
+     "customer": "고객4",
+     "qty": 1.0,
+     "kind": "single",
+     "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-04-02",
+     "price": 2500001.0,
+     "customer": "고객4",
+     "qty": 1.0,
+     "kind": "single",
+     "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Essentials Licensing Run : AI, 8 GPU, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ],
+ "fallback": {
+  "suggestions": {
+   "1": {
+    "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+    "matches": [],
+    "suggested": 2400001.0,
+    "suggested_date": "2026-04-02",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 2400001.0,
+    "max": 2500001.0,
+    "history": [
+     {
+      "date": "2026-04-02",
+      "price": 2400001.0,
+      "customer": "고객4",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-04-02",
+      "price": 2500001.0,
+      "customer": "고객4",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 171150000.0,
+    "delta": -168749999.0,
+    "delta_pct": -98.6,
+    "age_days": 182
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "한국가상연구원",
+    "score": 1.5,
+    "contact": "신사임당 박사님",
+    "tel": "02-000-0019",
+    "email": "c19@example.com",
+    "last_date": "2026-06-30",
+    "n": 9
+   },
+   {
+    "org": "한국가상연구원",
+    "score": 1.167,
+    "contact": "이순신 선임연구원님",
+    "tel": "02-000-0020",
+    "email": "c20@example.com",
+    "last_date": "2026-07-01",
+    "n": 4
+   },
+   {
+    "org": "한국가상연구원 부설 데이터센터",
+    "score": 0.775,
+    "contact": "이순신 선임연구원님",
+    "tel": "02-000-0021",
+    "email": "c21@example.com",
+    "last_date": "2026-07-02",
+    "n": 2
+   }
+  ]
+ },
+ "fallback_price_history_calls": [
+  {
+   "name": "DGX B300 8X 288GB Full with Business Std Support, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-04-02",
+     "price": 2400001.0,
+     "customer": "고객4",
+     "qty": 1.0,
+     "kind": "single",
+     "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-04-02",
+     "price": 2500001.0,
+     "customer": "고객4",
+     "qty": 1.0,
+     "kind": "single",
+     "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Essentials Licensing Run : AI, 8 GPU, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ]
+}

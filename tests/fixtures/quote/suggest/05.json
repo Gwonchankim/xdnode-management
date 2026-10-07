@@ -1,0 +1,8017 @@
+{
+ "quote": {
+  "customer": {
+   "org": "감마대학교",
+   "contact": "허준 교수님",
+   "tel": "010-0000-0000",
+   "email": "customer@example.com"
+  },
+  "terms": {
+   "valid_weeks": 1,
+   "delivery": "협의 후 결정",
+   "payment": "현금결제",
+   "place": "귀사 지정 장소",
+   "stamp_omitted": true
+  },
+  "staff": {
+   "name": "담당자 팀장",
+   "tel": "010-1234-5678",
+   "email": "staff@example.com"
+  },
+  "lines": [
+   {
+    "label": "SERVER",
+    "name": "DDR5 ECC/REG ( 64GB )",
+    "items": [
+     {
+      "category": "HBA",
+      "spec": "NVDIIA RTX PRO 6000 Blackwell Workstation Edition PNY",
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "NVIDIA L40S 48GB\n부가 사양 줄",
+      "qty": 2.0,
+      "unit_price": 1000000.0,
+      "extra_categories": []
+     },
+     {
+      "category": "Chassis",
+      "spec": "DGX B300 8X 288GB Full with Business Std Support, 3 Years\n부가 사양 줄",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "GPU",
+      "spec": "NVIDIA MCX653106A-HDAT",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "64GB RDIMM, 6400MT/s",
+      "qty": 4.0,
+      "unit_price": 123456.0,
+      "extra_categories": []
+     },
+     {
+      "category": "CHASSIS",
+      "spec": "ARCTIC P12 Pro",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "NVIDIA A100 80GB (SXM to PCIe)",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "삼성전자 9100 PRO M.2 NVMe SSD 8TB",
+      "qty": 2.0,
+      "extra_categories": []
+     }
+    ],
+    "sets": 2.0,
+    "unit_price": 25000000.0,
+    "notes": []
+   },
+   {
+    "label": "CPU Cooler",
+    "name": "삼성전자 9100 PRO M.2 NVMe 4TB",
+    "items": [
+     {
+      "category": "GPU",
+      "spec": "GIGABYTE GeForce RTX",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "DDR5 ECC/REG\n부가 사양 줄",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "규격서 문구",
+      "spec": "Ultra 9-285K\n부가 사양 줄",
+      "qty": 4.0,
+      "unit_price": 1000000.0,
+      "extra_categories": []
+     },
+     {
+      "category": "BAREBONE",
+      "spec": "조립식 워크스테이션",
+      "qty": 1.0,
+      "unit_price": 1000000.0,
+      "extra_categories": []
+     },
+     {
+      "category": "GPU",
+      "spec": "고속 네트워크 인프라 일괄\n부가 사양 줄",
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "NVIDIA L4 D6 24GB\n부가 사양 줄",
+      "qty": 4.0,
+      "unit_price": 1000000.0,
+      "extra_categories": []
+     },
+     {
+      "category": "Chassis",
+      "spec": "NVIDIA L40S 48GB\n부가 사양 줄",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "ACC",
+      "spec": "NVIDIA RTX PRO 6000 Workstation Edition",
+      "qty": 1.0,
+      "unit_price": 123456.0,
+      "extra_categories": []
+     }
+    ],
+    "sets": 2.0,
+    "unit_price": 25000000.0,
+    "notes": []
+   },
+   {
+    "label": "GPU",
+    "name": "4700N 미니PC (OS 미포함)",
+    "items": [
+     {
+      "category": "",
+      "spec": "NVIDIA RTX PRO 6000 Server Edition",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "GPU",
+      "spec": "RedCastle V4.x (SecureOS) 월 정액",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "S/W",
+      "spec": "DDR5 64GB ECC-RDIMM",
+      "qty": 1.0,
+      "extra_categories": []
+     },
+     {
+      "category": "V3 Net for Linux Server \n(서버 백신)",
+      "spec": "MSI S6053G480RAU8\n부가 사양 줄",
+      "unit_price": 123456.0,
+      "extra_categories": []
+     },
+     {
+      "category": "RAM",
+      "spec": "NVIDIA Active Optical Cable 511G 4M\n부가 사양 줄",
+      "extra_categories": []
+     },
+     {
+      "category": "COHESITY NETBACKUP (subscription 60MO)",
+      "spec": "4700N 미니PC( OS 미포함)",
+      "qty": 4.0,
+      "extra_categories": []
+     },
+     {
+      "category": "FAN",
+      "spec": "Western Digital BLACK SN850X M.2 NVMe 2TB\n부가 사양 줄",
+      "qty": 4.0,
+      "extra_categories": []
+     },
+     {
+      "category": "",
+      "spec": "2MONS4UD650HOTSWAP-8WATERCOOL\n부가 사양 줄",
+      "qty": 1.0,
+      "unit_price": 123456.0,
+      "extra_categories": []
+     }
+    ],
+    "sets": 1.0,
+    "unit_price": 25000000.0,
+    "notes": []
+   },
+   {
+    "label": "Board",
+    "name": "NVIDIA Run:ai Essentials Licensing,",
+    "items": [],
+    "qty": 1.0,
+    "unit_price": 990000.0,
+    "notes": []
+   },
+   {
+    "label": "SYSTEM",
+    "name": "Samsung DDR5-5600 ECC/REG 64GB",
+    "items": [],
+    "qty": 1.0,
+    "notes": []
+   },
+   {
+    "label": "조립 PC",
+    "name": "마이크론 DDR-55600 ECC/REG 64GB",
+    "items": [],
+    "qty": 1.0,
+    "unit_price": 990000.0,
+    "notes": []
+   },
+   {
+    "label": "조립 PC",
+    "name": "NVIDIA RTX PRO 5611 Blackwell Server Edition 43GB",
+    "items": [],
+    "qty": 1.0,
+    "notes": []
+   },
+   {
+    "label": "GPU",
+    "name": "",
+    "items": [],
+    "qty": 1.0,
+    "notes": []
+   }
+  ],
+  "remarks": [
+   "- 3년 무상 보증"
+  ],
+  "sheet_name": "견적"
+ },
+ "normal": {
+  "suggestions": {
+   "0.0": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "matches": [
+     {
+      "score": 0.971,
+      "match_score": 0.971,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 36,
+      "last_price": 20600000,
+      "last_price_date": "2026-08-21",
+      "min": 11300000,
+      "max": 21300000,
+      "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-15",
+        "price": 17800000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 18000000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객50",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객51",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객52",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객9",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객10",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.792,
+      "match_score": 0.792,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 31,
+      "last_price": 20000000,
+      "last_price_date": "2026-09-10",
+      "min": 10800000,
+      "max": 30721818,
+      "note": "Max-Q 전용 그룹. '300W'는 Max-Q의 규격값이라 동일 SKU이며 Retail/Advantech OEM은 채널 표기. Server/Workstation Edition과는 병합하지 않음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-11",
+        "price": 21500000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 20000000,
+        "customer": "고객66",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 21000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 21000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.733,
+      "match_score": 0.733,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 57,
+      "last_price": 23080000,
+      "last_price_date": "2026-09-01",
+      "min": 11500000,
+      "max": 23080000,
+      "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-25",
+        "price": 22500000,
+        "customer": "고객15",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객18",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객18",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 20600000,
+    "suggested_date": "2026-08-21",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+    "min": 17800000,
+    "max": 21300000,
+    "history": [
+     {
+      "date": "2026-08-21",
+      "price": 20600000,
+      "customer": "고객9",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-21",
+      "price": 20600000,
+      "customer": "고객10",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 20750000,
+      "customer": "고객50",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 20750000,
+      "customer": "고객51",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 21300000,
+      "customer": "고객52",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 21300000,
+      "customer": "고객49",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-07",
+      "price": 18000000,
+      "customer": "고객49",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-15",
+      "price": 17800000,
+      "customer": "고객48",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.97)",
+    "match_score": 0.971,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 41
+   },
+   "0.1": {
+    "name": "NVIDIA L40S 48GB",
+    "matches": [
+     {
+      "score": 1.113,
+      "match_score": 1.113,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 38,
+      "last_price": 13200000,
+      "last_price_date": "2026-09-09",
+      "min": 9870000,
+      "max": 13200000,
+      "note": "L40S는 48GB PCIe 단일 SKU. 용량/PCIe/D6 표기 유무 차이뿐이며 9.87~13.2M 단일 밴드. L4와는 별개.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-24",
+        "price": 11100000,
+        "customer": "고객30",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000,
+        "customer": "고객32",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000,
+        "customer": "고객33",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000,
+        "customer": "고객32",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000,
+        "customer": "고객33",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13200000,
+        "customer": "고객34",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13200000,
+        "customer": "고객35",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.817,
+      "match_score": 0.817,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L40 48GB",
+      "category": "DC GPU",
+      "kind": "part",
+      "n": 1,
+      "last_price": 8250000,
+      "last_price_date": "2025-03-24",
+      "min": 8250000,
+      "max": 8250000,
+      "note": "'엔비디아 NVIDIA' 중복 표기 정리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-03-24",
+        "price": 8250000,
+        "customer": "고객226",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.623,
+      "match_score": 0.623,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX 6000 Ada Generation 48GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 45,
+      "last_price": 11000000,
+      "last_price_date": "2026-08-14",
+      "min": 9090800,
+      "max": 11100000,
+      "note": "Ada 세대 RTX 6000. 띄어쓰기/48GB·GDDR6 병기 차이뿐이고 단가 9.09~11.1M로 촘촘히 겹침. Blackwell RTX PRO 6000과는 완전히 다른 세대라 병합 금지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-01",
+        "price": 10400000,
+        "customer": "고객23",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 10400000,
+        "customer": "고객24",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000,
+        "customer": "고객25",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000,
+        "customer": "고객26",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 11000000,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 11000000,
+        "customer": "고객27",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 11000000,
+        "customer": "고객23",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 11000000,
+        "customer": "고객27",
+        "qty": 3.0
+       }
+      ]
+     }
+    ],
+    "suggested": 13200000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "L40S는 48GB PCIe 단일 SKU. 용량/PCIe/D6 표기 유무 차이뿐이며 9.87~13.2M 단일 밴드. L4와는 별개.",
+    "min": 11100000,
+    "max": 13200000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 13200000,
+      "customer": "고객34",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 13200000,
+      "customer": "고객35",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-20",
+      "price": 13150000,
+      "customer": "고객32",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-20",
+      "price": 13150000,
+      "customer": "고객33",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 13150000,
+      "customer": "고객32",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 13150000,
+      "customer": "고객33",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000,
+      "customer": "고객30",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000,
+      "customer": "고객31",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.11)",
+    "match_score": 1.113,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 1000000.0,
+    "delta": 12200000.0,
+    "delta_pct": 1220.0,
+    "age_days": 22
+   },
+   "0.2": {
+    "name": "NVIDIA ENT Business Standard Support Services for ADPTR-BF, 3 Years",
+    "matches": [
+     {
+      "score": 0.397,
+      "match_score": 0.397,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA ENT Business Standard Support Services for ADPTR-BF, 3 Years",
+      "category": "SUP-ADPTR-BF-3S",
+      "kind": "service",
+      "n": 2,
+      "last_price": 260000,
+      "last_price_date": "2025-10-22",
+      "min": 260000,
+      "max": 260000,
+      "note": "BlueField 어댑터 3년 표준 지원 서비스",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-22",
+        "price": 260000,
+        "customer": "고객200",
+        "qty": 14.0
+       },
+       {
+        "date": "2025-10-22",
+        "price": 260000,
+        "customer": "고객161",
+        "qty": 14.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": "service",
+    "caution": null,
+    "note": "BlueField 어댑터 3년 표준 지원 서비스",
+    "min": 260000,
+    "max": 260000,
+    "history": [
+     {
+      "date": "2025-10-22",
+      "price": 260000,
+      "customer": "고객200",
+      "qty": 14.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-10-22",
+      "price": 260000,
+      "customer": "고객161",
+      "qty": 14.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.397) — 이름만 참고",
+    "match_score": 0.397,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "0.3": {
+    "name": "NVIDIA ConnectX-6 VPI MCX653106A-HDAT (HDR 200Gb 2-Port)",
+    "matches": [
+     {
+      "score": 1.082,
+      "match_score": 1.082,
+      "cat_rel": null,
+      "contained": true,
+      "name": "NVIDIA ConnectX-6 VPI MCX653106A-HDAT (HDR 200Gb 2-Port)",
+      "category": "ACC",
+      "kind": "part",
+      "n": 8,
+      "last_price": 1700000,
+      "last_price_date": "2026-07-16",
+      "min": 1700000,
+      "max": 1700000,
+      "note": "HDR InfiniBand/Ethernet 어댑터",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-04-22",
+        "price": 1700000,
+        "customer": "고객160",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-04-22",
+        "price": 1700000,
+        "customer": "고객161",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 1700000,
+        "customer": "고객162",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 1700000,
+        "customer": "고객163",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-25",
+        "price": 1700000,
+        "customer": "고객164",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-25",
+        "price": 1700000,
+        "customer": "고객163",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 1700000,
+        "customer": "고객162",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 1700000,
+        "customer": "고객163",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.546,
+      "match_score": 0.546,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX 6000 Ada Generation 48GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 45,
+      "last_price": 11000000,
+      "last_price_date": "2026-08-14",
+      "min": 9090800,
+      "max": 11100000,
+      "note": "Ada 세대 RTX 6000. 띄어쓰기/48GB·GDDR6 병기 차이뿐이고 단가 9.09~11.1M로 촘촘히 겹침. Blackwell RTX PRO 6000과는 완전히 다른 세대라 병합 금지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-01",
+        "price": 10400000,
+        "customer": "고객23",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 10400000,
+        "customer": "고객24",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000,
+        "customer": "고객25",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000,
+        "customer": "고객26",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 11000000,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 11000000,
+        "customer": "고객27",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 11000000,
+        "customer": "고객23",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 11000000,
+        "customer": "고객27",
+        "qty": 3.0
+       }
+      ]
+     },
+     {
+      "score": 0.519,
+      "match_score": 0.519,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX 4000 Ada Generation 20GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 32,
+      "last_price": 2520000,
+      "last_price_date": "2026-07-22",
+      "min": 1740000,
+      "max": 2520000,
+      "note": "표기 차이만 존재. 1.74~2.52M 연속(2026년 상승분 포함).",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-08",
+        "price": 2400000,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 2400000,
+        "customer": "고객62",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 2400000,
+        "customer": "고객63",
+        "qty": 17.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 2400000,
+        "customer": "고객64",
+        "qty": 17.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 2520000,
+        "customer": "고객23",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 2520000,
+        "customer": "고객62",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-22",
+        "price": 2520000,
+        "customer": "고객23",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-22",
+        "price": 2520000,
+        "customer": "고객62",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 1700000,
+    "suggested_date": "2026-07-16",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "HDR InfiniBand/Ethernet 어댑터",
+    "min": 1700000,
+    "max": 1700000,
+    "history": [
+     {
+      "date": "2026-07-16",
+      "price": 1700000,
+      "customer": "고객162",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-16",
+      "price": 1700000,
+      "customer": "고객163",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-25",
+      "price": 1700000,
+      "customer": "고객164",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-25",
+      "price": 1700000,
+      "customer": "고객163",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-15",
+      "price": 1700000,
+      "customer": "고객162",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-15",
+      "price": 1700000,
+      "customer": "고객163",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-22",
+      "price": 1700000,
+      "customer": "고객160",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-22",
+      "price": 1700000,
+      "customer": "고객161",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.08)",
+    "match_score": 1.082,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 77
+   },
+   "0.4": {
+    "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.382,
+      "match_score": 0.382,
+      "cat_rel": null,
+      "contained": false,
+      "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 5,
+      "last_price": 3458000,
+      "last_price_date": "2026-03-16",
+      "min": 3458000,
+      "max": 3464500,
+      "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객146",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객113",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-16",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": "part",
+    "caution": null,
+    "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+    "min": 3458000,
+    "max": 3464500,
+    "history": [
+     {
+      "date": "2026-03-16",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객146",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객113",
+      "qty": 8.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.382) — 이름만 참고",
+    "match_score": 0.382,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 123456.0,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "0.5": {
+    "name": "ARCTIC P12 Pro PST 120mm 팬 (5팩)",
+    "matches": [
+     {
+      "score": 0.612,
+      "match_score": 0.612,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "ARCTIC P12 Pro PST 120mm 팬 (5팩)",
+      "category": "FAN",
+      "kind": "part",
+      "n": 8,
+      "last_price": 45100,
+      "last_price_date": "2026-09-10",
+      "min": 45100,
+      "max": 45100,
+      "note": "5개 묶음 단가",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-22",
+        "price": 45100,
+        "customer": "고객103",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 45100,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 45100,
+        "customer": "고객145",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.387,
+      "match_score": 0.387,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "ARCTIC P14 Pro PST CO 140mm 팬",
+      "category": "FAN",
+      "kind": "part",
+      "n": 1,
+      "last_price": 17900,
+      "last_price_date": "2026-08-07",
+      "min": 17900,
+      "max": 17900,
+      "note": "모델·규격이 달라 P12와 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-07",
+        "price": 17900,
+        "customer": "고객49",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 45100,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "5개 묶음 단가",
+    "min": 45100,
+    "max": 45100,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 45100,
+      "customer": "고객145",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 45100,
+      "customer": "고객103",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 45100,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "품목 종류가 다름 (유사도 0.61)",
+    "match_score": 0.612,
+    "suggested_grade": "file",
+    "cat_rel": "mismatch",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "0.6": {
+    "name": "NVIDIA A100 80GB (SXM to PCIe)",
+    "matches": [
+     {
+      "score": 1.09,
+      "match_score": 1.09,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA A100 80GB (SXM to PCIe)",
+      "category": "GPU",
+      "kind": "part",
+      "n": 12,
+      "last_price": 9000000,
+      "last_price_date": "2025-07-25",
+      "min": 9000000,
+      "max": 33333333,
+      "note": "확인 필요 - 품목명 문자열이 사실상 동일해 병합했으나 단가가 9.0M~33.3M로 3배 이상 벌어짐. 변환 킷/부분 청구가 섞였을 가능성이 있어 단가 채택 전 재확인 필요.",
+      "caution": "최근 6건 안에서 단가가 3.7배 차이 납니다 (9,000,000~33,333,333원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+      "price_history": [
+       {
+        "date": "2025-06-16",
+        "price": 24750000,
+        "customer": "고객113",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-01",
+        "price": 24750000,
+        "customer": "고객112",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-01",
+        "price": 24750000,
+        "customer": "고객113",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-01",
+        "price": 33333333,
+        "customer": "고객34",
+        "qty": 3.0
+       },
+       {
+        "date": "2025-07-14",
+        "price": 24500000,
+        "customer": "고객114",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-14",
+        "price": 24500000,
+        "customer": "고객115",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-14",
+        "price": 24750000,
+        "customer": "고객113",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-25",
+        "price": 9000000,
+        "customer": "고객116",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.885,
+      "match_score": 0.885,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA A100 80GB PCIe (SXM)",
+      "category": "GPU",
+      "kind": "part",
+      "n": 4,
+      "last_price": 17000000,
+      "last_price_date": "2025-10-22",
+      "min": 17000000,
+      "max": 18181819,
+      "note": "확인 필요 - 17.0~18.2M로 일반 A100 80GB PCIe(28~33M)의 절반 수준이라 다른 조건(중고/OEM/부분단가) 의심. 병합하지 않음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-07-22",
+        "price": 18181819,
+        "customer": "고객114",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-22",
+        "price": 18181819,
+        "customer": "고객115",
+        "qty": 0
+       },
+       {
+        "date": "2025-10-22",
+        "price": 17000000,
+        "customer": "고객36",
+        "qty": 30.0
+       },
+       {
+        "date": "2025-10-22",
+        "price": 17000000,
+        "customer": "고객192",
+        "qty": 30.0
+       }
+      ]
+     },
+     {
+      "score": 0.815,
+      "match_score": 0.815,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA A100 80GB PCIe",
+      "category": "GPU",
+      "kind": "part",
+      "n": 5,
+      "last_price": 33000000,
+      "last_price_date": "2026-08-25",
+      "min": 28200000,
+      "max": 33000000,
+      "note": "'고성능 알고리즘 검증용 연산모듈(NVIDIA A100 80GB PCI)'은 사업명이 앞에 붙은 동일 부품. 28.2~33.0M로 일관.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-04-14",
+        "price": 28200000,
+        "customer": "고객184",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-25",
+        "price": 33000000,
+        "customer": "고객11",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-25",
+        "price": 33000000,
+        "customer": "고객12",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 9000000,
+    "suggested_date": "2025-07-25",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": "최근 6건 안에서 단가가 3.7배 차이 납니다 (9,000,000~33,333,333원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+    "note": "확인 필요 - 품목명 문자열이 사실상 동일해 병합했으나 단가가 9.0M~33.3M로 3배 이상 벌어짐. 변환 킷/부분 청구가 섞였을 가능성이 있어 단가 채택 전 재확인 필요.",
+    "min": 9000000,
+    "max": 33333333,
+    "history": [
+     {
+      "date": "2025-07-25",
+      "price": 9000000,
+      "customer": "고객116",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-07-14",
+      "price": 24500000,
+      "customer": "고객114",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-07-14",
+      "price": 24500000,
+      "customer": "고객115",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-07-14",
+      "price": 24750000,
+      "customer": "고객113",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-07-01",
+      "price": 24750000,
+      "customer": "고객112",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-07-01",
+      "price": 24750000,
+      "customer": "고객113",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-07-01",
+      "price": 33333333,
+      "customer": "고객34",
+      "qty": 3.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-06-16",
+      "price": 24750000,
+      "customer": "고객113",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.09)",
+    "match_score": 1.09,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 433
+   },
+   "0.7": {
+    "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+    "matches": [
+     {
+      "score": 1.082,
+      "match_score": 1.082,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 8,
+      "last_price": 2088600,
+      "last_price_date": "2026-09-10",
+      "min": 2088600,
+      "max": 2088600,
+      "note": "990 PRO와 다른 세대(9100 PRO)이고 용량 8TB로 별개",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-22",
+        "price": 2088600,
+        "customer": "고객103",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 2088600,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 2088600,
+        "customer": "고객145",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.687,
+      "match_score": 0.687,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 990 PRO M.2 NVMe 4TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 10,
+      "last_price": 1230000,
+      "last_price_date": "2026-08-13",
+      "min": 1188000,
+      "max": 1551000,
+      "note": "용량이 달라 1TB·2TB와 분리. 단가 1,188,000~1,551,000원으로 안정적",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-16",
+        "price": 1188000,
+        "customer": "고객113",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 1551000,
+        "customer": "고객143",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 1551000,
+        "customer": "고객144",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 1209000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 1200000,
+        "customer": "고객66",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 1200000,
+        "customer": "고객67",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 1230000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 1230000,
+        "customer": "고객67",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.663,
+      "match_score": 0.663,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 990 PRO M.2 NVMe 1TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 3,
+      "last_price": 6272727,
+      "last_price_date": "2025-07-25",
+      "min": 1049597,
+      "max": 6272727,
+      "note": "확인 필요: 1TB인데 단가가 1,049,597~6,272,727원(2025-07)으로 시세 대비 비정상적으로 높아 세트/수량 단가 행으로 의심됨. 용량이 달라 2TB·4TB와는 분리",
+      "caution": "최근 3건 안에서 단가가 6.0배 차이 납니다 (1,049,597~6,272,727원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+      "price_history": [
+       {
+        "date": "2025-07-22",
+        "price": 1049597,
+        "customer": "고객114",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-22",
+        "price": 1049597,
+        "customer": "고객115",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-25",
+        "price": 6272727,
+        "customer": "고객116",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 2088600,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "990 PRO와 다른 세대(9100 PRO)이고 용량 8TB로 별개",
+    "min": 2088600,
+    "max": 2088600,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 2088600,
+      "customer": "고객145",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 2088600,
+      "customer": "고객103",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 2088600,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.08)",
+    "match_score": 1.082,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "1.0": {
+    "name": "GIGABYTE GeForce RTX 5090 GAMING OC 32GB",
+    "matches": [
+     {
+      "score": 0.665,
+      "match_score": 0.665,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "GIGABYTE GeForce RTX 5090 GAMING OC 32GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 13,
+      "last_price": 9392800,
+      "last_price_date": "2026-09-10",
+      "min": 3727273,
+      "max": 9392800,
+      "note": "'32G/32GB' 표기 차이와 'ASUS' 접두어가 잘못 붙은 건 통합. 단가는 2025-09 3.7M에서 2026-09 9.4M로 5090 시세 급등을 그대로 반영하며 구간이 연속됨.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-01",
+        "price": 7490000,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 7490000,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 9392800,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 6500000,
+        "customer": "고객104",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 6500000,
+        "customer": "고객105",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 7100000,
+        "customer": "고객106",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 7100000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 9392800,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.515,
+      "match_score": 0.515,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA GeForce RTX 4090 24GB Blower",
+      "category": "GPU",
+      "kind": "part",
+      "n": 12,
+      "last_price": 5100000,
+      "last_price_date": "2026-08-19",
+      "min": 4940000,
+      "max": 5250000,
+      "note": "용량 표기 유무 차이. 4.94~5.25M 동일 밴드.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-02-13",
+        "price": 4940000,
+        "customer": "고객119",
+        "qty": 24.0
+       },
+       {
+        "date": "2026-02-13",
+        "price": 4940000,
+        "customer": "고객120",
+        "qty": 24.0
+       },
+       {
+        "date": "2026-04-01",
+        "price": 5100000,
+        "customer": "고객121",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-04-01",
+        "price": 5100000,
+        "customer": "고객122",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-04-22",
+        "price": 5100000,
+        "customer": "고객121",
+        "qty": 6.0
+       },
+       {
+        "date": "2026-05-28",
+        "price": 5250000,
+        "customer": "고객45",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 5100000,
+        "customer": "고객25",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 5100000,
+        "customer": "고객26",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.479,
+      "match_score": 0.479,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA GeForce RTX 5080 Blower 16GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 2,
+      "last_price": 2340000,
+      "last_price_date": "2026-05-08",
+      "min": 2340000,
+      "max": 2340000,
+      "note": "단일 표기.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 2340000,
+        "customer": "고객119",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-05-08",
+        "price": 2340000,
+        "customer": "고객120",
+        "qty": 10.0
+       }
+      ]
+     }
+    ],
+    "suggested": 9392800,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "'32G/32GB' 표기 차이와 'ASUS' 접두어가 잘못 붙은 건 통합. 단가는 2025-09 3.7M에서 2026-09 9.4M로 5090 시세 급등을 그대로 반영하며 구간이 연속됨.",
+    "min": 6500000,
+    "max": 9392800,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 9392800,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-13",
+      "price": 7100000,
+      "customer": "고객106",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-13",
+      "price": 7100000,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 6500000,
+      "customer": "고객104",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 6500000,
+      "customer": "고객105",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 9392800,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 7490000,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 7490000,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "유사도 보통 (0.67)",
+    "match_score": 0.665,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "1.1": {
+    "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.752,
+      "match_score": 0.752,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 33,
+      "last_price": 4000000,
+      "last_price_date": "2026-09-11",
+      "min": 1301120,
+      "max": 4090909,
+      "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객54",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객15",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객57",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.738,
+      "match_score": 0.738,
+      "cat_rel": null,
+      "contained": false,
+      "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 16,
+      "last_price": 4580000,
+      "last_price_date": "2026-09-10",
+      "min": 2750000,
+      "max": 4580000,
+      "note": "PC5-51200 = DDR5-6400 동일 규격. 벤더 미표기 2건(2.75M / 3.85M)은 하이닉스 표기 건의 단가대(2.37~10.11M, 최근 4.58M) 안에 들고 해당 기간 6400 ECC/REG 64GB 공급 표기가 하이닉스뿐이라 통합. 하이닉스 건의 최고 10.11M은 다량/세트 단가로 보여 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-12",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3600000,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.639,
+      "match_score": 0.639,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 32GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 4,
+      "last_price": 2039091,
+      "last_price_date": "2026-07-29",
+      "min": 1800000,
+      "max": 2039091,
+      "note": "용량(32GB)이 달라 64GB와 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-03",
+        "price": 1800000,
+        "customer": "고객44",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-03",
+        "price": 1800000,
+        "customer": "고객45",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-29",
+        "price": 2039091,
+        "customer": "고객76",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-29",
+        "price": 2039091,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 4000000,
+    "suggested_date": "2026-09-11",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+    "min": 3900000,
+    "max": 4000000,
+    "history": [
+     {
+      "date": "2026-09-11",
+      "price": 4000000,
+      "customer": "고객55",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 3900000,
+      "customer": "고객15",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 3900000,
+      "customer": "고객57",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 3900000,
+      "customer": "고객54",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 3900000,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 3900000,
+      "customer": "고객55",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 4000000,
+      "customer": "고객56",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 4000000,
+      "customer": "고객55",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.75)",
+    "match_score": 0.752,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 20
+   },
+   "1.5": {
+    "name": "NVIDIA L4 24GB",
+    "matches": [
+     {
+      "score": 1.1,
+      "match_score": 1.1,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L4 24GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 20,
+      "last_price": 5000000,
+      "last_price_date": "2026-08-14",
+      "min": 3150000,
+      "max": 5000000,
+      "note": "L4는 24GB 단일 SKU. 3.15~5.0M 시기별 연속.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-10",
+        "price": 3700000,
+        "customer": "고객28",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-10",
+        "price": 3700000,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 3750000,
+        "customer": "고객81",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 3750000,
+        "customer": "고객82",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 3800000,
+        "customer": "고객28",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 3800000,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 5000000,
+        "customer": "고객40",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 5000000,
+        "customer": "고객41",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.757,
+      "match_score": 0.757,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA A10 24GB PCIe",
+      "category": "GPU",
+      "kind": "part",
+      "n": 2,
+      "last_price": 4300000,
+      "last_price_date": "2025-09-03",
+      "min": 4300000,
+      "max": 4300000,
+      "note": "Tesla A10. 단일 표기.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-03",
+        "price": 4300000,
+        "customer": "고객102",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.687,
+      "match_score": 0.687,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX 4500 Ada Generation 24GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 12,
+      "last_price": 3400000,
+      "last_price_date": "2026-07-21",
+      "min": 3200000,
+      "max": 3400000,
+      "note": "단가 3.20~3.40M로 사실상 동일.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-01-22",
+        "price": 3250000,
+        "customer": "고객130",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-01-22",
+        "price": 3250000,
+        "customer": "고객82",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-05-06",
+        "price": 3400000,
+        "customer": "고객25",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-05-06",
+        "price": 3400000,
+        "customer": "고객26",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-05-21",
+        "price": 3350000,
+        "customer": "고객36",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-05-21",
+        "price": 3350000,
+        "customer": "고객127",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 3400000,
+        "customer": "고객28",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 3400000,
+        "customer": "고객29",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 5000000,
+    "suggested_date": "2026-08-14",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "L4는 24GB 단일 SKU. 3.15~5.0M 시기별 연속.",
+    "min": 3700000,
+    "max": 5000000,
+    "history": [
+     {
+      "date": "2026-08-14",
+      "price": 5000000,
+      "customer": "고객40",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-14",
+      "price": 5000000,
+      "customer": "고객41",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-21",
+      "price": 3800000,
+      "customer": "고객28",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-21",
+      "price": 3800000,
+      "customer": "고객29",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-16",
+      "price": 3750000,
+      "customer": "고객81",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-16",
+      "price": 3750000,
+      "customer": "고객82",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-10",
+      "price": 3700000,
+      "customer": "고객28",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-10",
+      "price": 3700000,
+      "customer": "고객29",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.10)",
+    "match_score": 1.1,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 1000000.0,
+    "delta": 4000000.0,
+    "delta_pct": 400.0,
+    "age_days": 48
+   },
+   "1.6": {
+    "name": "NVIDIA L40S 48GB",
+    "matches": [
+     {
+      "score": 0.963,
+      "match_score": 0.963,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 38,
+      "last_price": 13200000,
+      "last_price_date": "2026-09-09",
+      "min": 9870000,
+      "max": 13200000,
+      "note": "L40S는 48GB PCIe 단일 SKU. 용량/PCIe/D6 표기 유무 차이뿐이며 9.87~13.2M 단일 밴드. L4와는 별개.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-24",
+        "price": 11100000,
+        "customer": "고객30",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000,
+        "customer": "고객32",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000,
+        "customer": "고객33",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000,
+        "customer": "고객32",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000,
+        "customer": "고객33",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13200000,
+        "customer": "고객34",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13200000,
+        "customer": "고객35",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.667,
+      "match_score": 0.667,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "NVIDIA L40 48GB",
+      "category": "DC GPU",
+      "kind": "part",
+      "n": 1,
+      "last_price": 8250000,
+      "last_price_date": "2025-03-24",
+      "min": 8250000,
+      "max": 8250000,
+      "note": "'엔비디아 NVIDIA' 중복 표기 정리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-03-24",
+        "price": 8250000,
+        "customer": "고객226",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.473,
+      "match_score": 0.473,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "NVIDIA RTX 6000 Ada Generation 48GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 45,
+      "last_price": 11000000,
+      "last_price_date": "2026-08-14",
+      "min": 9090800,
+      "max": 11100000,
+      "note": "Ada 세대 RTX 6000. 띄어쓰기/48GB·GDDR6 병기 차이뿐이고 단가 9.09~11.1M로 촘촘히 겹침. Blackwell RTX PRO 6000과는 완전히 다른 세대라 병합 금지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-01",
+        "price": 10400000,
+        "customer": "고객23",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 10400000,
+        "customer": "고객24",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000,
+        "customer": "고객25",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000,
+        "customer": "고객26",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 11000000,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 11000000,
+        "customer": "고객27",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 11000000,
+        "customer": "고객23",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-14",
+        "price": 11000000,
+        "customer": "고객27",
+        "qty": 3.0
+       }
+      ]
+     }
+    ],
+    "suggested": 13200000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "L40S는 48GB PCIe 단일 SKU. 용량/PCIe/D6 표기 유무 차이뿐이며 9.87~13.2M 단일 밴드. L4와는 별개.",
+    "min": 11100000,
+    "max": 13200000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 13200000,
+      "customer": "고객34",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 13200000,
+      "customer": "고객35",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-20",
+      "price": 13150000,
+      "customer": "고객32",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-20",
+      "price": 13150000,
+      "customer": "고객33",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 13150000,
+      "customer": "고객32",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 13150000,
+      "customer": "고객33",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000,
+      "customer": "고객30",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000,
+      "customer": "고객31",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "품목 종류가 다름 (유사도 0.96)",
+    "match_score": 0.963,
+    "suggested_grade": "file",
+    "cat_rel": "mismatch",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 22
+   },
+   "1.7": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "matches": [
+     {
+      "score": 1.112,
+      "match_score": 1.112,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 36,
+      "last_price": 20600000,
+      "last_price_date": "2026-08-21",
+      "min": 11300000,
+      "max": 21300000,
+      "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-15",
+        "price": 17800000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 18000000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객50",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객51",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객52",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객9",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객10",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.866,
+      "match_score": 0.866,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 57,
+      "last_price": 23080000,
+      "last_price_date": "2026-09-01",
+      "min": 11500000,
+      "max": 23080000,
+      "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-25",
+        "price": 22500000,
+        "customer": "고객15",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객18",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객18",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.841,
+      "match_score": 0.841,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 31,
+      "last_price": 20000000,
+      "last_price_date": "2026-09-10",
+      "min": 10800000,
+      "max": 30721818,
+      "note": "Max-Q 전용 그룹. '300W'는 Max-Q의 규격값이라 동일 SKU이며 Retail/Advantech OEM은 채널 표기. Server/Workstation Edition과는 병합하지 않음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-11",
+        "price": 21500000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 20000000,
+        "customer": "고객66",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 21000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 21000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 20000000,
+        "customer": "고객67",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 20600000,
+    "suggested_date": "2026-08-21",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+    "min": 17800000,
+    "max": 21300000,
+    "history": [
+     {
+      "date": "2026-08-21",
+      "price": 20600000,
+      "customer": "고객9",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-21",
+      "price": 20600000,
+      "customer": "고객10",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 20750000,
+      "customer": "고객50",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 20750000,
+      "customer": "고객51",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 21300000,
+      "customer": "고객52",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-19",
+      "price": 21300000,
+      "customer": "고객49",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-07",
+      "price": 18000000,
+      "customer": "고객49",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-15",
+      "price": 17800000,
+      "customer": "고객48",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.11)",
+    "match_score": 1.112,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 123456.0,
+    "delta": 20476544.0,
+    "delta_pct": 16586.1,
+    "age_days": 41
+   },
+   "2.0": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "matches": [
+     {
+      "score": 1.12,
+      "match_score": 1.12,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 57,
+      "last_price": 23080000,
+      "last_price_date": "2026-09-01",
+      "min": 11500000,
+      "max": 23080000,
+      "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-25",
+        "price": 22500000,
+        "customer": "고객15",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객18",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객18",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.858,
+      "match_score": 0.858,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 36,
+      "last_price": 20600000,
+      "last_price_date": "2026-08-21",
+      "min": 11300000,
+      "max": 21300000,
+      "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-15",
+        "price": 17800000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 18000000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객50",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객51",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객52",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객9",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객10",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.771,
+      "match_score": 0.771,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 4,
+      "last_price": 7220000,
+      "last_price_date": "2026-08-20",
+      "min": 6650000,
+      "max": 7220000,
+      "note": "Server Edition은 별도 SKU. 6.65~7.22M로 워크스테이션판(3.4~5.4M)보다 확연히 높음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객47",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객1",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객2",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 22000000,
+    "suggested_date": "2026-09-01",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+    "min": 22000000,
+    "max": 23080000,
+    "history": [
+     {
+      "date": "2026-09-01",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-25",
+      "price": 22500000,
+      "customer": "고객15",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.12)",
+    "match_score": 1.12,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 30
+   },
+   "2.1": {
+    "name": "RedCastle V4.x (SecureOS) 월 정액",
+    "matches": [
+     {
+      "score": 1.054,
+      "match_score": 1.054,
+      "cat_rel": null,
+      "contained": false,
+      "name": "RedCastle V4.x (SecureOS) 월 정액",
+      "category": "RedCastle V4.0",
+      "kind": "license",
+      "n": 2,
+      "last_price": 86580,
+      "last_price_date": "2026-03-30",
+      "min": 86580,
+      "max": 86580,
+      "note": "품목명이 안내 문장('SecureOS는 RedCastle v4.x 버전을 제공')에서 추출됐으나 월 정액 단가(86,580)가 일관됨 - 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-30",
+        "price": 86580,
+        "customer": "고객6",
+        "qty": 10.0
+       }
+      ]
+     }
+    ],
+    "suggested": 86580,
+    "suggested_date": "2026-03-30",
+    "suggested_source": "file",
+    "kind": "license",
+    "caution": null,
+    "note": "품목명이 안내 문장('SecureOS는 RedCastle v4.x 버전을 제공')에서 추출됐으나 월 정액 단가(86,580)가 일관됨 - 확인 필요",
+    "min": 86580,
+    "max": 86580,
+    "history": [
+     {
+      "date": "2026-03-30",
+      "price": 86580,
+      "customer": "고객6",
+      "qty": 10.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "과거 이력이 1건뿐",
+    "match_score": 1.054,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 185
+   },
+   "2.2": {
+    "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.728,
+      "match_score": 0.728,
+      "cat_rel": null,
+      "contained": false,
+      "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 5,
+      "last_price": 3458000,
+      "last_price_date": "2026-03-16",
+      "min": 3458000,
+      "max": 3464500,
+      "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객146",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객113",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-16",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.649,
+      "match_score": 0.649,
+      "cat_rel": null,
+      "contained": false,
+      "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 16,
+      "last_price": 4580000,
+      "last_price_date": "2026-09-10",
+      "min": 2750000,
+      "max": 4580000,
+      "note": "PC5-51200 = DDR5-6400 동일 규격. 벤더 미표기 2건(2.75M / 3.85M)은 하이닉스 표기 건의 단가대(2.37~10.11M, 최근 4.58M) 안에 들고 해당 기간 6400 ECC/REG 64GB 공급 표기가 하이닉스뿐이라 통합. 하이닉스 건의 최고 10.11M은 다량/세트 단가로 보여 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-12",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3600000,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.644,
+      "match_score": 0.644,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 33,
+      "last_price": 4000000,
+      "last_price_date": "2026-09-11",
+      "min": 1301120,
+      "max": 4090909,
+      "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객54",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객15",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객57",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3458000,
+    "suggested_date": "2026-03-16",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+    "min": 3458000,
+    "max": 3464500,
+    "history": [
+     {
+      "date": "2026-03-16",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객146",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객113",
+      "qty": 8.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.73)",
+    "match_score": 0.728,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 199
+   },
+   "2.4": {
+    "name": "NVIDIA Active Optical Cable 200G 3M",
+    "matches": [
+     {
+      "score": 0.708,
+      "match_score": 0.708,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA Active Optical Cable 200G 3M",
+      "category": "CABLE",
+      "kind": "part",
+      "n": 2,
+      "last_price": 1458000,
+      "last_price_date": "2025-12-04",
+      "min": 1458000,
+      "max": 1458000,
+      "note": "길이·속도별 별도 SKU. 400G 대비 단가가 14배로 역전되어 있어 원자료 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-12-04",
+        "price": 1458000,
+        "customer": "고객214",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-12-04",
+        "price": 1458000,
+        "customer": "고객215",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.708,
+      "match_score": 0.708,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA Active Optical Cable 200G 5M",
+      "category": "CABLE",
+      "kind": "part",
+      "n": 2,
+      "last_price": 1458000,
+      "last_price_date": "2025-12-04",
+      "min": 1458000,
+      "max": 1458000,
+      "note": "길이별 별도 SKU",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-12-04",
+        "price": 1458000,
+        "customer": "고객214",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-12-04",
+        "price": 1458000,
+        "customer": "고객215",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.708,
+      "match_score": 0.708,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA Active Optical Cable 400G 3M",
+      "category": "CABLE",
+      "kind": "part",
+      "n": 2,
+      "last_price": 104760,
+      "last_price_date": "2025-12-04",
+      "min": 104760,
+      "max": 104760,
+      "note": "길이별 별도 SKU",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-12-04",
+        "price": 104760,
+        "customer": "고객214",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-12-04",
+        "price": 104760,
+        "customer": "고객215",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 1458000,
+    "suggested_date": "2025-12-04",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "길이·속도별 별도 SKU. 400G 대비 단가가 14배로 역전되어 있어 원자료 확인 필요",
+    "min": 1458000,
+    "max": 1458000,
+    "history": [
+     {
+      "date": "2025-12-04",
+      "price": 1458000,
+      "customer": "고객214",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-12-04",
+      "price": 1458000,
+      "customer": "고객215",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "유사도 보통 (0.71)",
+    "match_score": 0.708,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 301
+   },
+   "2.5": {
+    "name": "4700N 미니PC (OS 미포함)",
+    "matches": [
+     {
+      "score": 1.054,
+      "match_score": 1.054,
+      "cat_rel": null,
+      "contained": true,
+      "name": "4700N 미니PC (OS 미포함)",
+      "category": "미니PC",
+      "kind": "part",
+      "n": 2,
+      "last_price": 868182,
+      "last_price_date": "2025-09-15",
+      "min": 868182,
+      "max": 868182,
+      "note": "",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-15",
+        "price": 868182,
+        "customer": "고객202",
+        "qty": 0
+       },
+       {
+        "date": "2025-09-15",
+        "price": 868182,
+        "customer": "고객203",
+        "qty": 0
+       }
+      ]
+     }
+    ],
+    "suggested": 868182,
+    "suggested_date": "2025-09-15",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "",
+    "min": 868182,
+    "max": 868182,
+    "history": [
+     {
+      "date": "2025-09-15",
+      "price": 868182,
+      "customer": "고객202",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2025-09-15",
+      "price": 868182,
+      "customer": "고객203",
+      "qty": 0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.05)",
+    "match_score": 1.054,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 381
+   },
+   "3": {
+    "name": "NVIDIA Run:ai Essentials Licensing, 8 GPU, 3 Years",
+    "matches": [
+     {
+      "score": 0.719,
+      "match_score": 0.719,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA Run:ai Essentials Licensing, 8 GPU, 3 Years",
+      "category": "ACC",
+      "kind": "license",
+      "n": 2,
+      "last_price": 126000000,
+      "last_price_date": "2026-09-09",
+      "min": 126000000,
+      "max": 126000000,
+      "note": "Run:ai 8GPU 3년. AI Enterprise Essentials와는 별개 제품",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-09",
+        "price": 126000000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 126000000,
+        "customer": "고객6",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.436,
+      "match_score": 0.436,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA AI Enterprise Essentials Subscription per GPU, 3 Years",
+      "category": "DGX B300 S/W",
+      "kind": "license",
+      "n": 4,
+      "last_price": 171150000,
+      "last_price_date": "2026-09-09",
+      "min": 171150000,
+      "max": 171150000,
+      "note": "per GPU 3년 구독. per node·기간이 다른 SKU와 통합 금지",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-03",
+        "price": 171150000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 171150000,
+        "customer": "고객6",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 171150000,
+        "customer": "고객177",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 171150000,
+        "customer": "고객6",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 126000000,
+    "suggested_date": "2026-09-09",
+    "suggested_source": "file",
+    "kind": "license",
+    "caution": null,
+    "note": "Run:ai 8GPU 3년. AI Enterprise Essentials와는 별개 제품",
+    "min": 126000000,
+    "max": 126000000,
+    "history": [
+     {
+      "date": "2026-09-09",
+      "price": 126000000,
+      "customer": "고객177",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 126000000,
+      "customer": "고객6",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "유사도 보통 (0.72)",
+    "match_score": 0.719,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 990000.0,
+    "delta": 125010000.0,
+    "delta_pct": 12627.3,
+    "age_days": 22
+   },
+   "4": {
+    "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.948,
+      "match_score": 0.948,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 33,
+      "last_price": 4000000,
+      "last_price_date": "2026-09-11",
+      "min": 1301120,
+      "max": 4090909,
+      "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객54",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객15",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객57",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.87,
+      "match_score": 0.87,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 32GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 4,
+      "last_price": 2039091,
+      "last_price_date": "2026-07-29",
+      "min": 1800000,
+      "max": 2039091,
+      "note": "용량(32GB)이 달라 64GB와 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-03",
+        "price": 1800000,
+        "customer": "고객44",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-03",
+        "price": 1800000,
+        "customer": "고객45",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-29",
+        "price": 2039091,
+        "customer": "고객76",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-29",
+        "price": 2039091,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.836,
+      "match_score": 0.836,
+      "cat_rel": null,
+      "contained": false,
+      "name": "하이닉스 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 8,
+      "last_price": 3500000,
+      "last_price_date": "2026-06-01",
+      "min": 2400000,
+      "max": 3500000,
+      "note": "속도(5600)가 달라 하이닉스 6400 건과 분리. 벤더가 명시되어 삼성 5600 64GB와도 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 2400000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-08",
+        "price": 2400000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000,
+        "customer": "고객13",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000,
+        "customer": "고객14",
+        "qty": 8.0
+       }
+      ]
+     }
+    ],
+    "suggested": 4000000,
+    "suggested_date": "2026-09-11",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+    "min": 3900000,
+    "max": 4000000,
+    "history": [
+     {
+      "date": "2026-09-11",
+      "price": 4000000,
+      "customer": "고객55",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 3900000,
+      "customer": "고객15",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 3900000,
+      "customer": "고객57",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 3900000,
+      "customer": "고객54",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 3900000,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 3900000,
+      "customer": "고객55",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 4000000,
+      "customer": "고객56",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-28",
+      "price": 4000000,
+      "customer": "고객55",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.95)",
+    "match_score": 0.948,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 20
+   },
+   "5": {
+    "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.847,
+      "match_score": 0.847,
+      "cat_rel": null,
+      "contained": false,
+      "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 5,
+      "last_price": 3458000,
+      "last_price_date": "2026-03-16",
+      "min": 3458000,
+      "max": 3464500,
+      "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객146",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객113",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-16",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.768,
+      "match_score": 0.768,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 33,
+      "last_price": 4000000,
+      "last_price_date": "2026-09-11",
+      "min": 1301120,
+      "max": 4090909,
+      "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객54",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객15",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객57",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.702,
+      "match_score": 0.702,
+      "cat_rel": null,
+      "contained": false,
+      "name": "하이닉스 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 8,
+      "last_price": 3500000,
+      "last_price_date": "2026-06-01",
+      "min": 2400000,
+      "max": 3500000,
+      "note": "속도(5600)가 달라 하이닉스 6400 건과 분리. 벤더가 명시되어 삼성 5600 64GB와도 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 2400000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-08",
+        "price": 2400000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000,
+        "customer": "고객13",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000,
+        "customer": "고객14",
+        "qty": 8.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3458000,
+    "suggested_date": "2026-03-16",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+    "min": 3458000,
+    "max": 3464500,
+    "history": [
+     {
+      "date": "2026-03-16",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객146",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객113",
+      "qty": 8.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.85)",
+    "match_score": 0.847,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 990000.0,
+    "delta": 2468000.0,
+    "delta_pct": 249.3,
+    "age_days": 199
+   },
+   "6": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "matches": [
+     {
+      "score": 0.873,
+      "match_score": 0.873,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 57,
+      "last_price": 23080000,
+      "last_price_date": "2026-09-01",
+      "min": 11500000,
+      "max": 23080000,
+      "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-25",
+        "price": 22500000,
+        "customer": "고객15",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객18",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객18",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.82,
+      "match_score": 0.82,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 4,
+      "last_price": 7220000,
+      "last_price_date": "2026-08-20",
+      "min": 6650000,
+      "max": 7220000,
+      "note": "Server Edition은 별도 SKU. 6.65~7.22M로 워크스테이션판(3.4~5.4M)보다 확연히 높음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객47",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객1",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객2",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.706,
+      "match_score": 0.706,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 36,
+      "last_price": 20600000,
+      "last_price_date": "2026-08-21",
+      "min": 11300000,
+      "max": 21300000,
+      "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-15",
+        "price": 17800000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 18000000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객50",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객51",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객52",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객9",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객10",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 22000000,
+    "suggested_date": "2026-09-01",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+    "min": 22000000,
+    "max": 23080000,
+    "history": [
+     {
+      "date": "2026-09-01",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-25",
+      "price": 22500000,
+      "customer": "고객15",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.87)",
+    "match_score": 0.873,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 30
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "감마대학교",
+    "score": 1.5,
+    "contact": "허준 교수님",
+    "tel": "02-000-0028",
+    "email": "c28@example.com",
+    "last_date": "2026-09-30",
+    "n": 2
+   },
+   {
+    "org": "감마대학교",
+    "score": 1.333,
+    "contact": "허균 교수님",
+    "tel": "02-000-0029",
+    "email": "c29@example.com",
+    "last_date": "2026-09-30",
+    "n": 2
+   },
+   {
+    "org": "감마대학교",
+    "score": 1.167,
+    "contact": "허난설헌 교수님",
+    "tel": "02-000-0030",
+    "email": "c30@example.com",
+    "last_date": "2026-09-29",
+    "n": 2
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.6,
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0001",
+    "email": "c01@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.6,
+    "contact": "홍길순 연구원님",
+    "tel": "02-000-0002",
+    "email": "c02@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.6,
+    "contact": "김철수 님",
+    "tel": "02-000-0003",
+    "email": "c03@example.com",
+    "last_date": "2025-11-10",
+    "n": 2
+   }
+  ]
+ },
+ "normal_price_history_calls": [
+  {
+   "name": "DDR5 ECC/REG ( 64GB )",
+   "kind": "set",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVDIIA RTX PRO 6000 Blackwell Workstation Edition PNY",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA L40S 48GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "DGX B300 8X 288GB Full with Business Std Support, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA MCX653106A-HDAT",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "64GB RDIMM, 6400MT/s",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "ARCTIC P12 Pro",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA A100 80GB (SXM to PCIe)",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "삼성전자 9100 PRO M.2 NVMe SSD 8TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "삼성전자 9100 PRO M.2 NVMe 4TB",
+   "kind": "set",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "GIGABYTE GeForce RTX",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "DDR5 ECC/REG",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "Ultra 9-285K",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "조립식 워크스테이션",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "고속 네트워크 인프라 일괄",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA L4 D6 24GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA L40S 48GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Workstation Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "4700N 미니PC (OS 미포함)",
+   "kind": "set",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Server Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "RedCastle V4.x (SecureOS) 월 정액",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "DDR5 64GB ECC-RDIMM",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "MSI S6053G480RAU8",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA Active Optical Cable 511G 4M",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "4700N 미니PC( OS 미포함)",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "Western Digital BLACK SN850X M.2 NVMe 2TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "2MONS4UD650HOTSWAP-8WATERCOOL",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA Run:ai Essentials Licensing,",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "Samsung DDR5-5600 ECC/REG 64GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "마이크론 DDR-55600 ECC/REG 64GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA RTX PRO 5611 Blackwell Server Edition 43GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ],
+ "fallback": {
+  "suggestions": {
+   "0": {
+    "name": "삼성전자 DDR5-4800 ECC/REG 16GB",
+    "matches": [
+     {
+      "score": 0.602,
+      "match_score": 0.602,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 DDR5-4800 ECC/REG 16GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 2,
+      "last_price": 880000.0000000001,
+      "last_price_date": "2026-08-28",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 880000.0000000001,
+        "customer": "고객55",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 880000.0000000001,
+    "suggested_date": "2026-08-28",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 880000.0000000001,
+    "max": 880000.0000000001,
+    "history": [
+     {
+      "date": "2026-08-28",
+      "price": 880000.0000000001,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "과거 이력이 1건뿐",
+    "match_score": 0.602,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 25000000.0,
+    "delta": -24120000.0,
+    "delta_pct": -96.5,
+    "age_days": 34
+   },
+   "0.0": {
+    "name": "NVIDIA PRO 6000 Blackwell Max-Q Workstation Edition",
+    "matches": [
+     {
+      "score": 0.673,
+      "match_score": 0.673,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 3,
+      "last_price": 10800000.0,
+      "last_price_date": "2025-09-05",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-05",
+        "price": 10800000.0,
+        "customer": "고객133",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.6,
+      "match_score": 0.6,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": 11000000.0,
+      "last_price_date": "2025-10-13",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-13",
+        "price": 11000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.534,
+      "match_score": 0.534,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Server Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 38,
+      "last_price": 18100000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 17600000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 10800000.0,
+    "suggested_date": "2025-09-05",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 10800000.0,
+    "max": 10800000.0,
+    "history": [
+     {
+      "date": "2025-09-05",
+      "price": 10800000.0,
+      "customer": "고객133",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "과거 이력이 1건뿐",
+    "match_score": 0.673,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 391
+   },
+   "0.1": {
+    "name": "NVIDIA L40S 48GB",
+    "matches": [
+     {
+      "score": 1.107,
+      "match_score": 1.107,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 29,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 11500000.0,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000.0,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.798,
+      "match_score": 0.798,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L40S",
+      "category": "GPU",
+      "kind": null,
+      "n": 5,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-19",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-05-27",
+        "price": 10500000.0,
+        "customer": "고객18",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.521,
+      "match_score": 0.521,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L4 24GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 2,
+      "last_price": 3650000.0,
+      "last_price_date": "2026-02-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-02-20",
+        "price": 3650000.0,
+        "customer": "고객36",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 13150000.0,
+    "suggested_date": "2026-08-20",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 11100000.0,
+    "max": 13150000.0,
+    "history": [
+     {
+      "date": "2026-08-20",
+      "price": 13150000.0,
+      "customer": "고객33",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000.0,
+      "customer": "고객31",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-21",
+      "price": 11500000.0,
+      "customer": "고객29",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 11500000.0,
+      "customer": "고객105",
+      "qty": 3.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 11500000.0,
+      "customer": "고객105",
+      "qty": 3.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.11)",
+    "match_score": 1.107,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 1000000.0,
+    "delta": 12150000.0,
+    "delta_pct": 1215.0,
+    "age_days": 42
+   },
+   "0.3": {
+    "name": "NVIDIA MCX653106A-HDAT",
+    "matches": [
+     {
+      "score": 1.072,
+      "match_score": 1.072,
+      "cat_rel": null,
+      "contained": true,
+      "name": "NVIDIA MCX653106A-HDAT",
+      "category": "ACC",
+      "kind": null,
+      "n": 5,
+      "last_price": 1700000.0,
+      "last_price_date": "2026-07-16",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-04-22",
+        "price": 1700000.0,
+        "customer": "고객161",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-25",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.476,
+      "match_score": 0.476,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA H100 80GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 16,
+      "last_price": 51620000.0,
+      "last_price_date": "2026-05-18",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-02-04",
+        "price": 39500000.0,
+        "customer": "고객45",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-03-27",
+        "price": 50000000.0,
+        "customer": "고객126",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 51620000.0,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-18",
+        "price": 51620000.0,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-18",
+        "price": 51620000.0,
+        "customer": "고객23",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.467,
+      "match_score": 0.467,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 29,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 11500000.0,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000.0,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 1700000.0,
+    "suggested_date": "2026-07-16",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 1700000.0,
+    "max": 1700000.0,
+    "history": [
+     {
+      "date": "2026-07-16",
+      "price": 1700000.0,
+      "customer": "고객163",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-16",
+      "price": 1700000.0,
+      "customer": "고객163",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-25",
+      "price": 1700000.0,
+      "customer": "고객163",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-15",
+      "price": 1700000.0,
+      "customer": "고객163",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-22",
+      "price": 1700000.0,
+      "customer": "고객161",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.07)",
+    "match_score": 1.072,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 77
+   },
+   "0.4": {
+    "name": "64GB RDIMM, 6400MT/s",
+    "matches": [
+     {
+      "score": 1.014,
+      "match_score": 1.014,
+      "cat_rel": null,
+      "contained": true,
+      "name": "64GB RDIMM, 6400MT/s",
+      "category": "RAM",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.47,
+      "match_score": 0.47,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5 64GB ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 20,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.449,
+      "match_score": 0.449,
+      "cat_rel": null,
+      "contained": false,
+      "name": "64GB DDR5 ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 7,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 1.014,
+    "suggested_grade": null,
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": 123456.0,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "0.5": {
+    "name": "ARCTIC P12 Pro PST 5팩",
+    "matches": [
+     {
+      "score": 0.621,
+      "match_score": 0.621,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "ARCTIC P12 Pro PST 5팩",
+      "category": "FAN",
+      "kind": null,
+      "n": 13,
+      "last_price": 45100.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-23",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.415,
+      "match_score": 0.415,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "ARCTIC P14 Pro PST CO",
+      "category": "FAN",
+      "kind": null,
+      "n": 4,
+      "last_price": 17900.0,
+      "last_price_date": "2026-08-07",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-07",
+        "price": 17900.0,
+        "customer": "고객49",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 45100.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 45100.0,
+    "max": 45100.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "품목 종류가 다름 (유사도 0.62)",
+    "match_score": 0.621,
+    "suggested_grade": "file",
+    "cat_rel": "mismatch",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "0.6": {
+    "name": "NVIDIA H100 80GB",
+    "matches": [
+     {
+      "score": 0.54,
+      "match_score": 0.54,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA H100 80GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 16,
+      "last_price": 51620000.0,
+      "last_price_date": "2026-05-18",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-02-04",
+        "price": 39500000.0,
+        "customer": "고객45",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-03-27",
+        "price": 50000000.0,
+        "customer": "고객126",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 51620000.0,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-18",
+        "price": 51620000.0,
+        "customer": "고객23",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-18",
+        "price": 51620000.0,
+        "customer": "고객23",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.502,
+      "match_score": 0.502,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA H200 NVL PCIe",
+      "category": "GPU",
+      "kind": null,
+      "n": 22,
+      "last_price": 48500000.0,
+      "last_price_date": "2026-08-11",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-17",
+        "price": 46000000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-04-16",
+        "price": 43000000.0,
+        "customer": "고객36",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-04-30",
+        "price": 43000000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-04-30",
+        "price": 43000000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-11",
+        "price": 48500000.0,
+        "customer": "고객6",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.452,
+      "match_score": 0.452,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA H200 NVL PCIe 141GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 17,
+      "last_price": 43000000.0,
+      "last_price_date": "2026-06-19",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-12",
+        "price": 43000000.0,
+        "customer": "고객238",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-06-12",
+        "price": 43000000.0,
+        "customer": "고객23",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-18",
+        "price": 42800000.0,
+        "customer": "고객23",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 43000000.0,
+        "customer": "고객239",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 39500000.0,
+    "max": 51620000.0,
+    "history": [
+     {
+      "date": "2026-05-18",
+      "price": 51620000.0,
+      "customer": "고객23",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-18",
+      "price": 51620000.0,
+      "customer": "고객23",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-11",
+      "price": 51620000.0,
+      "customer": "고객23",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-27",
+      "price": 50000000.0,
+      "customer": "고객126",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-02-04",
+      "price": 39500000.0,
+      "customer": "고객45",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.540) — 이름만 참고",
+    "match_score": 0.54,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "0.7": {
+    "name": "삼성전자 9100 PRO M.2 NVMe SSD 8TB",
+    "matches": [
+     {
+      "score": 1.014,
+      "match_score": 1.014,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe SSD 8TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.975,
+      "match_score": 0.975,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 12,
+      "last_price": 2088600.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-23",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.774,
+      "match_score": 0.774,
+      "cat_rel": null,
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe 1TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 8,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 2088600.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 2088600.0,
+    "max": 2088600.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.97)",
+    "match_score": 0.975,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "1": {
+    "name": "DELL PRO MAX GB10 4TB",
+    "matches": [
+     {
+      "score": 0.374,
+      "match_score": 0.374,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DELL PRO MAX GB10 4TB",
+      "category": "AI COM",
+      "kind": null,
+      "n": 2,
+      "last_price": 5680000.0,
+      "last_price_date": "2026-02-09",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-02-06",
+        "price": 5680000.0,
+        "customer": "고객154",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-02-09",
+        "price": 5680000.0,
+        "customer": "고객154",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 5680000.0,
+    "max": 5680000.0,
+    "history": [
+     {
+      "date": "2026-02-09",
+      "price": 5680000.0,
+      "customer": "고객154",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-02-06",
+      "price": 5680000.0,
+      "customer": "고객154",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.374) — 이름만 참고",
+    "match_score": 0.374,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 25000000.0,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1.0": {
+    "name": "GIGABYTE GeForce RTX 5090 MASTER ICE 32G",
+    "matches": [
+     {
+      "score": 0.61,
+      "match_score": 0.61,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "GIGABYTE GeForce RTX 5090 MASTER ICE 32G",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.539,
+      "match_score": 0.539,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "GIGABYTE AORUS GeForce RTX 5090 MASTER D7 32GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 3,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.473,
+      "match_score": 0.473,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "갤럭시 Geforce RTX 5080 White",
+      "category": "GPU",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 0.61,
+    "suggested_grade": null,
+    "cat_rel": "match",
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1.1": {
+    "name": "DDR5 ECC/REG ( 64GB )",
+    "matches": [
+     {
+      "score": 0.817,
+      "match_score": 0.817,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5 ECC/REG ( 64GB )",
+      "category": "RAM",
+      "kind": null,
+      "n": 6,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.813,
+      "match_score": 0.813,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5 32GB ECC / REG",
+      "category": "RAM",
+      "kind": null,
+      "n": 5,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.803,
+      "match_score": 0.803,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5 64GB ECC / REG",
+      "category": "RAM",
+      "kind": null,
+      "n": 3,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 0.817,
+    "suggested_grade": null,
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1.2": {
+    "name": "Ultra 9-285K",
+    "matches": [
+     {
+      "score": 1.014,
+      "match_score": 1.014,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Ultra 9-285K",
+      "category": "CPU",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 1.014,
+    "suggested_grade": null,
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 1000000.0,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "1.5": {
+    "name": "NVIDIA L4 24GB",
+    "matches": [
+     {
+      "score": 0.865,
+      "match_score": 0.865,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L4 24GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 2,
+      "last_price": 3650000.0,
+      "last_price_date": "2026-02-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-02-20",
+        "price": 3650000.0,
+        "customer": "고객36",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.735,
+      "match_score": 0.735,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA A10 D6 24GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 5,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.522,
+      "match_score": 0.522,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 29,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 11500000.0,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000.0,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3650000.0,
+    "suggested_date": "2026-02-20",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 3650000.0,
+    "max": 3650000.0,
+    "history": [
+     {
+      "date": "2026-02-20",
+      "price": 3650000.0,
+      "customer": "고객36",
+      "qty": 4.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "과거 이력이 1건뿐",
+    "match_score": 0.865,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 1000000.0,
+    "delta": 2650000.0,
+    "delta_pct": 265.0,
+    "age_days": 223
+   },
+   "1.6": {
+    "name": "NVIDIA L40S 48GB",
+    "matches": [
+     {
+      "score": 0.957,
+      "match_score": 0.957,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "NVIDIA L40S 48GB",
+      "category": "GPU",
+      "kind": null,
+      "n": 29,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-20",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 11500000.0,
+        "customer": "고객105",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 11500000.0,
+        "customer": "고객29",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-24",
+        "price": 11100000.0,
+        "customer": "고객31",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.648,
+      "match_score": 0.648,
+      "cat_rel": "mismatch",
+      "contained": false,
+      "name": "NVIDIA L40S",
+      "category": "GPU",
+      "kind": null,
+      "n": 5,
+      "last_price": 13150000.0,
+      "last_price_date": "2026-08-19",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-05-27",
+        "price": 10500000.0,
+        "customer": "고객18",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 13150000.0,
+        "customer": "고객33",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.382,
+      "match_score": 0.382,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA MCX653106A-HDAT",
+      "category": "ACC",
+      "kind": null,
+      "n": 5,
+      "last_price": 1700000.0,
+      "last_price_date": "2026-07-16",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-04-22",
+        "price": 1700000.0,
+        "customer": "고객161",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-25",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-16",
+        "price": 1700000.0,
+        "customer": "고객163",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 13150000.0,
+    "suggested_date": "2026-08-20",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 11100000.0,
+    "max": 13150000.0,
+    "history": [
+     {
+      "date": "2026-08-20",
+      "price": 13150000.0,
+      "customer": "고객33",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-24",
+      "price": 11100000.0,
+      "customer": "고객31",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-21",
+      "price": 11500000.0,
+      "customer": "고객29",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 11500000.0,
+      "customer": "고객105",
+      "qty": 3.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 11500000.0,
+      "customer": "고객105",
+      "qty": 3.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "품목 종류가 다름 (유사도 0.96)",
+    "match_score": 0.957,
+    "suggested_grade": "file",
+    "cat_rel": "mismatch",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 42
+   },
+   "1.7": {
+    "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+    "matches": [
+     {
+      "score": 0.801,
+      "match_score": 0.801,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": 11000000.0,
+      "last_price_date": "2025-10-13",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-13",
+        "price": 11000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.745,
+      "match_score": 0.745,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Server Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 38,
+      "last_price": 18100000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 17600000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.706,
+      "match_score": 0.706,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 3,
+      "last_price": 10800000.0,
+      "last_price_date": "2025-09-05",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-05",
+        "price": 10800000.0,
+        "customer": "고객133",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 11000000.0,
+    "suggested_date": "2025-10-13",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 11000000.0,
+    "max": 11000000.0,
+    "history": [
+     {
+      "date": "2025-10-13",
+      "price": 11000000.0,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "과거 이력이 1건뿐",
+    "match_score": 0.801,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 123456.0,
+    "delta": 10876544.0,
+    "delta_pct": 8810.1,
+    "age_days": 353
+   },
+   "2.0": {
+    "name": "NVIDIA PRO 6000 Server Edition",
+    "matches": [
+     {
+      "score": 0.988,
+      "match_score": 0.988,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Server Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 38,
+      "last_price": 18100000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 17600000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.609,
+      "match_score": 0.609,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": 11000000.0,
+      "last_price_date": "2025-10-13",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-13",
+        "price": 11000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.584,
+      "match_score": 0.584,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "category": "GPU",
+      "kind": null,
+      "n": 9,
+      "last_price": 10900000.0,
+      "last_price_date": "2026-06-09",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-11-03",
+        "price": 9400000.0,
+        "customer": "고객197",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-11-19",
+        "price": 9700000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-01-12",
+        "price": 10000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-09",
+        "price": 10900000.0,
+        "customer": "고객26",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 18100000.0,
+    "suggested_date": "2026-06-08",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 14920000.0,
+    "max": 18100000.0,
+    "history": [
+     {
+      "date": "2026-06-08",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-01",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-26",
+      "price": 17600000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-11",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-08",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.99)",
+    "match_score": 0.988,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 115
+   },
+   "2.1": {
+    "name": "RedCastle Application Server For Agent",
+    "matches": [
+     {
+      "score": 0.366,
+      "match_score": 0.366,
+      "cat_rel": null,
+      "contained": false,
+      "name": "RedCastle Application Server For Agent",
+      "category": "RedCastle V4.0",
+      "kind": null,
+      "n": 14,
+      "last_price": 2922000.0,
+      "last_price_date": "2026-08-11",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-04-10",
+        "price": 2922000.0,
+        "customer": "고객6",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-04-27",
+        "price": 2922000.0,
+        "customer": "고객6",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-07-15",
+        "price": 2922000.0,
+        "customer": "고객6",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-07-21",
+        "price": 2922000.0,
+        "customer": "고객6",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-08-11",
+        "price": 2922000.0,
+        "customer": "고객6",
+        "qty": 10.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 2922000.0,
+    "max": 2922000.0,
+    "history": [
+     {
+      "date": "2026-08-11",
+      "price": 2922000.0,
+      "customer": "고객6",
+      "qty": 10.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-21",
+      "price": 2922000.0,
+      "customer": "고객6",
+      "qty": 10.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-15",
+      "price": 2922000.0,
+      "customer": "고객6",
+      "qty": 10.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-27",
+      "price": 2922000.0,
+      "customer": "고객6",
+      "qty": 10.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-10",
+      "price": 2922000.0,
+      "customer": "고객6",
+      "qty": 10.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.366) — 이름만 참고",
+    "match_score": 0.366,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "2.2": {
+    "name": "DDR5 64GB ECC-RDIMM",
+    "matches": [
+     {
+      "score": 1.06,
+      "match_score": 1.06,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5 64GB ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 20,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.934,
+      "match_score": 0.934,
+      "cat_rel": null,
+      "contained": false,
+      "name": "64GB DDR5 ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 7,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.8,
+      "match_score": 0.8,
+      "cat_rel": null,
+      "contained": false,
+      "name": "64GB DDR5 5600 ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 3,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 1.06,
+    "suggested_grade": null,
+    "cat_rel": null,
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "2.6": {
+    "name": "Western Digital BLACK SN850X M.2 NVMe 2TB",
+    "matches": [
+     {
+      "score": 0.864,
+      "match_score": 0.864,
+      "cat_rel": "mismatch",
+      "contained": true,
+      "name": "Western Digital BLACK SN850X M.2 NVMe 2TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.789,
+      "match_score": 0.789,
+      "cat_rel": "mismatch",
+      "contained": true,
+      "name": "Western Digital WD BLACK SN850X M.2 NVMe (2TB)",
+      "category": "SSD",
+      "kind": null,
+      "n": 4,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.783,
+      "match_score": 0.783,
+      "cat_rel": "mismatch",
+      "contained": true,
+      "name": "Western Digital WD BLACK SN850X M.2 NVMe 2tb",
+      "category": "SSD",
+      "kind": null,
+      "n": 3,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 0.864,
+    "suggested_grade": null,
+    "cat_rel": "mismatch",
+    "gated": true,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "3": {
+    "name": "GIGABYTE TRX50 AI TOP",
+    "matches": [
+     {
+      "score": 0.353,
+      "match_score": 0.353,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "GIGABYTE TRX50 AI TOP",
+      "category": "BOARD",
+      "kind": null,
+      "n": 17,
+      "last_price": 1392600.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-23",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 1392600.0,
+    "max": 1392600.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "유사도 낮음 (0.353) — 이름만 참고",
+    "match_score": 0.353,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 990000.0,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "4": {
+    "name": "Samsung DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 1.014,
+      "match_score": 1.014,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Samsung DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.944,
+      "match_score": 0.944,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 27,
+      "last_price": 3500000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-08",
+        "price": 3500000.0,
+        "customer": "고객14",
+        "qty": 6.0
+       }
+      ]
+     },
+     {
+      "score": 0.899,
+      "match_score": 0.899,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5-5600 ECC/REG (64GB)",
+      "category": "RAM",
+      "kind": null,
+      "n": 21,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 3500000.0,
+    "suggested_date": "2026-06-08",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 3500000.0,
+    "max": 3500000.0,
+    "history": [
+     {
+      "date": "2026-06-08",
+      "price": 3500000.0,
+      "customer": "고객14",
+      "qty": 6.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "과거 이력이 1건뿐",
+    "match_score": 0.944,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": "DDR5-5600 ECC/REG 64GB",
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 115
+   },
+   "5": {
+    "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.851,
+      "match_score": 0.851,
+      "cat_rel": null,
+      "contained": false,
+      "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 6,
+      "last_price": 3458000.0,
+      "last_price_date": "2026-03-16",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-11",
+        "price": 3464500.0,
+        "customer": "고객113",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3458000.0,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-16",
+        "price": 3458000.0,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.764,
+      "match_score": 0.764,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 27,
+      "last_price": 3500000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-08",
+        "price": 3500000.0,
+        "customer": "고객14",
+        "qty": 6.0
+       }
+      ]
+     },
+     {
+      "score": 0.719,
+      "match_score": 0.719,
+      "cat_rel": null,
+      "contained": false,
+      "name": "DDR5-5600 ECC/REG (64GB)",
+      "category": "RAM",
+      "kind": null,
+      "n": 21,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 3458000.0,
+    "suggested_date": "2026-03-16",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 3458000.0,
+    "max": 3464500.0,
+    "history": [
+     {
+      "date": "2026-03-16",
+      "price": 3458000.0,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500.0,
+      "customer": "고객113",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000.0,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.85)",
+    "match_score": 0.851,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 990000.0,
+    "delta": 2468000.0,
+    "delta_pct": 249.3,
+    "age_days": 199
+   },
+   "6": {
+    "name": "NVIDIA PRO 6000 Server Edition",
+    "matches": [
+     {
+      "score": 0.653,
+      "match_score": 0.653,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Server Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 38,
+      "last_price": 18100000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 17600000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.518,
+      "match_score": 0.518,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 3,
+      "last_price": 10800000.0,
+      "last_price_date": "2025-09-05",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-05",
+        "price": 10800000.0,
+        "customer": "고객133",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.439,
+      "match_score": 0.439,
+      "cat_rel": null,
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": 11000000.0,
+      "last_price_date": "2025-10-13",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-13",
+        "price": 11000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 18100000.0,
+    "suggested_date": "2026-06-08",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 14920000.0,
+    "max": 18100000.0,
+    "history": [
+     {
+      "date": "2026-06-08",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-01",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-26",
+      "price": 17600000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-11",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-08",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "medium",
+    "confidence_reason": "유사도 보통 (0.65)",
+    "match_score": 0.653,
+    "suggested_grade": "file",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 115
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "감마대학교",
+    "score": 1.5,
+    "contact": "허준 교수님",
+    "tel": "02-000-0028",
+    "email": "c28@example.com",
+    "last_date": "2026-09-30",
+    "n": 2
+   },
+   {
+    "org": "감마대학교",
+    "score": 1.333,
+    "contact": "허균 교수님",
+    "tel": "02-000-0029",
+    "email": "c29@example.com",
+    "last_date": "2026-09-30",
+    "n": 2
+   },
+   {
+    "org": "감마대학교",
+    "score": 1.167,
+    "contact": "허난설헌 교수님",
+    "tel": "02-000-0030",
+    "email": "c30@example.com",
+    "last_date": "2026-09-29",
+    "n": 2
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.6,
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0001",
+    "email": "c01@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.6,
+    "contact": "홍길순 연구원님",
+    "tel": "02-000-0002",
+    "email": "c02@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.6,
+    "contact": "김철수 님",
+    "tel": "02-000-0003",
+    "email": "c03@example.com",
+    "last_date": "2025-11-10",
+    "n": 2
+   }
+  ]
+ },
+ "fallback_price_history_calls": [
+  {
+   "name": "DDR5 ECC/REG ( 64GB )",
+   "kind": "set",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVDIIA RTX PRO 6000 Blackwell Workstation Edition PNY",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA L40S 48GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "DGX B300 8X 288GB Full with Business Std Support, 3 Years",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA MCX653106A-HDAT",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "64GB RDIMM, 6400MT/s",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "ARCTIC P12 Pro",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA A100 80GB (SXM to PCIe)",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "삼성전자 9100 PRO M.2 NVMe SSD 8TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "삼성전자 9100 PRO M.2 NVMe 4TB",
+   "kind": "set",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "GIGABYTE GeForce RTX",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "DDR5 ECC/REG",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "Ultra 9-285K",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "조립식 워크스테이션",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "고속 네트워크 인프라 일괄",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA L4 D6 24GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA L40S 48GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Workstation Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "4700N 미니PC (OS 미포함)",
+   "kind": "set",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Server Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "RedCastle V4.x (SecureOS) 월 정액",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "DDR5 64GB ECC-RDIMM",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "MSI S6053G480RAU8",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA Active Optical Cable 511G 4M",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "4700N 미니PC( OS 미포함)",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "Western Digital BLACK SN850X M.2 NVMe 2TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "2MONS4UD650HOTSWAP-8WATERCOOL",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA Run:ai Essentials Licensing,",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "Samsung DDR5-5600 ECC/REG 64GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "마이크론 DDR-55600 ECC/REG 64GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "NVIDIA RTX PRO 5611 Blackwell Server Edition 43GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ]
+}

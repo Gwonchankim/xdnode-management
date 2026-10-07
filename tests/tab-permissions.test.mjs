@@ -472,7 +472,8 @@ test('source guard: every mutating route writes an audit row', () => {
   for (const file of routeFiles().filter((file) => !SESSION_ONLY.test(file))) {
     const source = read(file);
     // R5: 읽음 위치 PUT 은 감사하지 않는다(Design §4.2.8). messenger-enhancement(ME-MD9, DD14): 개인 상태 chat/me 도 같다.
-    if (file === 'app/api/chat/read-state/route.ts' || file === 'app/api/chat/me/route.ts') {
+    // quote-tool QT-Q11(Design §3.5): 읽기만 하는 계산 POST(quote/compute)도 감사하지 않는다. 읽기 전용 소스 가드는 tests/erp-platform.test.mjs 에 있다.
+    if (file === 'app/api/chat/read-state/route.ts' || file === 'app/api/chat/me/route.ts' || file === 'app/api/quote/compute/route.ts') {
       assert.doesNotMatch(source, /writeErpAudit\(/, file);
       continue;
     }

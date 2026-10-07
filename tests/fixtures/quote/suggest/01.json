@@ -1,0 +1,3082 @@
+{
+ "quote": {
+  "customer": {
+   "org": "가나대학교 산학협력단",
+   "contact": "이영희 님",
+   "tel": "010-0000-0000",
+   "email": "customer@example.com"
+  },
+  "terms": {
+   "valid_weeks": 1,
+   "delivery": "협의 후 결정",
+   "payment": "현금결제",
+   "place": "귀사 지정 장소",
+   "stamp_omitted": true
+  },
+  "staff": {
+   "name": "담당자 팀장",
+   "tel": "010-1234-5678",
+   "email": "staff@example.com"
+  },
+  "issue_date": "2026-09-17",
+  "lines": [
+   {
+    "label": "Server",
+    "name": "Gigabyte Server System G494-SB0-AAP2",
+    "items": [
+     {
+      "category": "Chassis",
+      "spec": "Gigabyte Server System G494-SB0-AAP2\n\nSupports up to 8 x Dual slot Gen5 GPUs\nConditionally supports 8 x NVIDIA H200 NVL PCIe GPUs with 4-way NVLink bridges*\nDual Intel® Xeon® 6700/6500-Series Processors\n8-Channel DDR5 RDIMM / MRDIMM, 32 x DIMMs\nDual ROM Architecture\n2 x 10Gb/s LAN ports via Intel® X710-AT2\n8 x 2.5\" Gen5 NVMe/SATA/SAS-4 hot-swap bays\n4 x 2.5\" SATA/SAS-4 hot-swap bays\n8 x FHFL PCIe Gen5 x16 slots for GPUs\n1 x FHHL PCIe Gen5 x8 slot on the front side\nQuad 3000W 80 PLUS Titanium redundant power supply\n1x MegaRaid 9500-8i + SFF-8654 (SlimSAS) to 2 X MCIO x4",
+      "qty": 1.0,
+      "extra_categories": [
+       "Board"
+      ]
+     },
+     {
+      "category": "CPU ",
+      "spec": "Intel® Xeon® 6 6515P",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "RAM",
+      "spec": "64GB DDR5 ECC-RDIMM",
+      "qty": 16.0,
+      "extra_categories": []
+     },
+     {
+      "category": "SSD",
+      "spec": "삼성전자 PM9A3 U.2 3.84TB",
+      "qty": 2.0,
+      "extra_categories": []
+     },
+     {
+      "category": "GPU",
+      "spec": "NVIDIA PRO 6000 Server Edition",
+      "qty": 8.0,
+      "extra_categories": []
+     },
+     {
+      "category": "GPU",
+      "spec": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "qty": 8.0,
+      "extra_categories": []
+     }
+    ],
+    "sets": 1.0,
+    "unit_price": 278700000.0,
+    "notes": []
+   }
+  ],
+  "remarks": [
+   "- 3년 무상 보증"
+  ],
+  "sheet_name": "견적 2EA"
+ },
+ "normal": {
+  "suggestions": {
+   "0": {
+    "name": "Gigabyte Server System G494-SB0-AAP2",
+    "matches": [
+     {
+      "score": 1.143,
+      "match_score": 1.143,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Gigabyte Server System G494-SB0-AAP2",
+      "category": "Server",
+      "kind": "system",
+      "n": 14,
+      "last_price": 278700000,
+      "last_price_date": "2026-09-11",
+      "min": 84240000,
+      "max": 278700000,
+      "note": "표기만 다른 동일 모델. 세트가와 부품가 혼재 (1,350만 베어본 ~ 4.96억 세트가)",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-02",
+        "price": 150716000,
+        "customer": "고객90",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 169980000,
+        "customer": "고객92",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 169980000,
+        "customer": "고객93",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 169980000,
+        "customer": "고객93",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 266700000,
+        "customer": "고객94",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 266700000,
+        "customer": "고객14",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 278700000,
+        "customer": "고객94",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 278700000,
+        "customer": "고객14",
+        "qty": 0
+       }
+      ]
+     },
+     {
+      "score": 0.96,
+      "match_score": 0.96,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Gigabyte Server System G494-SB4-AAP2",
+      "category": "Server",
+      "kind": "system",
+      "n": 14,
+      "last_price": 28100000,
+      "last_price_date": "2026-01-07",
+      "min": 14400000,
+      "max": 212800000,
+      "note": "표기만 다른 동일 모델. 세트가와 부품가 혼재 (1,440만 베어본 ~ 4.3억 세트가)",
+      "caution": "최근 6건 안에서 단가가 8.4배 차이 납니다 (25,454,545~212,800,000원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+      "price_history": [
+       {
+        "date": "2025-12-23",
+        "price": 62000000,
+        "customer": "고객97",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-01-05",
+        "price": 212800000,
+        "customer": "고객99",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-01-05",
+        "price": 212800000,
+        "customer": "고객100",
+        "qty": 0
+       },
+       {
+        "date": "2026-01-07",
+        "price": 25454545,
+        "customer": "고객101",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-01-07",
+        "price": 25454545,
+        "customer": "고객98",
+        "qty": 0
+       },
+       {
+        "date": "2026-01-07",
+        "price": 27000000,
+        "customer": "고객97",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-01-07",
+        "price": 27000000,
+        "customer": "고객98",
+        "qty": 0
+       },
+       {
+        "date": "2026-01-07",
+        "price": 28100000,
+        "customer": "고객97",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.935,
+      "match_score": 0.935,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Gigabyte Server System G494-ZB4-AAP2",
+      "category": "Server",
+      "kind": "system",
+      "n": 7,
+      "last_price": 281400000,
+      "last_price_date": "2026-09-04",
+      "min": 68181000,
+      "max": 281400000,
+      "note": "SB4와 모델 넘버가 달라 별개 제품. 세트가 (6,818만~2.81억)",
+      "caution": "최근 6건 안에서 단가가 4.1배 차이 납니다 (68,181,000~281,400,000원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+      "price_history": [
+       {
+        "date": "2026-06-15",
+        "price": 68181000,
+        "customer": "고객174",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 68181000,
+        "customer": "고객175",
+        "qty": 0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 86500000,
+        "customer": "고객175",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-04",
+        "price": 86500000,
+        "customer": "고객175",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-04",
+        "price": 281400000,
+        "customer": "고객44",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-04",
+        "price": 281400000,
+        "customer": "고객45",
+        "qty": 0
+       }
+      ]
+     }
+    ],
+    "suggested": 9900000.5,
+    "suggested_date": "2026-09-28",
+    "suggested_source": "issued",
+    "kind": "system",
+    "caution": null,
+    "note": "표기만 다른 동일 모델. 세트가와 부품가 혼재 (1,350만 베어본 ~ 4.96억 세트가)",
+    "min": 9900000.5,
+    "max": 278700000,
+    "history": [
+     {
+      "date": "2026-09-28",
+      "price": 9900000.5,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-09-11",
+      "price": 278700000,
+      "customer": "고객94",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-11",
+      "price": 278700000,
+      "customer": "고객14",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 169980000,
+      "customer": "고객92",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 169980000,
+      "customer": "고객93",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 169980000,
+      "customer": "고객93",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 266700000,
+      "customer": "고객94",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 266700000,
+      "customer": "고객14",
+      "qty": 0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.143,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 278700000.0,
+    "delta": -268799999.5,
+    "delta_pct": -96.4,
+    "age_days": 3
+   },
+   "0.0": {
+    "name": "Gigabyte Server System G494-SB0-AAP2",
+    "matches": [],
+    "suggested": 105000.0,
+    "suggested_date": "2026-09-30",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 50200.0,
+    "max": 105000.0,
+    "history": [
+     {
+      "date": "2026-09-30",
+      "price": 105000.0,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-09-15",
+      "price": 50800.0,
+      "customer": "고객11",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-08-15",
+      "price": 50700.0,
+      "customer": "고객10",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-07-15",
+      "price": 50600.0,
+      "customer": "고객9",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-06-15",
+      "price": 50500.0,
+      "customer": "고객11",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-05-15",
+      "price": 50400.0,
+      "customer": "고객10",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-05-10",
+      "price": 100000.0,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-04-15",
+      "price": 50300.0,
+      "customer": "고객9",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": null,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 1
+   },
+   "0.1": {
+    "name": "Intel Xeon 6515P",
+    "matches": [
+     {
+      "score": 1.112,
+      "match_score": 1.112,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "Intel Xeon 6515P",
+      "category": "CPU",
+      "kind": "part",
+      "n": 3,
+      "last_price": 1670000,
+      "last_price_date": "2026-05-12",
+      "min": 1670000,
+      "max": 1670000,
+      "note": "모델 넘버 별개",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-04-29",
+        "price": 1670000,
+        "customer": "고객54",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-04-29",
+        "price": 1670000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-12",
+        "price": 1670000,
+        "customer": "고객55",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.863,
+      "match_score": 0.863,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "Intel Xeon 6530P",
+      "category": "CPU",
+      "kind": "part",
+      "n": 18,
+      "last_price": 3484500,
+      "last_price_date": "2026-06-08",
+      "min": 3300000,
+      "max": 3580500,
+      "note": "'Processor' 접미사와 등록상표 기호 유무만 다른 동일 모델. 단가 3.30~3.58M으로 연속",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-11",
+        "price": 3300000,
+        "customer": "고객53",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 3300000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 3300000,
+        "customer": "고객13",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 3300000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3484500,
+        "customer": "고객53",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3484500,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 3484500,
+        "customer": "고객53",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 3484500,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.819,
+      "match_score": 0.819,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "Intel Xeon 6507P",
+      "category": "CPU",
+      "kind": "part",
+      "n": 2,
+      "last_price": 1970000,
+      "last_price_date": "2026-07-02",
+      "min": 1970000,
+      "max": 1970000,
+      "note": "모델 넘버 별개",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-02",
+        "price": 1970000,
+        "customer": "고객44",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 1970000,
+        "customer": "고객45",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 200000.0,
+    "suggested_date": "2026.09.20",
+    "suggested_source": "issued",
+    "kind": "part",
+    "caution": null,
+    "note": "모델 넘버 별개",
+    "min": 200000.0,
+    "max": 1670000,
+    "history": [
+     {
+      "date": "2026.09.20",
+      "price": 200000.0,
+      "customer": "고객1",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-05-12",
+      "price": 1670000,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-29",
+      "price": 1670000,
+      "customer": "고객54",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-29",
+      "price": 1670000,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "미확정 견적의 단가 (발송 확인 전)",
+    "match_score": 1.112,
+    "suggested_grade": "draft",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 11
+   },
+   "0.2": {
+    "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 0.762,
+      "match_score": 0.762,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "마이크론 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 5,
+      "last_price": 3458000,
+      "last_price_date": "2026-03-16",
+      "min": 3458000,
+      "max": 3464500,
+      "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객146",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-11",
+        "price": 3464500,
+        "customer": "고객113",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-03-16",
+        "price": 3458000,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.655,
+      "match_score": 0.655,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 33,
+      "last_price": 4000000,
+      "last_price_date": "2026-09-11",
+      "min": 1301120,
+      "max": 4090909,
+      "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객54",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객15",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객57",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.641,
+      "match_score": 0.641,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 16,
+      "last_price": 4580000,
+      "last_price_date": "2026-09-10",
+      "min": 2750000,
+      "max": 4580000,
+      "note": "PC5-51200 = DDR5-6400 동일 규격. 벤더 미표기 2건(2.75M / 3.85M)은 하이닉스 표기 건의 단가대(2.37~10.11M, 최근 4.58M) 안에 들고 해당 기간 6400 ECC/REG 64GB 공급 표기가 하이닉스뿐이라 통합. 하이닉스 건의 최고 10.11M은 다량/세트 단가로 보여 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-12",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3600000,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3458000,
+    "suggested_date": "2026-03-16",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "벤더가 명시되어 삼성·하이닉스 동급 제품과 분리",
+    "min": 3458000,
+    "max": 3464500,
+    "history": [
+     {
+      "date": "2026-03-16",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3458000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객146",
+      "qty": 8.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-11",
+      "price": 3464500,
+      "customer": "고객113",
+      "qty": 8.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.76)",
+    "match_score": 0.762,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 199
+   },
+   "0.3": {
+    "name": "삼성전자 PM9A3 U.2 NVMe 7.68TB",
+    "matches": [
+     {
+      "score": 0.858,
+      "match_score": 0.858,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 PM9A3 U.2 NVMe 7.68TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 10,
+      "last_price": 3240000,
+      "last_price_date": "2026-05-18",
+      "min": 3240000,
+      "max": 4158000,
+      "note": "벤더 표기 유무만 차이. 최근 단가 3,240,000원으로 양쪽이 정확히 일치",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-20",
+        "price": 4067000,
+        "customer": "고객146",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-03-20",
+        "price": 4067000,
+        "customer": "고객113",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-04-13",
+        "price": 3240000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-04-13",
+        "price": 3240000,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-04-14",
+        "price": 3240000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-04-14",
+        "price": 3240000,
+        "customer": "고객113",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-18",
+        "price": 3240000,
+        "customer": "고객146",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-18",
+        "price": 3240000,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.823,
+      "match_score": 0.823,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 PM9A3 U.2 NVMe 960GB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 21,
+      "last_price": 1285000,
+      "last_price_date": "2026-07-29",
+      "min": 770000,
+      "max": 1285000,
+      "note": "'삼성 / 삼성전자 / 벤더 미표기'만 다른 동일 규격. 단가 770,000~1,285,000원(1.7배)으로 연속 범위",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-01",
+        "price": 1150000,
+        "customer": "고객53",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 1150000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 1150000,
+        "customer": "고객53",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 1150000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 770000,
+        "customer": "고객44",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 770000,
+        "customer": "고객45",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-29",
+        "price": 1285000,
+        "customer": "고객76",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-29",
+        "price": 1285000,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.815,
+      "match_score": 0.815,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "Samsung PM9A3 U.2 NVMe 1.92TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 3,
+      "last_price": 1650000,
+      "last_price_date": "2026-03-03",
+      "min": 1100000,
+      "max": 1650000,
+      "note": "확인 필요: 위 '삼성전자 PM9A3 U.2 NVMe 1.92TB'와 동일 규격으로 보이나 단가 차이가 커 분리. 960GB(약 1.1M)·7.68TB(약 3.24M) 시세와 비교하면 이쪽(1.10~1.65M)이 정상 단가대",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-03",
+        "price": 1100000,
+        "customer": "고객201",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-03-03",
+        "price": 1650000,
+        "customer": "고객201",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-03-03",
+        "price": 1650000,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3240000,
+    "suggested_date": "2026-05-18",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "벤더 표기 유무만 차이. 최근 단가 3,240,000원으로 양쪽이 정확히 일치",
+    "min": 800000.0,
+    "max": 4067000,
+    "history": [
+     {
+      "date": "2026-05-18",
+      "price": 3240000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-18",
+      "price": 3240000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-14",
+      "price": 3240000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-14",
+      "price": 3240000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-13",
+      "price": 3240000,
+      "customer": "고객146",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-13",
+      "price": 3240000,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-20",
+      "price": 4067000,
+      "customer": "고객146",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-20",
+      "price": 4067000,
+      "customer": "고객113",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 0.858,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 136
+   },
+   "0.4": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "matches": [
+     {
+      "score": 1.17,
+      "match_score": 1.17,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 57,
+      "last_price": 23080000,
+      "last_price_date": "2026-09-01",
+      "min": 11500000,
+      "max": 23080000,
+      "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-25",
+        "price": 22500000,
+        "customer": "고객15",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객18",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객18",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.869,
+      "match_score": 0.869,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 36,
+      "last_price": 20600000,
+      "last_price_date": "2026-08-21",
+      "min": 11300000,
+      "max": 21300000,
+      "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-15",
+        "price": 17800000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 18000000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객50",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객51",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객52",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객9",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객10",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.72,
+      "match_score": 0.72,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 4,
+      "last_price": 7220000,
+      "last_price_date": "2026-08-20",
+      "min": 6650000,
+      "max": 7220000,
+      "note": "Server Edition은 별도 SKU. 6.65~7.22M로 워크스테이션판(3.4~5.4M)보다 확연히 높음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객47",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객1",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객2",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 22000000,
+    "suggested_date": "2026-09-01",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+    "min": 500000.0,
+    "max": 23080000,
+    "history": [
+     {
+      "date": "2026-09-01",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-25",
+      "price": 22500000,
+      "customer": "고객15",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.17,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 30
+   },
+   "0.5": {
+    "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "matches": [
+     {
+      "score": 1.17,
+      "match_score": 1.17,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 57,
+      "last_price": 23080000,
+      "last_price_date": "2026-09-01",
+      "min": 11500000,
+      "max": 23080000,
+      "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-25",
+        "price": 22500000,
+        "customer": "고객15",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-26",
+        "price": 22000000,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22000000,
+        "customer": "고객16",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 22800000,
+        "customer": "고객18",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객17",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-01",
+        "price": 23080000,
+        "customer": "고객18",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.95,
+      "match_score": 0.95,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX PRO 4500 Blackwell Server Edition 32GB",
+      "category": "GPU",
+      "kind": "part",
+      "n": 4,
+      "last_price": 7220000,
+      "last_price_date": "2026-08-20",
+      "min": 6650000,
+      "max": 7220000,
+      "note": "Server Edition은 별도 SKU. 6.65~7.22M로 워크스테이션판(3.4~5.4M)보다 확연히 높음.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객47",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-28",
+        "price": 6650000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객1",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-20",
+        "price": 7220000,
+        "customer": "고객2",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.947,
+      "match_score": 0.947,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+      "category": "GPU",
+      "kind": "part",
+      "n": 36,
+      "last_price": 20600000,
+      "last_price_date": "2026-08-21",
+      "min": 11300000,
+      "max": 21300000,
+      "note": "일반(600W) Workstation Edition. PNY/Retail은 유통채널 표기일 뿐 단가 동일(11.30M vs 11.32M). Max-Q 및 Server Edition과는 분리 유지.",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-15",
+        "price": 17800000,
+        "customer": "고객48",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 18000000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객50",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 20750000,
+        "customer": "고객51",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객52",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-19",
+        "price": 21300000,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객9",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-21",
+        "price": 20600000,
+        "customer": "고객10",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 22000000,
+    "suggested_date": "2026-09-01",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "동일 SKU의 표기 흔들림(RTX 생략/PRO6000 붙여쓰기/96GB·D7 병기/Power Cable 동봉 표기). 단가가 2025년 11.5~14M에서 2026년 17~23M으로 연속 상승하며 각 표기 밴드가 서로 겹침.",
+    "min": 22000000,
+    "max": 23080000,
+    "history": [
+     {
+      "date": "2026-09-01",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 22800000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객17",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-01",
+      "price": 23080000,
+      "customer": "고객18",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객16",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-26",
+      "price": 22000000,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-25",
+      "price": 22500000,
+      "customer": "고객15",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.17)",
+    "match_score": 1.17,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 30
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "가나대학교 산학협력단",
+    "score": 1.5,
+    "contact": "이영희 님",
+    "tel": "02-000-0004",
+    "email": "c04@example.com",
+    "last_date": "2026-05-01",
+    "n": 3
+   },
+   {
+    "org": "가나대학교 산학협력단",
+    "score": 1.0,
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0005",
+    "email": "c05@example.com",
+    "last_date": null,
+    "n": 1
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.625,
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0001",
+    "email": "c01@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.625,
+    "contact": "홍길순 연구원님",
+    "tel": "02-000-0002",
+    "email": "c02@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.625,
+    "contact": "김철수 님",
+    "tel": "02-000-0003",
+    "email": "c03@example.com",
+    "last_date": "2025-11-10",
+    "n": 2
+   }
+  ]
+ },
+ "normal_price_history_calls": [
+  {
+   "name": "Gigabyte Server System G494-SB0-AAP2",
+   "kind": "set",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-09-28",
+     "price": 9900000.5,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-03-10",
+     "price": 10000000.0,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Gigabyte Server System G494-SB0-AAP2",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-09-30",
+     "price": 105000.0,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-09-15",
+     "price": 50800.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-08-15",
+     "price": 50700.0,
+     "customer": "고객10",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-15",
+     "price": 50600.0,
+     "customer": "고객9",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-06-15",
+     "price": 50500.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-05-15",
+     "price": 50400.0,
+     "customer": "고객10",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-05-10",
+     "price": 100000.0,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-04-15",
+     "price": 50300.0,
+     "customer": "고객9",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-03-15",
+     "price": 51100.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-03-15",
+     "price": 50200.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Intel® Xeon® 6 6515P",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026.09.20",
+     "price": 200000.0,
+     "customer": "고객1",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "Intel® Xeon® 6 6515P",
+     "status": "draft"
+    }
+   ]
+  },
+  {
+   "name": "64GB DDR5 ECC-RDIMM",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "삼성전자 PM9A3 U.2 3.84TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2025-12-31",
+     "price": 800000.0,
+     "customer": "고객1",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "삼성전자 PM9A3 U.2 3.84TB",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA PRO 6000 Server Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-07-08",
+     "price": null,
+     "customer": "고객1",
+     "qty": 8.0,
+     "kind": "item",
+     "name": "NVIDIA PRO 6000 Server Edition",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 500000.0,
+     "customer": "고객1",
+     "qty": 8.0,
+     "kind": "item",
+     "name": "NVIDIA PRO 6000 Server Edition",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 0.0,
+     "customer": "고객1",
+     "qty": 8.0,
+     "kind": "item",
+     "name": "NVIDIA PRO 6000 Server Edition",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ],
+ "fallback": {
+  "suggestions": {
+   "0": {
+    "name": "Gigabyte Server System G494-SB0-AAP2",
+    "matches": [
+     {
+      "score": 1.17,
+      "match_score": 1.17,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Gigabyte Server System G494-SB0-AAP2",
+      "category": "Server",
+      "kind": null,
+      "n": 86,
+      "last_price": 278700000.0,
+      "last_price_date": "2026-09-11",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-02",
+        "price": 150716000.0,
+        "customer": "고객91",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 169980000.0,
+        "customer": "고객92",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 169980000.0,
+        "customer": "고객92",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-03",
+        "price": 266700000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 278700000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.924,
+      "match_score": 0.924,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Gigabyte Server System G494-ZB4-AAP2",
+      "category": "Server",
+      "kind": null,
+      "n": 4,
+      "last_price": 281400000.0,
+      "last_price_date": "2026-09-04",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-15",
+        "price": 86500000.0,
+        "customer": "고객175",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-15",
+        "price": 68181000.0,
+        "customer": "고객175",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-04",
+        "price": 86500000.0,
+        "customer": "고객175",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-04",
+        "price": 281400000.0,
+        "customer": "고객45",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.787,
+      "match_score": 0.787,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Gigabyte Server System G294-S41-AAP2",
+      "category": "서버",
+      "kind": null,
+      "n": 103,
+      "last_price": 73920000.0,
+      "last_price_date": "2026-09-14",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-09-09",
+        "price": 143624000.0,
+        "customer": "고객85",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 89200000.0,
+        "customer": "고객85",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 141356000.0,
+        "customer": "고객85",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 73920000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-14",
+        "price": 73920000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 9900000.5,
+    "suggested_date": "2026-09-28",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 9900000.5,
+    "max": 278700000.0,
+    "history": [
+     {
+      "date": "2026-09-28",
+      "price": 9900000.5,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-09-11",
+      "price": 278700000.0,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 169980000.0,
+      "customer": "고객92",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 169980000.0,
+      "customer": "고객92",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-03",
+      "price": 266700000.0,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-02",
+      "price": 150716000.0,
+      "customer": "고객91",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-03-10",
+      "price": 10000000.0,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.17,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 278700000.0,
+    "delta": -268799999.5,
+    "delta_pct": -96.4,
+    "age_days": 3
+   },
+   "0.0": {
+    "name": "G494-SB0-AAP2",
+    "matches": [
+     {
+      "score": 0.648,
+      "match_score": 0.648,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "G494-SB0-AAP2",
+      "category": "Chassis",
+      "kind": null,
+      "n": 10,
+      "last_price": 150630000.0,
+      "last_price_date": "2025-10-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-10",
+        "price": 150630000.0,
+        "customer": "고객227",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 105000.0,
+    "suggested_date": "2026-09-30",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 50200.0,
+    "max": 150630000.0,
+    "history": [
+     {
+      "date": "2026-09-30",
+      "price": 105000.0,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-09-15",
+      "price": 50800.0,
+      "customer": "고객11",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-08-15",
+      "price": 50700.0,
+      "customer": "고객10",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-07-15",
+      "price": 50600.0,
+      "customer": "고객9",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-06-15",
+      "price": 50500.0,
+      "customer": "고객11",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-05-15",
+      "price": 50400.0,
+      "customer": "고객10",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-05-10",
+      "price": 100000.0,
+      "customer": "고객1",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-04-15",
+      "price": 50300.0,
+      "customer": "고객9",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 0.648,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 1
+   },
+   "0.1": {
+    "name": "Intel® Xeon® 6 6515P",
+    "matches": [
+     {
+      "score": 1.112,
+      "match_score": 1.112,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "Intel® Xeon® 6 6515P",
+      "category": "CPU",
+      "kind": null,
+      "n": 22,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.958,
+      "match_score": 0.958,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "Intel® Xeon 6515P",
+      "category": "CPU",
+      "kind": null,
+      "n": 8,
+      "last_price": 1670000.0,
+      "last_price_date": "2026-05-12",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-04-29",
+        "price": 1670000.0,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-12",
+        "price": 1670000.0,
+        "customer": "고객55",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.956,
+      "match_score": 0.956,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "Intel® Xeon® 6515P",
+      "category": "CPU",
+      "kind": null,
+      "n": 60,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 200000.0,
+    "suggested_date": "2026.09.20",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 200000.0,
+    "max": 1670000.0,
+    "history": [
+     {
+      "date": "2026.09.20",
+      "price": 200000.0,
+      "customer": "고객1",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-05-12",
+      "price": 1670000.0,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-29",
+      "price": 1670000.0,
+      "customer": "고객55",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "미확정 견적의 단가 (발송 확인 전)",
+    "match_score": 0.958,
+    "suggested_grade": "draft",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": "Intel® Xeon 6515P",
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 11
+   },
+   "0.2": {
+    "name": "64GB DDR5 ECC-RDIMM",
+    "matches": [
+     {
+      "score": 1.089,
+      "match_score": 1.089,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "64GB DDR5 ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 7,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 1.005,
+      "match_score": 1.005,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "DDR5 64GB ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 20,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.905,
+      "match_score": 0.905,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "64GB DDR5 5600 ECC-RDIMM",
+      "category": "RAM",
+      "kind": null,
+      "n": 3,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": null,
+    "suggested_date": null,
+    "suggested_source": null,
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": null,
+    "max": null,
+    "history": [],
+    "confidence": "low",
+    "confidence_reason": "단가 이력 없음",
+    "match_score": 1.089,
+    "suggested_grade": null,
+    "cat_rel": "match",
+    "gated": true,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": null
+   },
+   "0.3": {
+    "name": "삼성전자 PM9A3 U.2 3.84TB",
+    "matches": [
+     {
+      "score": 1.089,
+      "match_score": 1.089,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "삼성전자 PM9A3 U.2 3.84TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 7,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.923,
+      "match_score": 0.923,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "삼성전자 PM9A3 U.2 NVMe 3.84TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 6,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.848,
+      "match_score": 0.848,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 PM9A3 U.2 7.68TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 6,
+      "last_price": 3240000.0,
+      "last_price_date": "2026-05-18",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-18",
+        "price": 3240000.0,
+        "customer": "고객113",
+        "qty": 2.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3240000.0,
+    "suggested_date": "2026-05-18",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 800000.0,
+    "max": 3240000.0,
+    "history": [
+     {
+      "date": "2026-05-18",
+      "price": 3240000.0,
+      "customer": "고객113",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2025-12-31",
+      "price": 800000.0,
+      "customer": "고객1",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 0.848,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": "삼성전자 PM9A3 U.2 7.68TB",
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 136
+   },
+   "0.4": {
+    "name": "NVIDIA PRO 6000 Server Edition",
+    "matches": [
+     {
+      "score": 1.163,
+      "match_score": 1.163,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Server Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 38,
+      "last_price": 18100000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 17600000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.708,
+      "match_score": 0.708,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": 11000000.0,
+      "last_price_date": "2025-10-13",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-13",
+        "price": 11000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.626,
+      "match_score": 0.626,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 3,
+      "last_price": 10800000.0,
+      "last_price_date": "2025-09-05",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-05",
+        "price": 10800000.0,
+        "customer": "고객133",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 500000.0,
+    "suggested_date": "2026-07-07",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 500000.0,
+    "max": 18100000.0,
+    "history": [
+     {
+      "date": "2026-07-07",
+      "price": 500000.0,
+      "customer": "고객1",
+      "qty": 8.0,
+      "source": "issued",
+      "status": "confirmed"
+     },
+     {
+      "date": "2026-06-08",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-01",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-26",
+      "price": 17600000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-11",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-08",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.163,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 86
+   },
+   "0.5": {
+    "name": "NVIDIA PRO 6000 Server Edition",
+    "matches": [
+     {
+      "score": 0.916,
+      "match_score": 0.916,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Server Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 38,
+      "last_price": 18100000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 14920000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 17600000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-08",
+        "price": 18100000.0,
+        "customer": "고객14",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.707,
+      "match_score": 0.707,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Blackwell Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 3,
+      "last_price": 10800000.0,
+      "last_price_date": "2025-09-05",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-09-05",
+        "price": 10800000.0,
+        "customer": "고객133",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.62,
+      "match_score": 0.62,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "NVIDIA PRO 6000 Max-Q Workstation Edition",
+      "category": "GPU",
+      "kind": null,
+      "n": 6,
+      "last_price": 11000000.0,
+      "last_price_date": "2025-10-13",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-13",
+        "price": 11000000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 18100000.0,
+    "suggested_date": "2026-06-08",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 14920000.0,
+    "max": 18100000.0,
+    "history": [
+     {
+      "date": "2026-06-08",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-01",
+      "price": 18100000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-26",
+      "price": 17600000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-11",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-05-08",
+      "price": 14920000.0,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (0.92)",
+    "match_score": 0.916,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 115
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "가나대학교 산학협력단",
+    "score": 1.5,
+    "contact": "이영희 님",
+    "tel": "02-000-0004",
+    "email": "c04@example.com",
+    "last_date": "2026-05-01",
+    "n": 3
+   },
+   {
+    "org": "가나대학교 산학협력단",
+    "score": 1.0,
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0005",
+    "email": "c05@example.com",
+    "last_date": null,
+    "n": 1
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.625,
+    "contact": "홍길동 교수님",
+    "tel": "02-000-0001",
+    "email": "c01@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.625,
+    "contact": "홍길순 연구원님",
+    "tel": "02-000-0002",
+    "email": "c02@example.com",
+    "last_date": "2026-03-02",
+    "n": 5
+   },
+   {
+    "org": "가나대학교",
+    "score": 0.625,
+    "contact": "김철수 님",
+    "tel": "02-000-0003",
+    "email": "c03@example.com",
+    "last_date": "2025-11-10",
+    "n": 2
+   }
+  ]
+ },
+ "fallback_price_history_calls": [
+  {
+   "name": "Gigabyte Server System G494-SB0-AAP2",
+   "kind": "set",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-09-28",
+     "price": 9900000.5,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-03-10",
+     "price": 10000000.0,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Gigabyte Server System G494-SB0-AAP2",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-09-30",
+     "price": 105000.0,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-09-15",
+     "price": 50800.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-08-15",
+     "price": 50700.0,
+     "customer": "고객10",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-15",
+     "price": 50600.0,
+     "customer": "고객9",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-06-15",
+     "price": 50500.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-05-15",
+     "price": 50400.0,
+     "customer": "고객10",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-05-10",
+     "price": 100000.0,
+     "customer": "고객1",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-04-15",
+     "price": 50300.0,
+     "customer": "고객9",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "draft"
+    },
+    {
+     "date": "2026-03-15",
+     "price": 51100.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-03-15",
+     "price": 50200.0,
+     "customer": "고객11",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "Gigabyte Server System G494-SB0-AAP2",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "Intel® Xeon® 6 6515P",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026.09.20",
+     "price": 200000.0,
+     "customer": "고객1",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "Intel® Xeon® 6 6515P",
+     "status": "draft"
+    }
+   ]
+  },
+  {
+   "name": "64GB DDR5 ECC-RDIMM",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "삼성전자 PM9A3 U.2 3.84TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2025-12-31",
+     "price": 800000.0,
+     "customer": "고객1",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "삼성전자 PM9A3 U.2 3.84TB",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA PRO 6000 Server Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-07-08",
+     "price": null,
+     "customer": "고객1",
+     "qty": 8.0,
+     "kind": "item",
+     "name": "NVIDIA PRO 6000 Server Edition",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 500000.0,
+     "customer": "고객1",
+     "qty": 8.0,
+     "kind": "item",
+     "name": "NVIDIA PRO 6000 Server Edition",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 0.0,
+     "customer": "고객1",
+     "qty": 8.0,
+     "kind": "item",
+     "name": "NVIDIA PRO 6000 Server Edition",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ]
+}

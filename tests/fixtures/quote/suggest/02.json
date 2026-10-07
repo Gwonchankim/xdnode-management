@@ -1,0 +1,2535 @@
+{
+ "quote": {
+  "customer": {
+   "org": "(주)다라테크",
+   "contact": "최지우 대리님",
+   "tel": "010-0000-0000",
+   "email": "customer@example.com"
+  },
+  "terms": {
+   "valid_weeks": 1,
+   "delivery": "협의 후 결정",
+   "payment": "현금결제",
+   "place": "귀사 지정 장소",
+   "stamp_omitted": true
+  },
+  "staff": {
+   "name": "담당자 팀장",
+   "tel": "010-1234-5678",
+   "email": "staff@example.com"
+  },
+  "issue_date": "2026-09-17",
+  "lines": [
+   {
+    "label": "Parts",
+    "name": "Workstation Parts",
+    "items": [
+     {
+      "category": "POWER",
+      "spec": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+      "qty": 1.0,
+      "unit_price": 732600.0,
+      "extra_categories": []
+     },
+     {
+      "category": "BOARD",
+      "spec": "GIGABYTE TRX50 AI TOP",
+      "qty": 1.0,
+      "unit_price": 1392600.0,
+      "extra_categories": []
+     },
+     {
+      "category": "FAN",
+      "spec": "ARCTIC P12 Pro PST 5팩",
+      "qty": 1.0,
+      "unit_price": 45100.0,
+      "extra_categories": []
+     },
+     {
+      "category": "RAM",
+      "spec": "하이닉스 DDR5-6400 ECC/REG 64GB",
+      "qty": 2.0,
+      "unit_price": 3600000.0,
+      "extra_categories": []
+     },
+     {
+      "category": "SSD",
+      "spec": "삼성전자 9100 PRO M.2 NVMe 8TB",
+      "qty": 2.0,
+      "unit_price": 2088600.0,
+      "extra_categories": []
+     }
+    ],
+    "sets": 1.0,
+    "notes": []
+   }
+  ],
+  "remarks": [
+   "- 1년 무상 보증"
+  ],
+  "sheet_name": "견적-1"
+ },
+ "normal": {
+  "suggestions": {
+   "0": {
+    "name": "워크스테이션 부품 일괄 (구성 미상)",
+    "matches": [
+     {
+      "score": 1.14,
+      "match_score": 1.14,
+      "cat_rel": null,
+      "contained": false,
+      "name": "워크스테이션 부품 일괄 (구성 미상)",
+      "category": "Parts",
+      "kind": "system",
+      "n": 12,
+      "last_price": 13547500,
+      "last_price_date": "2026-09-10",
+      "min": 10662500,
+      "max": 13600000,
+      "note": "워크스테이션 부품 합산 라인. 구성별 세트 가격 - 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-02",
+        "price": 10662500,
+        "customer": "고객89",
+        "qty": 0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 13547500,
+        "customer": "고객89",
+        "qty": 0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 12565300,
+        "customer": "고객89",
+        "qty": 0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 13547500,
+        "customer": "고객89",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13600000,
+        "customer": "고객14",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 12565300,
+        "customer": "고객145",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 12565300,
+        "customer": "고객89",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 13547500,
+        "customer": "고객89",
+        "qty": 0
+       }
+      ]
+     },
+     {
+      "score": 0.654,
+      "match_score": 0.654,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Workstation (모델 미상)",
+      "category": "Workstation",
+      "kind": "system",
+      "n": 1,
+      "last_price": 76200000,
+      "last_price_date": "2026-08-07",
+      "min": 76200000,
+      "max": 76200000,
+      "note": "모델명 없는 총칭 표기 — 확인 필요. 세트가 7,620만",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-07",
+        "price": 76200000,
+        "customer": "고객49",
+        "qty": 0
+       }
+      ]
+     },
+     {
+      "score": 0.533,
+      "match_score": 0.533,
+      "cat_rel": null,
+      "contained": false,
+      "name": "서버 부품 일괄 (구성 미상)",
+      "category": "Parts",
+      "kind": "system",
+      "n": 12,
+      "last_price": 54424000,
+      "last_price_date": "2026-09-09",
+      "min": 15900000,
+      "max": 134779000,
+      "note": "견적서의 서버 부품 합산 라인. 520만~1.35억으로 편차가 커 단일 제품 단가로 쓰면 안 됨 - 확인 필요",
+      "caution": "최근 6건 안에서 단가가 8.5배 차이 납니다 (15,900,000~134,779,000원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+      "price_history": [
+       {
+        "date": "2026-05-28",
+        "price": 15900000,
+        "customer": "고객57",
+        "qty": 0
+       },
+       {
+        "date": "2026-05-28",
+        "price": 17300000,
+        "customer": "고객57",
+        "qty": 0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 134779000,
+        "customer": "고객143",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 134779000,
+        "customer": "고객144",
+        "qty": 0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 15900000,
+        "customer": "고객57",
+        "qty": 0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 17300000,
+        "customer": "고객57",
+        "qty": 0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 54424000,
+        "customer": "고객86",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 54424000,
+        "customer": "고객85",
+        "qty": 0
+       }
+      ]
+     }
+    ],
+    "suggested": 12565300,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "system",
+    "caution": null,
+    "note": "워크스테이션 부품 합산 라인. 구성별 세트 가격 - 확인 필요",
+    "min": 10000000.0,
+    "max": 13600000,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 12565300,
+      "customer": "고객145",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 12565300,
+      "customer": "고객89",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 13547500,
+      "customer": "고객89",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 13600000,
+      "customer": "고객14",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 12565300,
+      "customer": "고객89",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 13547500,
+      "customer": "고객89",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 10662500,
+      "customer": "고객89",
+      "qty": 0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 13547500,
+      "customer": "고객89",
+      "qty": 0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.14,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "0.0": {
+    "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1 (2200W)",
+    "matches": [
+     {
+      "score": 1.134,
+      "match_score": 1.134,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1 (2200W)",
+      "category": "POWER",
+      "kind": "part",
+      "n": 9,
+      "last_price": 732600,
+      "last_price_date": "2026-09-10",
+      "min": 732600,
+      "max": 734845,
+      "note": "",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-22",
+        "price": 732600,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 732600,
+        "customer": "고객145",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 732600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 732600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 732600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 732600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 734845,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 732600,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 100000.0,
+    "suggested_date": "2026-9-5",
+    "suggested_source": "issued",
+    "kind": "part",
+    "caution": null,
+    "note": "",
+    "min": 100000.0,
+    "max": 734845,
+    "history": [
+     {
+      "date": "2026-9-5",
+      "price": 100000.0,
+      "customer": "고객2",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 732600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-07",
+      "price": 734845,
+      "customer": "고객49",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 732600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 732600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 732600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 732600,
+      "customer": "고객145",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 732600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "미확정 견적의 단가 (발송 확인 전)",
+    "match_score": 1.134,
+    "suggested_grade": "draft",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": 732600.0,
+    "delta": -632600.0,
+    "delta_pct": -86.3,
+    "age_days": 26
+   },
+   "0.1": {
+    "name": "Gigabyte TRX50 AI TOP",
+    "matches": [
+     {
+      "score": 1.082,
+      "match_score": 1.082,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "Gigabyte TRX50 AI TOP",
+      "category": "Mainboard",
+      "kind": "part",
+      "n": 8,
+      "last_price": 1392600,
+      "last_price_date": "2026-09-10",
+      "min": 1392600,
+      "max": 1392600,
+      "note": "메인보드 단품 단가 139만원",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-22",
+        "price": 1392600,
+        "customer": "고객103",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 1392600,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 1392600,
+        "customer": "고객145",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 1392600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 1392600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 1392600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 1392600,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 1392600,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 1392600,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "메인보드 단품 단가 139만원",
+    "min": 1392600,
+    "max": 1392600,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 1392600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 1392600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 1392600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 1392600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 1392600,
+      "customer": "고객145",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 1392600,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 1392600,
+      "customer": "고객103",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 1392600,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.08)",
+    "match_score": 1.082,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": 1392600.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   },
+   "0.2": {
+    "name": "ARCTIC P12 Pro PST 120mm 팬 (5팩)",
+    "matches": [
+     {
+      "score": 1.132,
+      "match_score": 1.132,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "ARCTIC P12 Pro PST 120mm 팬 (5팩)",
+      "category": "FAN",
+      "kind": "part",
+      "n": 8,
+      "last_price": 45100,
+      "last_price_date": "2026-09-10",
+      "min": 45100,
+      "max": 45100,
+      "note": "5개 묶음 단가",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-22",
+        "price": 45100,
+        "customer": "고객103",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 45100,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 45100,
+        "customer": "고객145",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 45100,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.69,
+      "match_score": 0.69,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "ARCTIC P14 Pro PST CO 140mm 팬",
+      "category": "FAN",
+      "kind": "part",
+      "n": 1,
+      "last_price": 17900,
+      "last_price_date": "2026-08-07",
+      "min": 17900,
+      "max": 17900,
+      "note": "모델·규격이 달라 P12와 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-07",
+        "price": 17900,
+        "customer": "고객49",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 45100,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "5개 묶음 단가",
+    "min": 45100,
+    "max": 600000.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 45100,
+      "customer": "고객145",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 45100,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 45100,
+      "customer": "고객103",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 45100,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.132,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 45100.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   },
+   "0.3": {
+    "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 1.145,
+      "match_score": 1.145,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 16,
+      "last_price": 4580000,
+      "last_price_date": "2026-09-10",
+      "min": 2750000,
+      "max": 4580000,
+      "note": "PC5-51200 = DDR5-6400 동일 규격. 벤더 미표기 2건(2.75M / 3.85M)은 하이닉스 표기 건의 단가대(2.37~10.11M, 최근 4.58M) 안에 들고 해당 기간 6400 ECC/REG 64GB 공급 표기가 하이닉스뿐이라 통합. 하이닉스 건의 최고 10.11M은 다량/세트 단가로 보여 확인 필요",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-12",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3600000,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000,
+        "customer": "고객67",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.945,
+      "match_score": 0.945,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "하이닉스 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 8,
+      "last_price": 3500000,
+      "last_price_date": "2026-06-01",
+      "min": 2400000,
+      "max": 3500000,
+      "note": "속도(5600)가 달라 하이닉스 6400 건과 분리. 벤더가 명시되어 삼성 5600 64GB와도 분리",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 2400000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-08",
+        "price": 2400000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000,
+        "customer": "고객13",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000,
+        "customer": "고객53",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000,
+        "customer": "고객14",
+        "qty": 8.0
+       }
+      ]
+     },
+     {
+      "score": 0.846,
+      "match_score": 0.846,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": "part",
+      "n": 33,
+      "last_price": 4000000,
+      "last_price_date": "2026-09-11",
+      "min": 1301120,
+      "max": 4090909,
+      "note": "PC5-44800 표기와 5600 표기는 동일 규격이고 '서버용' 접미사·괄호 표기만 다름. 벤더 미표기 2건은 PC-44800 표기 방식과 단가 시계열이 삼성 계열과 연속이라 포함. 단가는 2025-07 1.30~1.86M → 2025-11 1.40M → 2026-09 4.00M으로 상승(2026년 DRAM 급등 반영). 최저-최고 약 3.1배지만 시점이 완전히 분리된 시세 변동으로 판단",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객54",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 3900000,
+        "customer": "고객55",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객56",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-28",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객15",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3900000,
+        "customer": "고객57",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-09-11",
+        "price": 4000000,
+        "customer": "고객55",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 3600000,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "PC5-51200 = DDR5-6400 동일 규격. 벤더 미표기 2건(2.75M / 3.85M)은 하이닉스 표기 건의 단가대(2.37~10.11M, 최근 4.58M) 안에 들고 해당 기간 6400 ECC/REG 64GB 공급 표기가 하이닉스뿐이라 통합. 하이닉스 건의 최고 10.11M은 다량/세트 단가로 보여 확인 필요",
+    "min": 400000.0,
+    "max": 4580000,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 3600000,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 4580000,
+      "customer": "고객66",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 4580000,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-07",
+      "price": 4580000,
+      "customer": "고객66",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-07",
+      "price": 4580000,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-13",
+      "price": 4095000,
+      "customer": "고객66",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-13",
+      "price": 4095000,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-12",
+      "price": 4095000,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.145,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 3600000.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   },
+   "0.4": {
+    "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+    "matches": [
+     {
+      "score": 1.132,
+      "match_score": 1.132,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 8,
+      "last_price": 2088600,
+      "last_price_date": "2026-09-10",
+      "min": 2088600,
+      "max": 2088600,
+      "note": "990 PRO와 다른 세대(9100 PRO)이고 용량 8TB로 별개",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-22",
+        "price": 2088600,
+        "customer": "고객103",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 2088600,
+        "customer": "고객14",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 2088600,
+        "customer": "고객145",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-06-23",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 2088600,
+        "customer": "고객89",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.797,
+      "match_score": 0.797,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 990 PRO M.2 NVMe 4TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 10,
+      "last_price": 1230000,
+      "last_price_date": "2026-08-13",
+      "min": 1188000,
+      "max": 1551000,
+      "note": "용량이 달라 1TB·2TB와 분리. 단가 1,188,000~1,551,000원으로 안정적",
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-03-16",
+        "price": 1188000,
+        "customer": "고객113",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 1551000,
+        "customer": "고객143",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 1551000,
+        "customer": "고객144",
+        "qty": 10.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 1209000,
+        "customer": "고객49",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 1200000,
+        "customer": "고객66",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-12",
+        "price": 1200000,
+        "customer": "고객67",
+        "qty": 3.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 1230000,
+        "customer": "고객66",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 1230000,
+        "customer": "고객67",
+        "qty": 4.0
+       }
+      ]
+     },
+     {
+      "score": 0.773,
+      "match_score": 0.773,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 990 PRO M.2 NVMe 1TB",
+      "category": "SSD",
+      "kind": "part",
+      "n": 3,
+      "last_price": 6272727,
+      "last_price_date": "2025-07-25",
+      "min": 1049597,
+      "max": 6272727,
+      "note": "확인 필요: 1TB인데 단가가 1,049,597~6,272,727원(2025-07)으로 시세 대비 비정상적으로 높아 세트/수량 단가 행으로 의심됨. 용량이 달라 2TB·4TB와는 분리",
+      "caution": "최근 3건 안에서 단가가 6.0배 차이 납니다 (1,049,597~6,272,727원). 세트가와 부품가, 또는 수량 단가가 섞였을 수 있으니 확인하세요",
+      "price_history": [
+       {
+        "date": "2025-07-22",
+        "price": 1049597,
+        "customer": "고객114",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-22",
+        "price": 1049597,
+        "customer": "고객115",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-07-25",
+        "price": 6272727,
+        "customer": "고객116",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 2088600,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": "part",
+    "caution": null,
+    "note": "990 PRO와 다른 세대(9100 PRO)이고 용량 8TB로 별개",
+    "min": 2088600,
+    "max": 2088600,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 2088600,
+      "customer": "고객145",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 2088600,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 2088600,
+      "customer": "고객103",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-22",
+      "price": 2088600,
+      "customer": "고객14",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.13)",
+    "match_score": 1.132,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 2088600.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "(주)다라테크",
+    "score": 1.5,
+    "contact": "최지우 대리님",
+    "tel": "02-000-0008",
+    "email": "c08@example.com",
+    "last_date": "2026-02-11",
+    "n": 2
+   },
+   {
+    "org": "다라테크",
+    "score": 1.3,
+    "contact": "최지우 대리님",
+    "tel": "02-000-0007",
+    "email": "c07@example.com",
+    "last_date": "2026-08-30",
+    "n": 7
+   },
+   {
+    "org": "(주)다라테크",
+    "score": 1.167,
+    "contact": "정우성 팀장님",
+    "tel": "02-000-0009",
+    "email": "c09@example.com",
+    "last_date": "2026-02-11",
+    "n": 2
+   }
+  ]
+ },
+ "normal_price_history_calls": [
+  {
+   "name": "Workstation Parts",
+   "kind": "set",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-04-10",
+     "price": 10000000.0,
+     "customer": "고객2",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Workstation Parts",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-9-5",
+     "price": 100000.0,
+     "customer": "고객2",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+     "status": "draft"
+    }
+   ]
+  },
+  {
+   "name": "GIGABYTE TRX50 AI TOP",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "ARCTIC P12 Pro PST 5팩",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "",
+     "price": 600000.0,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "ARCTIC P12 Pro PST 5팩",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-07-08",
+     "price": null,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 400000.0,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 0.0,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ],
+ "fallback": {
+  "suggestions": {
+   "0": {
+    "name": "Workstation Parts",
+    "matches": [
+     {
+      "score": 1.141,
+      "match_score": 1.141,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Workstation Parts",
+      "category": "Parts",
+      "kind": null,
+      "n": 13,
+      "last_price": 12565300.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-06",
+        "price": 13547500.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 12565300.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 13600000.0,
+        "customer": "고객14",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 13547500.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 12565300.0,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.537,
+      "match_score": 0.537,
+      "cat_rel": null,
+      "contained": false,
+      "name": "Server Parts",
+      "category": "Parts",
+      "kind": null,
+      "n": 15,
+      "last_price": 54424000.0,
+      "last_price_date": "2026-09-09",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-28",
+        "price": 15900000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-19",
+        "price": 134779000.0,
+        "customer": "고객144",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 17300000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-06-22",
+        "price": 15900000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-09",
+        "price": 54424000.0,
+        "customer": "고객85",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.442,
+      "match_score": 0.442,
+      "cat_rel": null,
+      "contained": false,
+      "name": "HPC-7000 (Workstation)",
+      "category": "서버",
+      "kind": null,
+      "n": 2,
+      "last_price": 16060000.0,
+      "last_price_date": "2025-10-23",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2025-10-23",
+        "price": 4860000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       },
+       {
+        "date": "2025-10-23",
+        "price": 16060000.0,
+        "customer": "고객57",
+        "qty": 1.0
+       }
+      ]
+     }
+    ],
+    "suggested": 13547500.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 10000000.0,
+    "max": 13600000.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 13547500.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 12565300.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-09",
+      "price": 13600000.0,
+      "customer": "고객14",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 13547500.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 12565300.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-04-10",
+      "price": 10000000.0,
+      "customer": "고객2",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.141,
+    "suggested_grade": "confirmed",
+    "cat_rel": null,
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": null,
+    "delta": null,
+    "delta_pct": null,
+    "age_days": 21
+   },
+   "0.0": {
+    "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+    "matches": [
+     {
+      "score": 1.156,
+      "match_score": 1.156,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+      "category": "POWER",
+      "kind": null,
+      "n": 27,
+      "last_price": 732600.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-07-01",
+        "price": 732600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 732600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 732600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-08-07",
+        "price": 734845.3,
+        "customer": "고객49",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 732600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.678,
+      "match_score": 0.678,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "SuperFlower SF-2000F14HP LEADEX PLATINUM",
+      "category": "POWER",
+      "kind": null,
+      "n": 37,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.625,
+      "match_score": 0.625,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "SuperFlower SF-1000F14GE LEADEX III GOLD UP ATX3.1",
+      "category": "POWER",
+      "kind": null,
+      "n": 3,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 100000.0,
+    "suggested_date": "2026-9-5",
+    "suggested_source": "issued",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 100000.0,
+    "max": 734845.3,
+    "history": [
+     {
+      "date": "2026-9-5",
+      "price": 100000.0,
+      "customer": "고객2",
+      "qty": 1.0,
+      "source": "issued",
+      "status": "draft"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 732600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-07",
+      "price": 734845.3,
+      "customer": "고객49",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 732600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 732600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 732600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "low",
+    "confidence_reason": "미확정 견적의 단가 (발송 확인 전)",
+    "match_score": 1.156,
+    "suggested_grade": "draft",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": 732600.0,
+    "delta": -632600.0,
+    "delta_pct": -86.3,
+    "age_days": 26
+   },
+   "0.1": {
+    "name": "GIGABYTE TRX50 AI TOP",
+    "matches": [
+     {
+      "score": 1.147,
+      "match_score": 1.147,
+      "cat_rel": "match",
+      "contained": true,
+      "name": "GIGABYTE TRX50 AI TOP",
+      "category": "BOARD",
+      "kind": null,
+      "n": 17,
+      "last_price": 1392600.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-23",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 1392600.0,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.529,
+      "match_score": 0.529,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "[GIGABYTE] Z890 AORUS XTREME AI TOP 피씨디렉트",
+      "category": "BOARD",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.404,
+      "match_score": 0.404,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "GIGABYTE MD72-HB3",
+      "category": "BOARD",
+      "kind": null,
+      "n": 9,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 1392600.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 1392600.0,
+    "max": 1392600.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 1392600.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.15)",
+    "match_score": 1.147,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": true,
+    "current_price": 1392600.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   },
+   "0.2": {
+    "name": "ARCTIC P12 Pro PST 5팩",
+    "matches": [
+     {
+      "score": 1.141,
+      "match_score": 1.141,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "ARCTIC P12 Pro PST 5팩",
+      "category": "FAN",
+      "kind": null,
+      "n": 13,
+      "last_price": 45100.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-23",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 45100.0,
+        "customer": "고객89",
+        "qty": 1.0
+       }
+      ]
+     },
+     {
+      "score": 0.718,
+      "match_score": 0.718,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "ARCTIC P14 Pro PST CO",
+      "category": "FAN",
+      "kind": null,
+      "n": 4,
+      "last_price": 17900.0,
+      "last_price_date": "2026-08-07",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-07",
+        "price": 17900.0,
+        "customer": "고객49",
+        "qty": 4.0
+       }
+      ]
+     }
+    ],
+    "suggested": 45100.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 45100.0,
+    "max": 600000.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 45100.0,
+      "customer": "고객89",
+      "qty": 1.0,
+      "source": "file"
+     },
+     {
+      "date": "",
+      "price": 600000.0,
+      "customer": "고객2",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.141,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 45100.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   },
+   "0.3": {
+    "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+    "matches": [
+     {
+      "score": 1.17,
+      "match_score": 1.17,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 70,
+      "last_price": 3600000.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-08-12",
+        "price": 4095000.0,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-08-13",
+        "price": 4095000.0,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-07",
+        "price": 4580000.0,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 4580000.0,
+        "customer": "고객67",
+        "qty": 4.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 3600000.0,
+        "customer": "고객89",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.945,
+      "match_score": 0.945,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "하이닉스 DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 8,
+      "last_price": 3500000.0,
+      "last_price_date": "2026-06-01",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-05-08",
+        "price": 2400000.0,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-11",
+        "price": 2400000.0,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-05-26",
+        "price": 2500000.0,
+        "customer": "고객14",
+        "qty": 8.0
+       },
+       {
+        "date": "2026-06-01",
+        "price": 3500000.0,
+        "customer": "고객14",
+        "qty": 8.0
+       }
+      ]
+     },
+     {
+      "score": 0.842,
+      "match_score": 0.842,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "DDR5-5600 ECC/REG 64GB",
+      "category": "RAM",
+      "kind": null,
+      "n": 27,
+      "last_price": 3500000.0,
+      "last_price_date": "2026-06-08",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-08",
+        "price": 3500000.0,
+        "customer": "고객14",
+        "qty": 6.0
+       }
+      ]
+     }
+    ],
+    "suggested": 4580000.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 400000.0,
+    "max": 4580000.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 4580000.0,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-10",
+      "price": 3600000.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-09-07",
+      "price": 4580000.0,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-13",
+      "price": 4095000.0,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-08-12",
+      "price": 4095000.0,
+      "customer": "고객67",
+      "qty": 4.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-07",
+      "price": 400000.0,
+      "customer": "고객2",
+      "qty": 2.0,
+      "source": "issued",
+      "status": "confirmed"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "발행 기록의 실제 단가",
+    "match_score": 1.17,
+    "suggested_grade": "confirmed",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 3600000.0,
+    "delta": 980000.0,
+    "delta_pct": 27.2,
+    "age_days": 21
+   },
+   "0.4": {
+    "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+    "matches": [
+     {
+      "score": 1.14,
+      "match_score": 1.14,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 12,
+      "last_price": 2088600.0,
+      "last_price_date": "2026-09-10",
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": [
+       {
+        "date": "2026-06-23",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-01",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-02",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-07-06",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       },
+       {
+        "date": "2026-09-10",
+        "price": 2088600.0,
+        "customer": "고객89",
+        "qty": 2.0
+       }
+      ]
+     },
+     {
+      "score": 0.95,
+      "match_score": 0.95,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe SSD 8TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 2,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     },
+     {
+      "score": 0.905,
+      "match_score": 0.905,
+      "cat_rel": "match",
+      "contained": false,
+      "name": "삼성전자 9100 PRO M.2 NVMe 1TB",
+      "category": "SSD",
+      "kind": null,
+      "n": 8,
+      "last_price": null,
+      "last_price_date": null,
+      "min": null,
+      "max": null,
+      "note": null,
+      "caution": null,
+      "price_history": []
+     }
+    ],
+    "suggested": 2088600.0,
+    "suggested_date": "2026-09-10",
+    "suggested_source": "file",
+    "kind": null,
+    "caution": null,
+    "note": null,
+    "min": 2088600.0,
+    "max": 2088600.0,
+    "history": [
+     {
+      "date": "2026-09-10",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-06",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-02",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-07-01",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     },
+     {
+      "date": "2026-06-23",
+      "price": 2088600.0,
+      "customer": "고객89",
+      "qty": 2.0,
+      "source": "file"
+     }
+    ],
+    "confidence": "high",
+    "confidence_reason": "유사도 높음 (1.14)",
+    "match_score": 1.14,
+    "suggested_grade": "file",
+    "cat_rel": "match",
+    "gated": false,
+    "anchor_name": null,
+    "contained": false,
+    "current_price": 2088600.0,
+    "delta": 0.0,
+    "delta_pct": 0.0,
+    "age_days": 21
+   }
+  },
+  "customer_matches": [
+   {
+    "org": "(주)다라테크",
+    "score": 1.5,
+    "contact": "최지우 대리님",
+    "tel": "02-000-0008",
+    "email": "c08@example.com",
+    "last_date": "2026-02-11",
+    "n": 2
+   },
+   {
+    "org": "다라테크",
+    "score": 1.3,
+    "contact": "최지우 대리님",
+    "tel": "02-000-0007",
+    "email": "c07@example.com",
+    "last_date": "2026-08-30",
+    "n": 7
+   },
+   {
+    "org": "(주)다라테크",
+    "score": 1.167,
+    "contact": "정우성 팀장님",
+    "tel": "02-000-0009",
+    "email": "c09@example.com",
+    "last_date": "2026-02-11",
+    "n": 2
+   }
+  ]
+ },
+ "fallback_price_history_calls": [
+  {
+   "name": "Workstation Parts",
+   "kind": "set",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-04-10",
+     "price": 10000000.0,
+     "customer": "고객2",
+     "qty": 1.0,
+     "kind": "set",
+     "name": "Workstation Parts",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-9-5",
+     "price": 100000.0,
+     "customer": "고객2",
+     "qty": 1.0,
+     "kind": "item",
+     "name": "SuperFlower SF-2200F14HP LEADEX TITANIUM ATX3.1",
+     "status": "draft"
+    }
+   ]
+  },
+  {
+   "name": "GIGABYTE TRX50 AI TOP",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  },
+  {
+   "name": "ARCTIC P12 Pro PST 5팩",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "",
+     "price": 600000.0,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "single",
+     "name": "ARCTIC P12 Pro PST 5팩",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+   "kind": "item",
+   "limit": 10,
+   "rows": [
+    {
+     "date": "2026-07-08",
+     "price": null,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 400000.0,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+     "status": "confirmed"
+    },
+    {
+     "date": "2026-07-07",
+     "price": 0.0,
+     "customer": "고객2",
+     "qty": 2.0,
+     "kind": "item",
+     "name": "하이닉스 DDR5-6400 ECC/REG 64GB",
+     "status": "confirmed"
+    }
+   ]
+  },
+  {
+   "name": "삼성전자 9100 PRO M.2 NVMe 8TB",
+   "kind": "item",
+   "limit": 10,
+   "rows": []
+  }
+ ]
+}

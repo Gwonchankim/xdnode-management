@@ -367,13 +367,21 @@ test('QX-13: contentHash, dedupKey and the price-log fan-out equal the Python st
 });
 
 // ── 익명화 검사(Design §11.5, QT2 픽스처 완료 조건) ─────────────────────────
+/** JSON 값 안의 모든 문자열(객체 키 포함). */
+function jsonStrings(value, out = []) {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) for (const entry of value) jsonStrings(entry, out);
+  else if (value && typeof value === 'object') for (const [key, entry] of Object.entries(value)) { out.push(key); jsonStrings(entry, out); }
+  return out;
+}
 function fixtureTexts() {
   const out = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.json')) out.push([path.relative(FIXTURES, full), readFileSync(full, 'utf8')]);
+      // JSON 은 파싱한 문자열 값(키 포함)만 본다. 원문을 보면 이스케이프(\uXXXX)된 한글 표지를 놓치고, 숫자(유사도 소수 등)가 전화번호처럼 걸린다(QT3 textkey.json).
+      else if (entry.name.endsWith('.json')) out.push([path.relative(FIXTURES, full), jsonStrings(JSON.parse(readFileSync(full, 'utf8'))).join('\n')]);
     }
   };
   walk(FIXTURES);

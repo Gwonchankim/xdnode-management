@@ -1,11 +1,13 @@
 // quote-tool(Design §11.2, QT1): 견적 라우트를 실제 코드·SQL 로 실행한다(하니스의 메모리 SQLite + 가짜 R2).
 // QA-01 권한, QA-02 스키마 멱등, QA-03 이전 멱등·대조, QA-04 템플릿, QA-05 검색, QA-06 불러오기, QA-18 배지. 데이터는 모두 합성이다.
 // QT2: QA-07 생성, QA-08 dedup·확정 보호, QA-09 상태 전이(옛 test_status.py), QA-10 발송 확정, QA-11 PDF, QA-12 다운로드.
+// QT3: QA-13 담당자 프로필, QA-17 단가 제안(compute, 읽기 전용·파이썬 동등)·카탈로그 조회.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate';
-import { callApi, createAccount, db, login, objects, resetDatabase, seedQuoteTemplate, setAccess, setClock } from './helpers/hr-api-harness.mjs';
+import { TEST_ADMIN_ACCOUNT_ID, beforeBatch, callApi, createAccount, db, login, objects, resetDatabase, seedQuoteTemplate, setAccess, setClock } from './helpers/hr-api-harness.mjs';
 
 const { ensureQuoteSchema, resetQuoteSchemaGate, QUOTE_TABLES } = await import('../app/quote-schema.ts');
 const { normalizeQuote, parseStoredQuote, subtotal } = await import('../app/quote-model.ts');
@@ -882,4 +884,214 @@ test('QA-04b: GENERATE refuses a missing template (503 TEMPLATE_MISSING) and a t
   const tampered = await generate(sampleQuote({ remarks: ['- 2년'] }));
   assert.equal(tampered.status, 503);
   assert.equal(tampered.body.code, 'TEMPLATE_INVALID');
+});
+
+// ── QT3: 단가 제안(compute)·카탈로그·담당자 프로필 ───────────────────────────────
+// 카탈로그는 옛 툴이 만든 부분 카탈로그 픽스처(tests/fixtures/quote/suggest, 익명화)를 실제 이전 API(BEGIN → ROWS → ACTIVATE)로 넣고,
+// 단가 로그는 픽스처의 합성 행을 그대로 넣는다. 응답이 파이썬 출력(같은 카탈로그·같은 날짜)과 같아야 한다(QA-17, QT-SC-05).
+const fixture = (...parts) => JSON.parse(readFileSync(new URL(`./fixtures/quote/${parts.join('/')}`, import.meta.url), 'utf8'));
+const SUGGEST_EXAMPLES = ['01', '02', '03', '04', '05'];
+/** KST 2026-10-01 12:00(파이썬 픽스처의 date.today 고정값과 같은 날). */
+const KST_20261001 = Date.UTC(2026, 9, 1, 3, 0, 0);
+const computeApi = (body, options) => send('quote/compute', 'POST', body, '', options);
+const staffApi = (body, options) => send('quote/staff', 'POST', body, '', options);
+const catalogGet = (query, options = {}) => callApi('quote/catalog', 'GET', undefined, query, options);
+const quoteTableCounts = (sql) => Object.fromEntries(QUOTE_TABLES.map((table) => [table, sql.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get().n]));
+const auditCount = (sql) => sql.prepare(`SELECT COUNT(*) AS n FROM erp_audit_logs`).get().n;
+
+/** 부분 카탈로그(v2·옛 카탈로그·고객·어휘 + customers.json 의 사양 이름)와 합성 단가 로그를 넣는다. 끝나면 관리자 권한이다. */
+async function seedPricingCatalog(sql) {
+  const v2 = fixture('suggest', 'catalog_v2.json');
+  const v1 = fixture('suggest', 'catalog.json');
+  const specs = fixture('customers.json').spec_library;
+  const PV2 = sha('qt3 catalog_v2 fixture');
+  const PV1 = sha('qt3 catalog fixture');
+  const customers = Object.entries(v1.customers).flatMap(([org, list]) => list.map((entry) => ({ org, ...entry })));
+  const tables = {
+    catalog_products: { version: PV2, rows: v2.products.map((product, ord) => ({ ...product, ord })) },
+    catalog_legacy: { version: PV1, rows: v1.products.map((product, ord) => ({ ...product, ord })) },
+    spec_library: { version: PV1, rows: Object.entries(specs).map(([name, entry], ord) => ({ ord, name, spec: entry.spec, date: entry.date ?? null, category: entry.category ?? null })) },
+    customers: { version: PV1, rows: customers.map((entry, ord) => ({ ...entry, ord })) },
+    vocab: { version: PV1, rows: [v1.vocab] },
+  };
+  setAccess({}, { isAdmin: true });
+  const source = {
+    files: { 'catalog_v2.json': PV2, 'catalog.json': PV1 },
+    counts: { catalog_products: v2.products.length, catalog_legacy: v1.products.length, spec_library: tables.spec_library.rows.length, customers: customers.length,
+      customer_orgs: Object.keys(v1.customers).length },
+    snapshots: {}, lastLegacyIssuedId: 0,
+  };
+  const begin = await importApi({ action: 'BEGIN', source });
+  assert.equal(begin.status, 200, JSON.stringify(begin.body));
+  for (const [table, { version, rows: list }] of Object.entries(tables)) {
+    const result = await importApi({ action: 'ROWS', runId: begin.body.runId, table, version, rows: list });
+    assert.equal(result.status, 200, `${table}: ${JSON.stringify(result.body)}`);
+  }
+  const activated = await importApi({ action: 'ACTIVATE', runId: begin.body.runId, versions: { catalog_v2: PV2, catalog: PV1 }, expected: source.counts });
+  assert.equal(activated.status, 200, JSON.stringify(activated.body));
+  const insert = sql.prepare(`INSERT INTO quote_price_log (id, issued_id, issue_date, customer, kind, category, name, name_key, qty, unit_price, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  for (const row of fixture('suggest', 'price_log.json')) {
+    insert.run(row.id, row.issued_id, row.issue_date, row.customer, row.kind, row.category, row.name, row.name_key, row.qty, row.unit_price, row.status);
+  }
+  return { PV2, PV1 };
+}
+
+test('QA-17: compute SUGGEST is read-only (view allowed, none refused) and equals the Python suggestions on the v2 and fallback paths', async () => {
+  const sql = await resetDatabase();
+  await seedPricingCatalog(sql);
+  setClock(KST_20261001);
+  setAccess({ hr: 'edit' });
+  assert.equal((await computeApi({ action: 'SUGGEST', quote: fixture('suggest', '01.json').quote })).status, 403, 'none');
+  setAccess({ quote: 'view' });
+  for (const mode of ['normal', 'fallback']) {
+    if (mode === 'fallback') {
+      // 정식 카탈로그 버전을 빈 버전으로 돌리면 옛 카탈로그로 매칭한다(옛 catalog_v2.available() 분기). 캐시 키가 바뀌어 다시 읽는다.
+      sql.prepare(`UPDATE quote_meta SET value = ? WHERE key = 'version:catalog_v2'`).run(sha('no such catalog'));
+    }
+    for (const name of SUGGEST_EXAMPLES) {
+      const example = fixture('suggest', `${name}.json`);
+      const counts = quoteTableCounts(sql);
+      const audits = auditCount(sql);
+      const result = await computeApi({ action: 'SUGGEST', quote: example.quote });
+      assert.equal(result.status, 200, JSON.stringify(result.body).slice(0, 300));
+      assert.deepStrictEqual(result.body, plain(example[mode]), `${name}/${mode}`);
+      for (const suggestion of Object.values(result.body.suggestions)) assert.equal(Object.keys(suggestion).length, 23);
+      // QT-Q11: 행 수·감사 수가 그대로다.
+      assert.deepEqual(quoteTableCounts(sql), counts, `${name}/${mode}: quote tables unchanged`);
+      assert.equal(auditCount(sql), audits, `${name}/${mode}: no audit row`);
+    }
+    if (mode === 'normal') {
+      // 불러오기(history ?corpusId=)도 옛 /api/history/load 처럼 같은 제안·고객 후보를 함께 준다.
+      sql.prepare(`INSERT INTO quote_corpus_files (id, file, quote_json, imported_at, import_run_id) VALUES (901, 'qt3.xlsx', ?, 1, 'qir_test')`)
+        .run(JSON.stringify(fixture('suggest', '01.json').quote));
+      const loaded = await callApi('quote/history', 'GET', undefined, '?corpusId=901');
+      assert.equal(loaded.status, 200);
+      assert.deepStrictEqual({ suggestions: loaded.body.suggestions, customer_matches: loaded.body.customer_matches }, plain(fixture('suggest', '01.json').normal));
+    }
+  }
+});
+
+test('QA-17b: compute validates the body (411 without length, unknown action, 27 lines) and answers an empty catalog with empty suggestions', async () => {
+  await resetDatabase();
+  setAccess({ quote: 'view' });
+  const empty = await computeApi({ action: 'SUGGEST', quote: { customer: { org: '고객기관A' }, lines: [{ label: 'GPU', name: 'RTX PRO 6000', qty: 1 }] } });
+  assert.equal(empty.status, 200);
+  assert.deepEqual(empty.body, { suggestions: {}, customer_matches: [] });
+  assert.equal((await computeApi({ action: 'SUGGEST', quote: { lines: [] } })).status, 200, 'an empty draft is fine');
+  assert.equal((await computeApi({ action: 'RECOMMEND', gpu: 'x' })).status, 400, 'RECOMMEND is QT4');
+  assert.equal((await computeApi({ action: 'SUGGEST', quote: 'x' })).status, 400);
+  const tooMany = await computeApi({ action: 'SUGGEST', quote: { lines: Array.from({ length: 27 }, () => ({ label: 'GPU', name: 'x' })) } });
+  assert.equal(tooMany.status, 400);
+  assert.equal(tooMany.body.field, 'lines');
+  const unsized = await callApi('quote/compute', 'POST', undefined, '', { rawBody: '{"action":"SUGGEST"}', contentType: 'application/json' });
+  assert.equal(unsized.status, 411);
+});
+
+test('QA-17c: catalog views — products, priceHistory, spec, vocab, customers equal the Python outputs; bad input is 400; none is 403', async () => {
+  const sql = await resetDatabase();
+  await seedPricingCatalog(sql);
+  const auditsBefore = auditCount(sql);
+  setAccess({ hr: 'edit' });
+  assert.equal((await catalogGet('?view=vocab')).status, 403);
+  setAccess({ quote: 'view' });
+  const deniedAudits = auditCount(sql);
+  const views = fixture('suggest', 'catalog_views.json');
+  const q = (params) => `?${new URLSearchParams(Object.entries(params).filter(([, value]) => value !== null && value !== undefined)).toString()}`;
+  for (const entry of views.products.slice(0, 24)) {
+    const result = await catalogGet(q({ view: 'products', q: entry.q, category: entry.category }));
+    assert.equal(result.status, 200);
+    assert.deepStrictEqual(result.body.rows, plain(entry.expected), `products ${entry.q}`);
+  }
+  for (const entry of views.price_history) {
+    const result = await catalogGet(q({ view: 'priceHistory', name: entry.name, kind: entry.kind }));
+    assert.equal(result.status, 200);
+    assert.deepStrictEqual(result.body, plain(entry.expected), `priceHistory ${entry.name} ${entry.kind}`);
+  }
+  const vocab = await catalogGet('?view=vocab');
+  assert.deepStrictEqual(vocab.body, plain(views.vocab));
+  const customers = fixture('customers.json');
+  for (const entry of customers.spec_for.slice(0, 40)) {
+    const result = await catalogGet(q({ view: 'spec', name: entry.name }));
+    assert.equal(result.body.spec, entry.expected, `spec ${entry.name}`);
+  }
+  for (const entry of customers.match_customer) {
+    const result = await catalogGet(q({ view: 'customers', org: entry.org, contact: entry.contact }));
+    assert.equal(result.status, 200);
+    assert.deepStrictEqual(result.body.rows, plain(entry.expected), `customers ${entry.org}`);
+    for (const row of result.body.rows) assert.deepEqual(Object.keys(row).sort(), ['contact', 'email', 'last_date', 'n', 'org', 'score', 'tel']);
+  }
+  assert.equal((await catalogGet('?view=priceHistory&name=x&kind=single')).status, 400);
+  assert.equal((await catalogGet('?view=nope')).status, 400);
+  assert.equal((await catalogGet(`?view=products&q=${'x'.repeat(201)}`)).status, 400);
+  assert.ok(deniedAudits >= auditsBefore);
+  assert.equal(auditCount(sql), deniedAudits, 'reads are not audited');
+});
+
+test('QA-13: staff SAVE trims and de-duplicates names, keeps rows on removal, swaps names, returns the previous list and audits counts only', async () => {
+  const sql = await resetDatabase();
+  setAccess({ quote: 'view' });
+  assert.deepEqual((await callApi('quote/staff', 'GET')).body, { items: [] });
+  assert.equal((await staffApi({ action: 'SAVE', items: [{ name: '담당자 팀장' }] })).status, 403, 'view cannot save');
+  setAccess({ quote: 'edit' });
+  const first = await staffApi({ action: 'SAVE', items: [
+    { name: '  담당자 팀장 ', tel: '010-1234-5678', email: 'staff@example.com' },
+    { name: '담당자 팀장', tel: '999', email: '' },
+    { name: '', tel: '010-0000-0000' },
+    { name: '보조 사원', accountId: TEST_ADMIN_ACCOUNT_ID },
+  ] });
+  assert.equal(first.status, 200, JSON.stringify(first.body));
+  assert.deepEqual(first.body.before, []);
+  assert.deepEqual(first.body.items.map(({ name, tel, email, accountId, sort }) => ({ name, tel, email, accountId, sort })), [
+    { name: '담당자 팀장', tel: '010-1234-5678', email: 'staff@example.com', accountId: null, sort: 0 },
+    { name: '보조 사원', tel: '', email: '', accountId: TEST_ADMIN_ACCOUNT_ID, sort: 1 },
+  ]);
+  for (const item of first.body.items) assert.match(item.id, /^qsp_[0-9a-f-]{36}$/);
+  const [lead, assistant] = first.body.items;
+
+  // 이름 맞바꾸기(활성 이름 유일 인덱스가 있어도 된다) + 새 사람 추가
+  const swapped = await staffApi({ action: 'SAVE', items: [
+    { id: lead.id, name: '보조 사원', tel: lead.tel, email: lead.email },
+    { id: assistant.id, name: '담당자 팀장', tel: '', email: '', accountId: TEST_ADMIN_ACCOUNT_ID },
+    { name: '새 담당자', tel: '02-000-0000', email: 'new@example.com' },
+  ] });
+  assert.equal(swapped.status, 200, JSON.stringify(swapped.body));
+  assert.deepEqual(swapped.body.before.map((item) => item.name), ['담당자 팀장', '보조 사원']);
+  assert.deepEqual(swapped.body.items.map((item) => [item.id, item.name]), [[lead.id, '보조 사원'], [assistant.id, '담당자 팀장'], [swapped.body.items[2].id, '새 담당자']]);
+
+  // 목록에서 빼면 행은 남고 active = 0
+  const removed = await staffApi({ action: 'SAVE', items: [{ id: assistant.id, name: '담당자 팀장' }] });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.items.length, 1);
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_staff_profiles`).get().n, 3);
+  assert.equal(sql.prepare(`SELECT COUNT(*) AS n FROM quote_staff_profiles WHERE active = 1`).get().n, 1);
+  assert.deepEqual((await callApi('quote/staff', 'GET')).body.items.map((item) => item.name), ['담당자 팀장']);
+
+  // 0명 · 메일 형식 · 모르는 id · 모르는 계정 · 51명
+  const none = await staffApi({ action: 'SAVE', items: [{ name: '   ' }] });
+  assert.equal(none.status, 400);
+  assert.equal(none.body.error, '담당자를 최소 한 명은 남겨야 합니다.');
+  const badMail = await staffApi({ action: 'SAVE', items: [{ name: 'x', email: 'not-a-mail' }] });
+  assert.equal(badMail.status, 400);
+  assert.equal(badMail.body.field, 'items[0].email');
+  assert.equal((await staffApi({ action: 'SAVE', items: [{ id: 'qsp_00000000-0000-0000-0000-000000000000', name: 'x' }] })).status, 409);
+  assert.equal((await staffApi({ action: 'SAVE', items: [{ name: 'x', accountId: 'acct_missing' }] })).status, 400);
+  assert.equal((await staffApi({ action: 'SAVE', items: Array.from({ length: 51 }, (_, index) => ({ name: `담당 ${index}` })) })).status, 400);
+  assert.equal((await staffApi({ action: 'NOPE' })).status, 400);
+
+  // 다른 사람이 그사이(목록을 읽은 뒤, batch 전) 같은 이름을 새로 넣었으면 409(활성 이름 유일 인덱스, batch 전체가 되돌아간다)
+  beforeBatch((_statements, raw) => {
+    beforeBatch(null);
+    raw.prepare(`INSERT INTO quote_staff_profiles (id, name, tel, email, account_id, sort, active, legacy, created_by, created_at, updated_at)
+      VALUES ('qsp_other', '동시 저장', '', '', NULL, 5, 1, 0, 'other', 1, 1)`).run();
+  });
+  const raced = await staffApi({ action: 'SAVE', items: [{ id: assistant.id, name: '담당자 팀장' }, { name: '동시 저장' }] });
+  assert.equal(raced.status, 409);
+  assert.equal(raced.body.code, 'CONFLICT');
+  assert.deepEqual(sql.prepare(`SELECT name FROM quote_staff_profiles WHERE active = 1 ORDER BY name`).all().map((row) => row.name), ['담당자 팀장', '동시 저장'], 'rolled back');
+
+  const audits = auditRows(sql, 'QUOTE_STAFF_SAVED');
+  assert.equal(audits.length, 3);
+  assert.deepEqual(JSON.parse(audits[1].after_json), { before: 2, after: 3, added: 1, removed: 0, changed: 2 });
+  for (const row of audits) for (const secret of ['담당자', '보조', '010-', '02-000', '@example.com']) assert.ok(!row.after_json.includes(secret), `audit carries no ${secret}`);
 });

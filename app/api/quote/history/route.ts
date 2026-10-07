@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { authorizeErpRequest } from "../../../erp-platform";
 import { ensureQuoteSchema } from "../../../quote-schema";
 import { parseStoredQuote, withoutMargin } from "../../../quote-model";
-import { canSeeMargin, countDrafts, pendingDrafts, quoteNotFound, quoteValidation, recentIssued, searchHistory } from "../../../quote-server";
+import { canSeeMargin, countDrafts, pendingDrafts, quoteNotFound, quoteSuggestions, quoteValidation, recentIssued, searchHistory } from "../../../quote-server";
 
 // quote-tool Design §3.2 GET /api/quote/history. 검색·최근·미확정·불러오기(읽기 전용, 감사 없음).
 // 불러오기는 issuedId·corpusId 만 받는다. 파일 경로 인자(옛 ?file=)는 받지 않는다(S3 소멸).
@@ -42,9 +42,8 @@ export async function GET(request: Request) {
         quote: margin ? loaded : withoutMargin(loaded),
         source_date: row.issue_date,
         source: { kind: "issued", id: row.id, status: row.status, rev: row.file_rev, files: { xlsx: Boolean(row.xlsx_key), pdf: Boolean(row.pdf_key) } },
-        // 단가 제안·고객 매칭은 QT3(compute SUGGEST)에서 채운다.
-        suggestions: {},
-        customer_matches: [],
+        // 옛 /api/history/load 처럼 단가 제안·고객 후보를 함께 준다(QT3, compute SUGGEST 와 같은 계산).
+        ...(await quoteSuggestions(db, loaded, Date.now())),
       });
     }
     const row = await db.prepare(`SELECT id, quote_date, quote_json FROM quote_corpus_files WHERE id = ?1`).bind(id)
@@ -57,8 +56,7 @@ export async function GET(request: Request) {
       quote: margin ? loaded : withoutMargin(loaded),
       source_date: quote.issue_date ?? row.quote_date,
       source: { kind: "file", id: row.id },
-      suggestions: {},
-      customer_matches: [],
+      ...(await quoteSuggestions(db, loaded, Date.now())),
     });
   }
 
